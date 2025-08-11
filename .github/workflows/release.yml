@@ -1,0 +1,209 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version increment type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - custom
+      custom_version:
+        description: 'Custom version (e.g., 1.2.3) - required if type is custom'
+        required: false
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+      draft:
+        description: 'Create as draft release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: 🚀 Version and Build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      timestamp: ${{ steps.build_info.outputs.timestamp }}
+      artifact-name: ${{ steps.build_info.outputs.artifact-name }}
+      previous-tag: ${{ steps.previous_tag.outputs.previous_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get previous tag
+        id: previous_tag
+        run: |
+          PREVIOUS_TAG=$(git tag | grep -v "snapshot" | sort -V | tail -n 1 || echo "")
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
+      - name: Bump version and tag
+        id: version
+        run: |
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+          VERSION_FILE="app/build.gradle"
+          if [[ "$VERSION_TYPE" == "custom" ]]; then
+            if [ -z "$CUSTOM_VERSION" ]; then
+              echo "Error: A custom version must be provided." && exit 1
+            fi
+            sed -i -E "s/versionName \".*\"/versionName \"$CUSTOM_VERSION\"/" $VERSION_FILE
+          else
+            CURRENT_VERSION=$(grep versionName $VERSION_FILE | head -1 | awk -F'"' '{print $2}')
+            IFS='.' read -r -a parts <<< "$CURRENT_VERSION"
+            major=${parts[0]:-0}
+            minor=${parts[1]:-0}
+            patch=${parts[2]:-0}
+            case "$VERSION_TYPE" in
+              major) major=$((major+1)); minor=0; patch=0;;
+              minor) minor=$((minor+1)); patch=0;;
+              patch) patch=$((patch+1));;
+            esac
+            NEW_VERSION="$major.$minor.$patch"
+            sed -i -E "s/versionName \".*\"/versionName \"$NEW_VERSION\"/" $VERSION_FILE
+          fi
+          RELEASE_VERSION=$(grep versionName $VERSION_FILE | head -1 | awk -F'"' '{print $2}')
+          TAG="v$RELEASE_VERSION"
+          echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          # Generate changelog
+          git-cliff ${{ steps.previous_tag.outputs.previous_tag }}..HEAD --strip header --output release-notes.md
+          HEADER="## [$RELEASE_VERSION](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous_tag.outputs.previous_tag }}...$TAG) - $(date +'%Y-%m-%d')"
+          {
+            echo "$HEADER"
+            echo ""
+            cat release-notes.md
+            echo ""
+          } > temp_changelog.md && mv temp_changelog.md CHANGELOG.md
+
+          # Commit and tag
+          git add $VERSION_FILE CHANGELOG.md
+          git commit -m "chore(release): version $RELEASE_VERSION"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push --follow-tags
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+      - name: Build release APK/AAB from tag
+        run: |
+          git checkout ${{ steps.version.outputs.tag }}
+          ./gradlew clean assembleRelease bundleRelease
+
+      - name: Prepare build information
+        id: build_info
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          ARTIFACT_NAME="porturl-android-${{ steps.version.outputs.tag }}.zip"
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+      - name: Archive production builds
+        run: |
+          mkdir -p output
+          cp app/build/outputs/apk/release/*.apk output/ || true
+          cp app/build/outputs/bundle/release/*.aab output/ || true
+          cd output && zip -r ../${{ steps.build_info.outputs.artifact-name }} .
+          cd ..
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: ${{ steps.build_info.outputs.artifact-name }}
+          retention-days: 7
+
+  github-release:
+    name: 📦 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: build-artifact
+          path: .
+
+      - name: Download release notes
+        uses: actions/download-artifact@v5
+        with:
+          name: release-notes
+          path: .
+
+      - name: Read changelog file content
+        id: changelog_content
+        run: |
+          echo 'changelog<<EOF' >> "$GITHUB_OUTPUT"
+          cat release-notes.md >> "$GITHUB_OUTPUT"
+          echo 'EOF' >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.release.outputs.tag }}
+          name: "🚀 Release ${{ needs.release.outputs.tag }}"
+          draft: ${{ github.event.inputs.draft == 'true' }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          body: |
+            **Built:** `${{ needs.release.outputs.timestamp }}`
+
+            ## 📦 Downloads
+
+            - [APK/AAB and artifacts](${{ needs.release.outputs.artifact-name }})
+
+            ---
+
+            ## Changes
+            ${{ steps.changelog_content.outputs.changelog }}
+          artifacts: "${{ needs.release.outputs.artifact-name }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          makeLatest: ${{ github.event.inputs.prerelease != 'true' }}
