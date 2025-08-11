@@ -1,1 +1,30 @@
-# (as provided previously)
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/backendEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Backend API URL" />
+
+    <EditText
+        android:id="@+id/oidcEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="OIDC Discovery URL" />
+
+    <EditText
+        android:id="@+id/clientEdit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="OIDC Client ID" />
+
+    <Button
+        android:id="@+id/saveButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save" />
+</LinearLayout>
