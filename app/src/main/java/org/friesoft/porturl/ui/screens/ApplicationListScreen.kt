@@ -1,61 +1,37 @@
 package org.friesoft.porturl.ui.screens
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.ApplicationListViewModel
 import org.friesoft.porturl.viewmodels.AuthViewModel
 
-/**
- * Displays a list of applications fetched from the backend.
- *
- * This is the main screen for authenticated users. It shows a loading indicator,
- * an empty state message, or a scrollable list of applications. Users can
- * navigate to add a new application or log out.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApplicationListScreen(
@@ -66,10 +42,50 @@ fun ApplicationListScreen(
     val applications by viewModel.applications.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
+    var isInEditMode by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    // This effect observes the authentication state. If the user becomes
-    // unauthenticated (e.g., by logging out), it automatically navigates
-    // them back to the login screen.
+    val pullRefreshState = rememberPullToRefreshState()
+
+    // Listen for the "refresh_list" signal from the ApplicationDetailScreen.
+    val shouldRefresh by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("refresh_list", false)
+        ?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh) {
+            viewModel.refreshApplications()
+            // Reset the signal so it doesn't trigger again on configuration changes
+            navController.currentBackStackEntry?.savedStateHandle?.set("refresh_list", false)
+        }
+    }
+
+    fun openUrlInCustomTab(url: String) {
+        val builder = CustomTabsIntent.Builder()
+        val customTabsIntent = builder.build()
+        try {
+            // Ensure URL has a scheme
+            val validUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                "http://$url"
+            } else {
+                url
+            }
+            customTabsIntent.launchUrl(context, Uri.parse(validUrl))
+        } catch (e: ActivityNotFoundException) {
+            // Fallback to a standard VIEW intent if a browser that supports custom tabs is not available
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+        }
+    }
+
+    // When in edit mode, the back button should exit edit mode, not the screen.
+    BackHandler(enabled = isInEditMode) {
+        isInEditMode = false
+    }
+
+    // Navigate to login screen if unauthorized
     LaunchedEffect(authViewModel.authState) {
         authViewModel.authState.collect {
             if (!it.isAuthorized) {
@@ -83,22 +99,28 @@ fun ApplicationListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Applications") },
+                title = { Text(if (isInEditMode) "Select Item to Edit" else "Applications") },
                 actions = {
-                    IconButton(onClick = { showMenu = !showMenu }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Logout") },
-                            onClick = {
-                                showMenu = false
-                                authViewModel.logout()
-                            }
-                        )
+                    if (isInEditMode) {
+                        IconButton(onClick = { isInEditMode = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Done")
+                        }
+                    } else {
+                        IconButton(onClick = { showMenu = !showMenu }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Logout") },
+                                onClick = {
+                                    showMenu = false
+                                    authViewModel.logout()
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -109,19 +131,26 @@ fun ApplicationListScreen(
             }
         }
     ) { paddingValues ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = { viewModel.refreshApplications() },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (applications.isEmpty()) {
-                Text(
-                    "No applications found.\nTap the '+' button to add one.",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
+            if (applications.isEmpty() && !isLoading) {
+                // The empty state needs to be in a LazyColumn to be pullable.
+                LazyColumn(modifier = Modifier.fillMaxSize()){
+                    item {
+                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                "No applications found.\nTap '+' to add one or pull down to refresh.",
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -130,8 +159,16 @@ fun ApplicationListScreen(
                     items(applications, key = { it.id!! }) { app ->
                         ApplicationListItem(
                             application = app,
+                            isInEditMode = isInEditMode,
                             onItemClick = {
-                                navController.navigate("${Routes.APP_DETAIL}/${app.id}")
+                                if (isInEditMode) {
+                                    navController.navigate("${Routes.APP_DETAIL}/${app.id}")
+                                } else {
+                                    openUrlInCustomTab(app.url)
+                                }
+                            },
+                            onItemLongClick = {
+                                isInEditMode = true
                             },
                             onDeleteClick = {
                                 viewModel.deleteApplication(app.id!!)
@@ -145,19 +182,22 @@ fun ApplicationListScreen(
     }
 }
 
-/**
- * A Composable that displays a single application item in a card.
- */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ApplicationListItem(
     application: Application,
+    isInEditMode: Boolean,
     onItemClick: () -> Unit,
+    onItemLongClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onItemClick),
+            .combinedClickable(
+                onClick = onItemClick,
+                onLongClick = onItemLongClick
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -168,11 +208,15 @@ fun ApplicationListItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(application.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(application.url, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(application.url, style = MaterialTheme.typography.bodyMedium)
             }
-            IconButton(onClick = onDeleteClick) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            // Only show the delete button when in edit mode
+            if (isInEditMode) {
+                IconButton(onClick = onDeleteClick) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
 }
+

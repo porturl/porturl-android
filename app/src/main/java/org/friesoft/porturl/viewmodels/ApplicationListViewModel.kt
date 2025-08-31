@@ -34,13 +34,13 @@ class ApplicationListViewModel @Inject constructor(
 
     init {
         // Fetch applications as soon as the ViewModel is created.
-        loadApplications()
+        refreshApplications()
     }
 
     /**
      * Fetches the list of applications from the repository and updates the state flows.
      */
-    private fun loadApplications() {
+    fun refreshApplications() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -65,7 +65,7 @@ class ApplicationListViewModel @Inject constructor(
             try {
                 repository.deleteApplication(id)
                 // After a successful deletion, refresh the list to reflect the change.
-                loadApplications()
+                refreshApplications()
             } catch (e: Exception) {
                 // In a real app, you would handle this error, e.g., by showing a message.
             }

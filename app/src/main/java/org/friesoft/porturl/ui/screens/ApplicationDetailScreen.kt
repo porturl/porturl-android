@@ -60,8 +60,14 @@ fun ApplicationDetailScreen(
     // Effect to handle navigation events from the ViewModel.
     // This will navigate back when the finishScreen flow emits true.
     LaunchedEffect(Unit) {
-        viewModel.finishScreen.collectLatest { shouldFinish ->
-            if (shouldFinish) navController.popBackStack()
+        viewModel.finishScreen.collect {
+            if (it) {
+                // Signal the previous screen to refresh its list
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("refresh_list", true)
+                navController.popBackStack()
+            }
         }
     }
 
