@@ -1,0 +1,158 @@
+# .github/workflows/android-ci.yml
+
+name: Android CI
+
+on:
+  pull_request:
+    branches: ['**']
+  push:
+    branches: ["main"]
+
+concurrency:
+  # Group workflows by ref (branch or PR number).
+  # Cancel in-progress runs on the same branch for new pushes.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  # Needed to write releases.
+  contents: write
+
+jobs:
+  # =================================================================
+  #           🧪 1. LINT AND UNIT TEST
+  # =================================================================
+  validate:
+    name: 🧪 Lint & Unit Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # Cache Gradle dependencies and wrappers for faster builds.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run Lint and Unit Tests
+        run: ./gradlew lintDebug testDebugUnitTest
+
+      - name: Upload Test Reports
+        if: always() # Always run this step to upload reports even if tests fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-lint-reports
+          path: |
+            **/build/reports/
+          retention-days: 7
+
+  # =================================================================
+  #           🏗️ 2. BUILD RELEASE ARTIFACT (AAB)
+  # =================================================================
+  build:
+    name: 🏗️ Build Release App Bundle
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Decode Keystore and Setup Signing
+        id: setup_signing
+        # This step decodes a base64 encoded keystore from secrets.
+        # It's a secure way to handle your signing keys.
+        env:
+          SIGNING_KEY_STORE_BASE64: ${{ secrets.SIGNING_KEY_STORE_BASE64 }}
+        run: |
+          KEYSTORE_PATH=${{ runner.temp }}/keystore.jks
+          echo $SIGNING_KEY_STORE_BASE64 | base64 --decode > $KEYSTORE_PATH
+          echo "keyStorePath=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Get Version Name from Gradle
+        id: get_version
+        run: |
+          VERSION_NAME=$(./gradlew -q printVersionName)
+          echo "versionName=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "Version found: $VERSION_NAME"
+
+      - name: Build Release App Bundle
+        run: ./gradlew bundleRelease
+        env:
+          # These secrets are used by your app's build.gradle for signing.
+          SIGNING_KEY_STORE_PATH: ${{ steps.setup_signing.outputs.keyStorePath }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+
+      - name: Upload App Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bundle-release
+          path: '**/build/outputs/bundle/release/*.aab'
+          retention-days: 7
+          
+      - name: Store Version Name for Release Job
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-info
+          path: ${{ steps.get_version.outputs.versionName }}
+          retention-days: 1
+
+
+  # =================================================================
+  #           🚀 3. CREATE GITHUB RELEASE
+  # =================================================================
+  release:
+    name: 🚀 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    # Only run this job for pushes to the main branch.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Download App Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: app-bundle-release
+
+      - name: Download Version Name
+        uses: actions/download-artifact@v4
+        with:
+          name: version-info
+
+      - name: Read Version Name
+        id: version
+        run: echo "name=$(cat version-info/versionName)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          # Use the GITHUB_TOKEN provided by GitHub Actions.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # The AAB file is automatically found and attached.
+          artifacts: "*.aab"
+          # Create a tag and release name based on the version.
+          tag: v${{ steps.version.outputs.name }}
+          name: "Release v${{ steps.version.outputs.name }}"
+          # Automatically generate release notes from commits.
+          generateReleaseNotes: true
