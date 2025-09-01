@@ -56,6 +56,7 @@ jobs:
         id: changes
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.event.repository.default_branch }}
           filters: |
             has-changes:
               - 'app/**'
@@ -268,6 +269,7 @@ jobs:
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
 
       - name: Upload ProGuard mapping
+        if: hashFiles('**/build/outputs/mapping/release/mapping.txt') != ''
         uses: actions/upload-artifact@v4
         with:
           name: proguard-mapping-${{ steps.version_info.outputs.commitSha }}
@@ -292,13 +294,29 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: app-bundle-${{ needs.build.outputs.commitSha }}
-          path: artifacts/bundle
+          path: artifacts/
 
       - name: Download APK
         uses: actions/download-artifact@v4
         with:
           name: app-apk-${{ needs.build.outputs.commitSha }}
-          path: artifacts/apk
+          path: artifacts/
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find artifacts/ -type f -ls
+          
+          # Check if we have the required files
+          if [ ! -f artifacts/*.apk ] && [ ! -f artifacts/*/*.apk ]; then
+            echo "❌ No APK files found"
+            find artifacts/ -name "*.apk" || echo "No APK files in any subdirectory"
+          fi
+          
+          if [ ! -f artifacts/*.aab ] && [ ! -f artifacts/*/*.aab ]; then
+            echo "❌ No AAB files found" 
+            find artifacts/ -name "*.aab" || echo "No AAB files in any subdirectory"
+          fi
 
       - name: Prepare release assets
         run: |
@@ -334,9 +352,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: |
-            artifacts/bundle/*.aab
-            artifacts/apk/*.apk
-            artifacts/apk/checksums.txt
+            artifacts/*.aab
+            artifacts/*.apk
+            artifacts/checksums.txt
           tag: "snapshot"
           name: "🚧 Development Build (Snapshot)"
           prerelease: true
