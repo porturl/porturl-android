@@ -144,8 +144,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: |
-            artifacts/aab/*.aab
-            artifacts/apk/*.apk
+            artifacts/aab/**/*.aab
+            artifacts/apk/**/*.apk
           tag: v${{ needs.build.outputs.versionName }}
           name: "Release v${{ needs.build.outputs.versionName }}"
           generateReleaseNotes: true
