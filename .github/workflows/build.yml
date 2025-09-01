@@ -54,10 +54,10 @@ jobs:
           retention-days: 7
 
   # =================================================================
-  #           🏗️ 2. BUILD RELEASE ARTIFACT (AAB)
+  #           🏗️ 2. BUILD RELEASE ARTIFACT (AAB & APK)
   # =================================================================
   build:
-    name: 🏗️ Build Release App Bundle
+    name: 🏗️ Build Release App Bundle & APK
     runs-on: ubuntu-latest
     needs: validate
     outputs:
@@ -94,8 +94,8 @@ jobs:
           echo "versionName=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "Version found: $VERSION_NAME"
 
-      - name: Build Release App Bundle
-        run: ./gradlew bundleRelease
+      - name: Build Release App Bundle and APK
+        run: ./gradlew bundleRelease assembleRelease
         env:
           # These secrets are used by your app's build.gradle for signing.
           SIGNING_KEY_STORE_PATH: ${{ steps.setup_signing.outputs.keyStorePath }}
@@ -110,6 +110,13 @@ jobs:
           path: '**/build/outputs/bundle/release/*.aab'
           retention-days: 7
 
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-apk-release
+          path: '**/build/outputs/apk/release/*.apk'
+          retention-days: 7
+
   # =================================================================
   #           🚀 3. CREATE GITHUB RELEASE
   # =================================================================
@@ -117,7 +124,6 @@ jobs:
     name: 🚀 Create GitHub Release
     runs-on: ubuntu-latest
     needs: build
-    # Only run this job for pushes to the main branch.
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -125,12 +131,21 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: app-bundle-release
+          path: artifacts/aab
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-apk-release
+          path: artifacts/apk
 
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "*.aab"
+          artifacts: |
+            artifacts/aab/*.aab
+            artifacts/apk/*.apk
           tag: v${{ needs.build.outputs.versionName }}
           name: "Release v${{ needs.build.outputs.versionName }}"
           generateReleaseNotes: true
