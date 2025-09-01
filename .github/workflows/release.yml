@@ -215,6 +215,7 @@ jobs:
           retention-days: 30
 
       - name: Upload mapping files
+        if: hashFiles('**/build/outputs/mapping/release/mapping.txt') != ''
         uses: actions/upload-artifact@v4
         with:
           name: mapping-files-${{ steps.release_info.outputs.tag }}
@@ -237,7 +238,11 @@ jobs:
       - name: Prepare release assets
         run: |
           cd artifacts
-          # Rename files with version for clarity
+          
+          echo "Downloaded artifacts structure:"
+          find . -type f -ls
+          
+          # Rename files with version for clarity (handle nested paths)
           for file in $(find . -name "*.apk" -o -name "*.aab"); do
             ext="${file##*.}"
             base="$(basename "$file" ".$ext")"
@@ -246,16 +251,16 @@ jobs:
             echo "Renamed: $file -> $new_name"
           done
           
-          echo "Release assets:"
-          ls -la
+          echo "Release assets after renaming:"
+          find . -name "*.apk" -o -name "*.aab" -o -name "checksums.txt" | sort
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: |
-            artifacts/*.apk
-            artifacts/*.aab
+            artifacts/**/*.apk
+            artifacts/**/*.aab
             artifacts/checksums.txt
           tag: ${{ needs.release.outputs.tag }}
           name: "Release ${{ needs.release.outputs.tag }}"

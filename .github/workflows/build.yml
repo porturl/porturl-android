@@ -307,15 +307,26 @@ jobs:
           echo "Downloaded artifacts:"
           find artifacts/ -type f -ls
           
-          # Check if we have the required files
-          if [ ! -f artifacts/*.apk ] && [ ! -f artifacts/*/*.apk ]; then
+          # Check if we have the required files (including in subdirectories)
+          APK_COUNT=$(find artifacts/ -name "*.apk" | wc -l)
+          AAB_COUNT=$(find artifacts/ -name "*.aab" | wc -l)
+          
+          echo "Found $APK_COUNT APK file(s) and $AAB_COUNT AAB file(s)"
+          
+          if [ $APK_COUNT -eq 0 ]; then
             echo "❌ No APK files found"
-            find artifacts/ -name "*.apk" || echo "No APK files in any subdirectory"
+            exit 1
+          else
+            echo "✅ APK files found:"
+            find artifacts/ -name "*.apk"
           fi
           
-          if [ ! -f artifacts/*.aab ] && [ ! -f artifacts/*/*.aab ]; then
-            echo "❌ No AAB files found" 
-            find artifacts/ -name "*.aab" || echo "No AAB files in any subdirectory"
+          if [ $AAB_COUNT -eq 0 ]; then
+            echo "❌ No AAB files found"
+            exit 1
+          else
+            echo "✅ AAB files found:"
+            find artifacts/ -name "*.aab"
           fi
 
       - name: Prepare release assets
@@ -352,8 +363,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: |
-            artifacts/*.aab
-            artifacts/*.apk
+            artifacts/**/*.aab
+            artifacts/**/*.apk
             artifacts/checksums.txt
           tag: "snapshot"
           name: "🚧 Development Build (Snapshot)"
