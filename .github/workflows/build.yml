@@ -4,8 +4,16 @@ name: Build
 on:
   pull_request:
     branches: ['**']
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      force_snapshot:
+        description: 'Force create snapshot release'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   # Group workflows by ref (branch or PR number).
@@ -14,16 +22,29 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  # Needed to write releases.
+  # Needed to write releases and pull request comments.
   contents: write
+  pull-requests: write
+  checks: write
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
   # =================================================================
-  #           🧪 1. LINT AND UNIT TEST
+  #           🔍 1. VALIDATE & TEST
   # =================================================================
   validate:
-    name: 🧪 Lint & Unit Test
+    name: 🔍 Validate & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Skip validation for draft PRs unless they're being marked ready
+    if: github.event.pull_request.draft != true || github.event.action == 'ready_for_review'
+
+    outputs:
+      has-changes: ${{ steps.changes.outputs.has-changes }}
+      test-results: ${{ steps.test-results.outputs.results }}
 
     steps:
       - name: Checkout code
@@ -31,39 +52,103 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 21
+      - name: Check for relevant changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            has-changes:
+              - 'app/**'
+              - 'build.gradle*'
+              - 'gradle/**'
+              - '*.gradle*'
+              - 'gradle.properties'
+
+      - name: Set up JDK
+        if: steps.changes.outputs.has-changes == 'true'
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
 
       - name: Setup Gradle
+        if: steps.changes.outputs.has-changes == 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
-          # Cache Gradle dependencies and wrappers for faster builds.
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          gradle-home-cache-cleanup: true
+
+      - name: Validate Gradle wrapper
+        if: steps.changes.outputs.has-changes == 'true'
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Run Lint and Unit Tests
-        run: ./gradlew lintDebug testDebugUnitTest
+        if: steps.changes.outputs.has-changes == 'true'
+        run: |
+          echo "Running validation checks..."
+          ./gradlew lintDebug testDebugUnitTest --continue --build-cache
 
-      - name: Upload Test Reports
-        if: always() # Always run this step to upload reports even if tests fail
+      - name: Collect test results
+        id: test-results
+        if: always() && steps.changes.outputs.has-changes == 'true'
+        run: |
+          # Count test results
+          PASSED=$(find . -name "TEST-*.xml" -exec grep -l 'failures="0" errors="0"' {} \; | wc -l)
+          FAILED=$(find . -name "TEST-*.xml" -exec grep -l -E 'failures="[1-9]|errors="[1-9]' {} \; | wc -l)
+          TOTAL=$((PASSED + FAILED))
+          
+          echo "results=✅ $PASSED passed, ❌ $FAILED failed (Total: $TOTAL)" >> $GITHUB_OUTPUT
+          echo "Test Results: ✅ $PASSED passed, ❌ $FAILED failed"
+
+      - name: Upload Test & Lint Reports
+        if: always() && steps.changes.outputs.has-changes == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: test-and-lint-reports
+          name: test-and-lint-reports-${{ github.run_number }}
           path: |
             **/build/reports/
+            **/build/test-results/
           retention-days: 7
 
+      - name: Comment on PR with test results
+        if: always() && github.event_name == 'pull_request' && steps.changes.outputs.has-changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testResults = '${{ steps.test-results.outputs.results }}';
+            const workflow_url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const body = `## 🧪 Build & Test Results
+            
+            **Status:** ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }}
+            **Tests:** ${testResults || 'No tests found'}
+            
+            [View detailed results](${workflow_url})
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
   # =================================================================
-  #           🏗️ 2. BUILD RELEASE ARTIFACT (AAB & APK)
+  #           🏗️ 2. BUILD ARTIFACTS
   # =================================================================
   build:
-    name: 🏗️ Build Snapshot App Bundle & APK
+    name: 🏗️ Build App Bundle & APK
     runs-on: ubuntu-latest
     needs: validate
+    # Only build if there are changes or it's a manual trigger
+    if: needs.validate.outputs.has-changes == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 20
+
     outputs:
-      versionName: ${{ steps.get_version.outputs.versionName }}
+      versionName: ${{ steps.version_info.outputs.versionName }}
+      versionCode: ${{ steps.version_info.outputs.versionCode }}
+      commitSha: ${{ steps.version_info.outputs.commitSha }}
+      buildTime: ${{ steps.version_info.outputs.buildTime }}
 
     steps:
       - name: Checkout code
@@ -71,96 +156,250 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          gradle-home-cache-cleanup: true
 
-      - name: Set dynamic versionCode
-        run: echo "VERSION_CODE=$(git rev-list --count HEAD)" >> $GITHUB_ENV
+      - name: Cache keystore
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/keystore.jks
+          key: keystore-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
-      - name: Decode Keystore and Setup Signing
+      - name: Decode and setup keystore
         id: setup_signing
         env:
           SIGNING_KEY_STORE_BASE64: ${{ secrets.SIGNING_KEY_STORE_BASE64 }}
         run: |
           KEYSTORE_PATH=${{ runner.temp }}/keystore.jks
-          echo $SIGNING_KEY_STORE_BASE64 | base64 --decode > $KEYSTORE_PATH
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            echo "Decoding keystore..."
+            echo $SIGNING_KEY_STORE_BASE64 | base64 --decode > $KEYSTORE_PATH
+          fi
           echo "keyStorePath=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
 
-      - name: Get Version Name from Gradle
-        id: get_version
+      - name: Get version information
+        id: version_info
         run: |
+          VERSION_CODE=$(git rev-list --count HEAD)
           VERSION_NAME=$(./gradlew -q printVersionName)
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "versionName=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "Version found: $VERSION_NAME, Version Code: ${{ env.VERSION_CODE }}"
+          echo "commitSha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "buildTime=$BUILD_TIME" >> $GITHUB_OUTPUT
+          
+          echo "Build Info:"
+          echo "  Version Name: $VERSION_NAME"
+          echo "  Version Code: $VERSION_CODE"
+          echo "  Commit SHA: $COMMIT_SHA"
+          echo "  Build Time: $BUILD_TIME"
 
-      - name: Build Release App Bundle and APK
+      - name: Build Release Artifacts
         env:
           SIGNING_KEY_STORE_PATH: ${{ steps.setup_signing.outputs.keyStorePath }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          VERSION_CODE: ${{ env.VERSION_CODE }}
-        run: ./gradlew bundleRelease assembleRelease
+          VERSION_CODE: ${{ steps.version_info.outputs.versionCode }}
+        run: |
+          echo "Building release artifacts..."
+          ./gradlew clean bundleRelease assembleRelease --no-daemon --build-cache
+          
+          echo "Build completed successfully!"
 
-      - name: Upload App Bundle Artifact
+      - name: Generate artifact checksums
+        run: |
+          echo "Generating checksums..."
+          find . -name "*.apk" -o -name "*.aab" | while read file; do
+            echo "$(sha256sum "$file" | cut -d' ' -f1)  $(basename "$file")" >> checksums.txt
+          done
+          
+          echo "Generated checksums:"
+          cat checksums.txt
+
+      - name: Verify APK signature
+        run: |
+          APK_PATH=$(find . -name "*-release.apk" | head -1)
+          if [ -n "$APK_PATH" ]; then
+            echo "Verifying APK signature: $APK_PATH"
+            $ANDROID_HOME/build-tools/*/apksigner verify --verbose "$APK_PATH"
+          fi
+
+      - name: Upload App Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: app-bundle-release
+          name: app-bundle-${{ steps.version_info.outputs.commitSha }}
           path: '**/build/outputs/bundle/release/*.aab'
-          retention-days: 7
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
 
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-apk-release
-          path: '**/build/outputs/apk/release/*.apk'
-          retention-days: 7
+          name: app-apk-${{ steps.version_info.outputs.commitSha }}
+          path: |
+            **/build/outputs/apk/release/*.apk
+            checksums.txt
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
+
+      - name: Upload ProGuard mapping
+        uses: actions/upload-artifact@v4
+        with:
+          name: proguard-mapping-${{ steps.version_info.outputs.commitSha }}
+          path: '**/build/outputs/mapping/release/mapping.txt'
+          retention-days: 90
 
   # =================================================================
-  #           🚀 3. CREATE GITHUB RELEASE
+  #           🚀 3. CREATE SNAPSHOT RELEASE (main branch only)
   # =================================================================
   release-snapshot:
     name: 🚀 Create Snapshot Release
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    needs: [validate, build]
+    if: |
+      always() && 
+      needs.build.result == 'success' && 
+      (github.ref == 'refs/heads/main' || github.event.inputs.force_snapshot == 'true')
+    timeout-minutes: 10
+
     steps:
-      - name: Download Artifacts
+      - name: Download App Bundle
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-      - name: Remove old snapshot prerelease
+          name: app-bundle-${{ needs.build.outputs.commitSha }}
+          path: artifacts/bundle
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-apk-${{ needs.build.outputs.commitSha }}
+          path: artifacts/apk
+
+      - name: Prepare release assets
+        run: |
+          cd artifacts
+          
+          # Rename files with version and commit info
+          for file in $(find . -name "*.apk" -o -name "*.aab"); do
+            ext="${file##*.}"
+            dir=$(dirname "$file")
+            base="$(basename "$file" ".$ext")"
+            new_name="${base}-v${{ needs.build.outputs.versionName }}-${{ needs.build.outputs.commitSha }}.${ext}"
+            mv "$file" "$dir/$new_name"
+            echo "Renamed: $file -> $dir/$new_name"
+          done
+          
+          echo "Release assets prepared:"
+          find . -type f -ls
+
+      - name: Remove existing snapshot release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view snapshot --repo $GITHUB_REPOSITORY >/dev/null 2>&1; then
+            echo "Deleting existing snapshot release..."
             gh release delete snapshot --cleanup-tag --yes --repo $GITHUB_REPOSITORY
             echo "Deleted existing snapshot release"
           else
             echo "No existing snapshot release found"
           fi
-      - name: Create snapshot prerelease
+
+      - name: Create snapshot release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: 'artifacts/**/*.*'
+          artifacts: |
+            artifacts/bundle/*.aab
+            artifacts/apk/*.apk
+            artifacts/apk/checksums.txt
           tag: "snapshot"
-          name: "Development Build (Snapshot)"
+          name: "🚧 Development Build (Snapshot)"
           prerelease: true
           generateReleaseNotes: true
+          makeLatest: false
           body: |
-            ## 🚧 Development Build from main branch
-            This is an automated development build and is not intended for production use.
-            **Commit:** `${{ github.sha }}`
-            **Version:** `${{ needs.build.outputs.versionName }}`
+            ## 🚧 Development Build from `main` branch
+            
+            > **⚠️ Warning**: This is an automated development build and is not intended for production use.
+            
+            ### 📋 Build Information
+            - **Version**: `${{ needs.build.outputs.versionName }}`
+            - **Version Code**: `${{ needs.build.outputs.versionCode }}`
+            - **Commit**: [`${{ needs.build.outputs.commitSha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            - **Build Time**: `${{ needs.build.outputs.buildTime }}`
+            - **Workflow**: [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ### 📦 Assets
+            - **🤖 APK**: For sideloading and testing on Android devices
+            - **📱 AAB**: For uploading to Google Play Console (internal testing)
+            - **🔍 Checksums**: SHA256 checksums for file verification
+            
+            ### 🔒 Verification
+            To verify the integrity of downloaded files:
+            ```bash
+            sha256sum -c checksums.txt
+            ```
+            
+            ### 🧪 Test Results
+            ${{ needs.validate.outputs.test-results || 'No test results available' }}
 
-            Install the `.apk` file for testing. The `.aab` is for uploading to the Play Store.
+  # =================================================================
+  #           📢 4. NOTIFICATION & CLEANUP
+  # =================================================================
+  notify:
+    name: 📢 Notify & Clean Up
+    runs-on: ubuntu-latest
+    needs: [validate, build, release-snapshot]
+    if: always()
+    timeout-minutes: 5
 
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          if [[ "${{ needs.validate.result }}" == "success" && "${{ needs.build.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ Build completed successfully!" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.validate.result }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Validation failed - check lint and test results" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.build.result }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT  
+            echo "message=❌ Build failed - check build logs" >> $GITHUB_OUTPUT
+          else
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "message=⏭️ Build skipped - no relevant changes detected" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        run: |
+          echo "## 🏗️ Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.status.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.build.result }}" == "success" ]]; then
+            echo "**Build Details:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Version: ${{ needs.build.outputs.versionName }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Version Code: ${{ needs.build.outputs.versionCode }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Commit: ${{ needs.build.outputs.commitSha }}" >> $GITHUB_STEP_SUMMARY
+          
+            if [[ "${{ needs.release-snapshot.result }}" == "success" ]]; then
+              echo "- Snapshot Release: [Created](https://github.com/${{ github.repository }}/releases/tag/snapshot)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          if [[ "${{ needs.validate.outputs.test-results }}" != "" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Test Results:** ${{ needs.validate.outputs.test-results }}" >> $GITHUB_STEP_SUMMARY
+          fi
