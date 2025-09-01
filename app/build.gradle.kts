@@ -4,6 +4,15 @@ plugins {
     alias(libs.plugins.ksp)
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.compose.compiler)
+    id("pl.allegro.tech.build.axion-release") version "1.20.1"
+}
+
+scmVersion {
+    tag {
+        // Tell the plugin that your tags start with "v" (e.g., v1.0.0)
+        prefix.set("v")
+        versionSeparator.set("")
+    }
 }
 
 android {
@@ -14,8 +23,10 @@ android {
         applicationId = "org.friesoft.porturl"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+
+        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        // the versionName is now set dynamically by the axion-release-plugin which provides the `project.version` property.
+        versionName = project.version.toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

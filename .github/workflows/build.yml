@@ -57,7 +57,7 @@ jobs:
   #           🏗️ 2. BUILD RELEASE ARTIFACT (AAB & APK)
   # =================================================================
   build:
-    name: 🏗️ Build Release App Bundle & APK
+    name: 🏗️ Build Snapshot App Bundle & APK
     runs-on: ubuntu-latest
     needs: validate
     outputs:
@@ -78,6 +78,9 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Set dynamic versionCode
+        run: echo "VERSION_CODE=$(git rev-list --count HEAD)" >> $GITHUB_ENV
+
       - name: Decode Keystore and Setup Signing
         id: setup_signing
         env:
@@ -92,16 +95,16 @@ jobs:
         run: |
           VERSION_NAME=$(./gradlew -q printVersionName)
           echo "versionName=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "Version found: $VERSION_NAME"
+          echo "Version found: $VERSION_NAME, Version Code: ${{ env.VERSION_CODE }}"
 
       - name: Build Release App Bundle and APK
-        run: ./gradlew bundleRelease assembleRelease
         env:
-          # These secrets are used by your app's build.gradle for signing.
           SIGNING_KEY_STORE_PATH: ${{ steps.setup_signing.outputs.keyStorePath }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+        run: ./gradlew bundleRelease assembleRelease
 
       - name: Upload App Bundle Artifact
         uses: actions/upload-artifact@v4
@@ -120,32 +123,40 @@ jobs:
   # =================================================================
   #           🚀 3. CREATE GITHUB RELEASE
   # =================================================================
-  release:
-    name: 🚀 Create GitHub Release
+  release-snapshot:
+    name: 🚀 Create Snapshot Release
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Download App Bundle
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: app-bundle-release
-          path: artifacts/aab
-
-      - name: Download APK
-        uses: actions/download-artifact@v4
-        with:
-          name: app-apk-release
-          path: artifacts/apk
-
-      - name: Create Release
+          path: artifacts
+      - name: Remove old snapshot prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view snapshot --repo $GITHUB_REPOSITORY >/dev/null 2>&1; then
+            gh release delete snapshot --cleanup-tag --yes --repo $GITHUB_REPOSITORY
+            echo "Deleted existing snapshot release"
+          else
+            echo "No existing snapshot release found"
+          fi
+      - name: Create snapshot prerelease
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: |
-            artifacts/aab/**/*.aab
-            artifacts/apk/**/*.apk
-          tag: v${{ needs.build.outputs.versionName }}
-          name: "Release v${{ needs.build.outputs.versionName }}"
+          artifacts: 'artifacts/**/*.*'
+          tag: "snapshot"
+          name: "Development Build (Snapshot)"
+          prerelease: true
           generateReleaseNotes: true
+          body: |
+            ## 🚧 Development Build from main branch
+            This is an automated development build and is not intended for production use.
+            **Commit:** `${{ github.sha }}`
+            **Version:** `${{ needs.build.outputs.versionName }}`
+
+            Install the `.apk` file for testing. The `.aab` is for uploading to the Play Store.
+
