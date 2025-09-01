@@ -65,7 +65,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          cache-cleanup: true
+          cache-cleanup: on-success
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -110,7 +110,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          cache-cleanup: true
+          cache-cleanup: on-success
 
       - name: Configure Git
         run: |
