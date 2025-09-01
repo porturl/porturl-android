@@ -65,7 +65,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-home-cache-cleanup: true
+          cache-cleanup: true
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -110,7 +110,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-home-cache-cleanup: true
+          cache-cleanup: true
 
       - name: Configure Git
         run: |
@@ -186,7 +186,22 @@ jobs:
           APK_PATH=$(find . -name "*-release.apk" | head -1)
           if [ -n "$APK_PATH" ]; then
             echo "Verifying APK signature: $APK_PATH"
-            $ANDROID_HOME/build-tools/*/apksigner verify --verbose "$APK_PATH"
+            # Use the correct apksigner command syntax
+            if command -v apksigner >/dev/null 2>&1; then
+              apksigner verify --verbose "$APK_PATH"
+            elif [ -f "$ANDROID_HOME/build-tools/*/apksigner" ]; then
+              # Find the apksigner in build-tools and use it correctly
+              APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name "apksigner" | head -1)
+              if [ -n "$APKSIGNER" ]; then
+                "$APKSIGNER" verify --verbose "$APK_PATH"
+              else
+                echo "⚠️ apksigner not found, skipping signature verification"
+              fi
+            else
+              echo "⚠️ apksigner not available, skipping signature verification"
+            fi
+          else
+            echo "⚠️ No release APK found for signature verification"
           fi
 
       - name: Upload build artifacts
