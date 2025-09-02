@@ -26,12 +26,6 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
     val backendUrl: Flow<String> = settingsRepository.backendUrl
 
     /**
-     * A Flow that emits the current Keycloak issuer URL string. The UI collects this Flow
-     * to display the currently saved Keycloak URL.
-     */
-    val keycloakUrl: Flow<String> = settingsRepository.keycloakUrl
-
-    /**
      * A SharedFlow to emit one-time events to the UI, such as showing a Snackbar
      * message. This is used to inform the user that settings have been saved.
      */
@@ -42,11 +36,10 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
      * After saving, it emits a confirmation message to the [toastMessage] flow.
      *
      * @param backendUrl The new backend URL to save.
-     * @param keycloakUrl The new Keycloak issuer URL to save.
      */
-    fun saveSettings(backendUrl: String, keycloakUrl: String) {
+    fun saveSettings(backendUrl: String) {
         viewModelScope.launch {
-            settingsRepository.saveSettings(backendUrl, keycloakUrl)
+            settingsRepository.saveSettings(backendUrl)
             toastMessage.emit("Settings Saved!")
         }
     }

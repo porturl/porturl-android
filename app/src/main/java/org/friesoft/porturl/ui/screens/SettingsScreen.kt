@@ -44,7 +44,6 @@ import androidx.compose.material3.MaterialTheme
 fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = hiltViewModel()) {
     // Collect the persisted URLs from the ViewModel as state.
     val backendUrl by viewModel.backendUrl.collectAsState(initial = "")
-    val keycloakUrl by viewModel.keycloakUrl.collectAsState(initial = "")
     val snackbarHostState = remember { SnackbarHostState() }
 
     // This effect listens for messages from the ViewModel to show a snackbar (e.g., "Settings Saved!").
@@ -78,7 +77,6 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
             // screen on every key press. `remember(backendUrl)` ensures it updates if the
             // underlying datastore value changes.
             var currentBackendUrl by remember(backendUrl) { mutableStateOf(backendUrl) }
-            var currentKeycloakUrl by remember(keycloakUrl) { mutableStateOf(keycloakUrl) }
 
             OutlinedTextField(
                 value = currentBackendUrl,
@@ -94,19 +92,9 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = currentKeycloakUrl,
-                onValueChange = { currentKeycloakUrl = it },
-                label = { Text("Keycloak Issuer URL") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g., https://sso.<your-domain>.net/auth/realms/<your-realm>") }
-            )
-
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = { viewModel.saveSettings(currentBackendUrl, currentKeycloakUrl) },
+                onClick = { viewModel.saveSettings(currentBackendUrl) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save")

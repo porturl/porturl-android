@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,20 +24,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     companion object {
         val BACKEND_URL_KEY = stringPreferencesKey("backend_url")
-        val KEYCLOAK_URL_KEY = stringPreferencesKey("keycloak_url")
         // Default URL for a local server accessed from the Android emulator
         const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080" // Default if nothing is set
-        const val DEFAULT_KEYCLOAK_URL = "https://sso.<your-domain>.net/auth/realms/<your-realm>"
     }
 
     // Flow that emits the backend URL whenever it changes
     val backendUrl: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[BACKEND_URL_KEY] ?: DEFAULT_BACKEND_URL
-    }
-
-    // Flow that emits the Keycloak URL whenever it changes
-    val keycloakUrl: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[KEYCLOAK_URL_KEY] ?: DEFAULT_KEYCLOAK_URL
     }
 
     /**
@@ -46,10 +41,19 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         return backendUrl
     }
 
-    suspend fun saveSettings(backendUrl: String, keycloakUrl: String) {
+    /**
+     * A synchronous helper function to get the current backend URL.
+     * This is required by the Hilt module to provide the initial Retrofit instance,
+     * as Hilt's @Provides methods cannot be suspend functions.
+     *
+     * @return The current backend URL as a String.
+     */
+    fun getBackendUrlBlocking(): String = runBlocking {
+        backendUrl.first()
+    }
+    suspend fun saveSettings(backendUrl: String) {
         context.dataStore.edit { settings ->
             settings[BACKEND_URL_KEY] = backendUrl
-            settings[KEYCLOAK_URL_KEY] = keycloakUrl
         }
     }
 }

@@ -95,7 +95,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel = hil
                 onClick = { authViewModel.login(launcher) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Login with Keycloak")
+                Text("Login")
             }
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedButton(

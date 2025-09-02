@@ -17,6 +17,7 @@ import kotlin.coroutines.resume // Import this
 import kotlin.coroutines.resumeWithException // Import this
 import kotlin.coroutines.suspendCoroutine
 import androidx.core.net.toUri
+import org.friesoft.porturl.data.repository.ConfigRepository
 
 /**
  * Manages the OAuth 2.0 authorization flow using the AppAuth library.
@@ -24,31 +25,40 @@ import androidx.core.net.toUri
 @Singleton
 class AuthService @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val settingsRepository: SettingsRepository
+    private val configRepository: ConfigRepository // Inject the new repository
 ) {
     private val authService = AuthorizationService(context)
 
+    // Cache the configuration to avoid fetching it on every login attempt
+    private var authConfig: AuthorizationServiceConfiguration? = null
+
     private suspend fun getAuthServiceConfig(): AuthorizationServiceConfiguration {
-        val issuerUri = settingsRepository.keycloakUrl.first().toUri()
-        // Use suspendCancellableCoroutine to bridge the callback-based API
+        // Use the cached config if available
+        if (authConfig != null) {
+            return authConfig!!
+        }
+        // Otherwise, fetch the issuer URI from the backend
+        val issuerUri = configRepository.getIssuerUri().toUri()
+        // Use suspendCancellableCoroutine to bridge the callback
         return suspendCancellableCoroutine { continuation ->
             AuthorizationServiceConfiguration.fetchFromIssuer(
                 issuerUri
             ) { serviceConfiguration, ex ->
-                if (serviceConfiguration != null) {
+                if (ex != null) {
+                    continuation.resumeWithException(ex)
+                } else if (serviceConfiguration != null) {
+                    authConfig = serviceConfiguration // Cache the result
                     continuation.resume(serviceConfiguration)
                 } else {
+                    // This case should ideally not happen if ex is null,
+                    // but handle it defensively.
                     continuation.resumeWithException(
-                        ex ?: IllegalStateException("Unknown error fetching configuration")
+                        IllegalStateException("Failed to fetch configuration and no exception was provided.")
                     )
                 }
             }
-
-            // Handle cancellation if the coroutine is cancelled
-            continuation.invokeOnCancellation {
-                // You might want to cancel the underlying network request if possible,
-                // but AppAuth doesn't directly expose a way to cancel fetchFromIssuer.
-            }
+            // Optional: Handle cancellation if needed
+            continuation.invokeOnCancellation { /* Cleanup if necessary */ }
         }
     }
 
