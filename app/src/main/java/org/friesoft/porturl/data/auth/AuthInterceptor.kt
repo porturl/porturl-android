@@ -3,6 +3,8 @@ package org.friesoft.porturl.data.auth
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.openid.appauth.AuthorizationService
 import okhttp3.Interceptor
 import okhttp3.Request
@@ -25,6 +27,7 @@ import javax.inject.Singleton
 @Singleton
 class AuthInterceptor @Inject constructor(
     private val tokenManager: TokenManager,
+    private val sessionNotifier: SessionExpiredNotifier, // Injected the new notifier
     @ApplicationContext private val context: Context
 ) : Interceptor {
 
@@ -41,20 +44,31 @@ class AuthInterceptor @Inject constructor(
         }
         // --- DEBUG LOGGING END ---
 
-        // Only try to add a token if the user is actually authorized.
-        if (authState.isAuthorized) {
+        // Only try to refresh if we are authorized and have a refresh token
+        if (authState.isAuthorized && authState.refreshToken != null) {
             // A CountDownLatch is used to block the interceptor thread until the
             // asynchronous token refresh operation is complete.
             val latch = CountDownLatch(1)
             var newRequest: Request? = null
 
-            // This is the key AppAuth method. It executes the given action with a fresh token.
-            // If the token is expired, it will automatically use the refresh token to get a new one.
+            // performActionWithFreshTokens will automatically refresh the token if it's expired.
+            // The `authState` object is updated in-place with the new token information.
             authState.performActionWithFreshTokens(AuthorizationService(context)) { accessToken, _, ex ->
-                if (ex == null && accessToken != null) {
-                    // Token is valid and fresh. Rebuild the request with the Authorization header.
+                if (ex != null) {
+                    // Token refresh failed. This can happen if the refresh token has also expired.
+                    Log.e("AuthInterceptor", "Token refresh failed", ex)
+                    GlobalScope.launch {
+                        // Clear the invalid tokens immediately
+                        tokenManager.clearAuthState()
+                        // Notify the rest of the app that the session is gone
+                        sessionNotifier.notifySessionExpired()
+                    }
+
+                } else if (accessToken != null) {
+                    // The token is valid or was successfully refreshed.
+                    // Build a new request with the Authorization header.
                     newRequest = chain.request().newBuilder()
-                        .addHeader("Authorization", "Bearer $accessToken")
+                        .header("Authorization", "Bearer $accessToken")
                         .build()
                 }
                 // Release the latch, allowing the interceptor thread to continue.
@@ -62,8 +76,13 @@ class AuthInterceptor @Inject constructor(
             }
 
             try {
-                // Wait for the token refresh callback to complete.
+                // Wait for the token refresh process to complete
                 latch.await()
+
+                // Persist the potentially updated AuthState to disk.
+                // This saves the new access token and (if rotated) the new refresh token.
+                tokenManager.saveAuthState(authState)
+
                 if (newRequest != null) {
                     request = newRequest!!
                 }
@@ -75,6 +94,7 @@ class AuthInterceptor @Inject constructor(
 
         // Proceed with either the original request or the new one with the auth header.
         return chain.proceed(request)
+
     }
 }
 

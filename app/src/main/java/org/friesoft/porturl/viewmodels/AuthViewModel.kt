@@ -7,9 +7,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthState
 import org.friesoft.porturl.data.auth.AuthService
+import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.auth.TokenManager
 import org.friesoft.porturl.ui.navigation.Routes
 import javax.inject.Inject
@@ -26,11 +28,12 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authService: AuthService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val sessionNotifier: SessionExpiredNotifier // Inject the notifier
 ) : ViewModel() {
 
     // Private mutable state flow to hold the current authentication state.
-    private val _authState = MutableStateFlow(tokenManager.getAuthState())
+    private val _authState = MutableStateFlow(AuthState())
     // Publicly exposed, read-only state flow for the UI to observe.
     val authState: StateFlow<AuthState> = _authState
 
@@ -39,10 +42,29 @@ class AuthViewModel @Inject constructor(
     // Publicly exposed, read-only state flow for the AppNavigation composable to observe.
     val startDestination: StateFlow<String> = _startDestination
 
+    // New state to control the visibility of the session expired dialog
+    private val _showSessionExpiredDialog = MutableStateFlow(false)
+    val showSessionExpiredDialog = _showSessionExpiredDialog.asStateFlow()
+
     init {
         // When the ViewModel is created, determine the starting screen.
         // If the user's AuthState is authorized, go to the app list. Otherwise, go to login.
-        _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
+        viewModelScope.launch {
+            _authState.value = tokenManager.getAuthState()
+            _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
+        }
+
+        // Listen for session expiration events from the notifier
+        viewModelScope.launch {
+            sessionNotifier.sessionExpiredEvents.collect {
+                _showSessionExpiredDialog.value = true
+            }
+        }
+    }
+
+    // Function to be called by the UI when the dialog is dismissed
+    fun onSessionExpiredDialogDismissed() {
+        _showSessionExpiredDialog.value = false
     }
 
     /**
@@ -65,11 +87,10 @@ class AuthViewModel @Inject constructor(
     fun handleAuthorizationResponse(intent: Intent) {
         viewModelScope.launch {
             // Process the response to get a new AuthState (with tokens).
-            val newState = authService.handleAuthorizationResponse(intent)
-            // Persist the new state.
-            tokenManager.saveAuthState(newState)
+            val authState = authService.handleAuthorizationResponse(intent)
+            tokenManager.saveAuthState(authState)
             // Update the in-memory state to trigger UI updates.
-            _authState.value = newState
+            _authState.value = authState
         }
     }
 
@@ -77,10 +98,12 @@ class AuthViewModel @Inject constructor(
      * Logs the user out by clearing the authentication state.
      */
     fun logout() {
-        // Clear the persisted AuthState.
-        tokenManager.clearAuthState()
-        // Update the in-memory state to a new, empty AuthState.
-        // This will cause observers (like the ApplicationListScreen) to react and navigate to Login.
-        _authState.value = AuthState()
+        viewModelScope.launch {
+            // Clear the persisted AuthState.
+            tokenManager.clearAuthState()
+            // Update the in-memory state to a new, empty AuthState.
+            // This will cause observers (like the ApplicationListScreen) to react and navigate to Login.
+            _authState.value = AuthState()
+        }
     }
 }
