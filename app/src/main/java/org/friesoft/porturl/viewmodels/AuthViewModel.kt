@@ -57,6 +57,12 @@ class AuthViewModel @Inject constructor(
         // Listen for session expiration events from the notifier
         viewModelScope.launch {
             sessionNotifier.sessionExpiredEvents.collect {
+                // Immediately update the auth state to unauthorized.
+                // This ensures the UI will react correctly and navigate away
+                // from authenticated screens.
+                _authState.value = AuthState()
+
+                // Then, show the informational dialog to the user.
                 _showSessionExpiredDialog.value = true
             }
         }
