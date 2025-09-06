@@ -5,6 +5,7 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationService
 import okhttp3.Interceptor
 import okhttp3.Request
@@ -27,7 +28,7 @@ import javax.inject.Singleton
 @Singleton
 class AuthInterceptor @Inject constructor(
     private val tokenManager: TokenManager,
-    private val sessionNotifier: SessionExpiredNotifier, // Injected the new notifier
+    private val sessionNotifier: SessionExpiredNotifier,
     @ApplicationContext private val context: Context
 ) : Interceptor {
 
@@ -56,7 +57,7 @@ class AuthInterceptor @Inject constructor(
             authState.performActionWithFreshTokens(AuthorizationService(context)) { accessToken, _, ex ->
                 if (ex != null) {
                     // Token refresh failed. This can happen if the refresh token has also expired.
-                    Log.e("AuthInterceptor", "Token refresh failed", ex)
+                    Log.e("AuthInterceptor", "Token refresh failed, session expired.", ex)
                     GlobalScope.launch {
                         // Clear the invalid tokens immediately
                         tokenManager.clearAuthState()
@@ -71,30 +72,24 @@ class AuthInterceptor @Inject constructor(
                         .header("Authorization", "Bearer $accessToken")
                         .build()
                 }
-                // Release the latch, allowing the interceptor thread to continue.
+
+                // After the action is performed (and the token is potentially refreshed),
+                // we immediately save the updated state back to storage.
+                tokenManager.saveAuthState(authState)
+
                 latch.countDown()
             }
 
-            try {
-                // Wait for the token refresh process to complete
-                latch.await()
+            // Wait for the token refresh process to complete before proceeding
+            latch.await()
 
-                // Persist the potentially updated AuthState to disk.
-                // This saves the new access token and (if rotated) the new refresh token.
-                tokenManager.saveAuthState(authState)
-
-                if (newRequest != null) {
-                    request = newRequest!!
-                }
-            } catch (e: InterruptedException) {
-                // Handle potential interruption of the waiting thread.
-                Thread.currentThread().interrupt()
+            if (newRequest != null) {
+                request = newRequest!!
             }
         }
 
         // Proceed with either the original request or the new one with the auth header.
         return chain.proceed(request)
-
     }
 }
 

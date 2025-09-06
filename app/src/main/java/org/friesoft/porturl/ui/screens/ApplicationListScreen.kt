@@ -4,6 +4,8 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -46,6 +48,15 @@ fun ApplicationListScreen(
     val context = LocalContext.current
 
     val pullRefreshState = rememberPullToRefreshState()
+
+    // Launcher for the logout flow. The result is not used, but the launcher
+    // is required to start the browser intent.
+    val logoutLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        // After the browser tab is closed, the user is effectively logged out.
+        // The auth state is already cleared, so the LaunchedEffect below will handle navigation.
+    }
 
     // Listen for the "refresh_list" signal from the ApplicationDetailScreen.
     val shouldRefresh by navController.currentBackStackEntry
@@ -117,7 +128,7 @@ fun ApplicationListScreen(
                                 text = { Text("Logout") },
                                 onClick = {
                                     showMenu = false
-                                    authViewModel.logout()
+                                    authViewModel.logout(logoutLauncher)
                                 }
                             )
                         }

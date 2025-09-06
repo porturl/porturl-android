@@ -101,14 +101,20 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
-     * Logs the user out by clearing the authentication state.
+     * Logs the user out by performing a remote logout with Keycloak and then
+     * clearing the local authentication state.
+     *
+     * @param launcher The ActivityResultLauncher to launch the browser intent for logout.
      */
-    fun logout() {
+    fun logout(launcher: ActivityResultLauncher<Intent>) {
         viewModelScope.launch {
-            // Clear the persisted AuthState.
+            val currentState = tokenManager.getAuthState()
+            if (currentState.isAuthorized && currentState.idToken != null) {
+                // Perform the remote logout by opening the browser
+                authService.performEndSessionRequest(currentState.idToken!!, launcher)
+            }
+            // Clear the local tokens regardless
             tokenManager.clearAuthState()
-            // Update the in-memory state to a new, empty AuthState.
-            // This will cause observers (like the ApplicationListScreen) to react and navigate to Login.
             _authState.value = AuthState()
         }
     }

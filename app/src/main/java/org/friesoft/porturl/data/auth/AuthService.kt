@@ -2,22 +2,16 @@ package org.friesoft.porturl.data.auth
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.result.ActivityResultLauncher
+import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.suspendCancellableCoroutine // Import this
-import kotlinx.coroutines.withContext
 import net.openid.appauth.*
-import org.friesoft.porturl.data.repository.SettingsRepository
+import org.friesoft.porturl.data.repository.ConfigRepository
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.resume // Import this
-import kotlin.coroutines.resumeWithException // Import this
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
-import androidx.core.net.toUri
-import org.friesoft.porturl.data.repository.ConfigRepository
 
 /**
  * Manages the OAuth 2.0 authorization flow using the AppAuth library.
@@ -25,7 +19,7 @@ import org.friesoft.porturl.data.repository.ConfigRepository
 @Singleton
 class AuthService @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val configRepository: ConfigRepository // Inject the new repository
+    private val configRepository: ConfigRepository
 ) {
     private val authService = AuthorizationService(context)
 
@@ -33,32 +27,19 @@ class AuthService @Inject constructor(
     private var authConfig: AuthorizationServiceConfiguration? = null
 
     private suspend fun getAuthServiceConfig(): AuthorizationServiceConfiguration {
-        // Use the cached config if available
         if (authConfig != null) {
             return authConfig!!
         }
-        // Otherwise, fetch the issuer URI from the backend
         val issuerUri = configRepository.getIssuerUri().toUri()
-        // Use suspendCancellableCoroutine to bridge the callback
-        return suspendCancellableCoroutine { continuation ->
-            AuthorizationServiceConfiguration.fetchFromIssuer(
-                issuerUri
-            ) { serviceConfiguration, ex ->
-                if (ex != null) {
-                    continuation.resumeWithException(ex)
-                } else if (serviceConfiguration != null) {
-                    authConfig = serviceConfiguration // Cache the result
-                    continuation.resume(serviceConfiguration)
+        return suspendCoroutine { continuation ->
+            AuthorizationServiceConfiguration.fetchFromIssuer(issuerUri) { config, ex ->
+                if (config != null) {
+                    authConfig = config
+                    continuation.resume(config)
                 } else {
-                    // This case should ideally not happen if ex is null,
-                    // but handle it defensively.
-                    continuation.resumeWithException(
-                        IllegalStateException("Failed to fetch configuration and no exception was provided.")
-                    )
+                    continuation.resumeWithException(ex ?: RuntimeException("Failed to fetch OIDC configuration."))
                 }
             }
-            // Optional: Handle cancellation if needed
-            continuation.invokeOnCancellation { /* Cleanup if necessary */ }
         }
     }
 
@@ -66,9 +47,9 @@ class AuthService @Inject constructor(
         val config = getAuthServiceConfig()
         val authRequest = AuthorizationRequest.Builder(
             config,
-            "porturl-android-client", // Your Keycloak client ID
+            "porturl-android-client",
             ResponseTypeValues.CODE,
-            Uri.parse("org.friesoft.porturl:/oauth2redirect") // Your redirect URI
+            "org.friesoft.porturl:/oauth2redirect".toUri()
         ).setScope("openid profile email")
             .build()
 
@@ -78,26 +59,46 @@ class AuthService @Inject constructor(
 
     suspend fun handleAuthorizationResponse(intent: Intent): AuthState {
         val resp = AuthorizationResponse.fromIntent(intent)
-        val ex = AuthorizationException.fromIntent(intent)
-        val authState = AuthState(resp, ex)
+        val authEx = AuthorizationException.fromIntent(intent)
+        val authState = AuthState(resp, authEx)
 
         if (resp != null) {
-            val tokenResponse = exchangeAuthorizationCode(resp)
-            authState.update(tokenResponse, ex)
+            try {
+                // This suspendCoroutine will now throw an exception on failure
+                val tokenResponse = suspendCoroutine<TokenResponse> { continuation ->
+                    authService.performTokenRequest(resp.createTokenExchangeRequest()) { response, tokenEx ->
+                        when {
+                            response != null -> continuation.resume(response)
+                            tokenEx != null -> continuation.resumeWithException(tokenEx)
+                            else -> continuation.resumeWithException(RuntimeException("Unknown token request error"))
+                        }
+                    }
+                }
+                // If the token exchange was successful, update the state with the new tokens
+                authState.update(tokenResponse, null)
+            } catch (tokenEx: AuthorizationException) {
+                // If the token exchange failed, update the state with that specific exception
+                // We explicitly cast null to TokenResponse? to resolve the compiler ambiguity.
+                authState.update(null as TokenResponse?, tokenEx)
+            }
         }
         return authState
     }
 
-    private suspend fun exchangeAuthorizationCode(response: AuthorizationResponse): TokenResponse? {
-        // You're already correctly using suspendCoroutine here for performTokenRequest
-        return suspendCoroutine { continuation ->
-            authService.performTokenRequest(response.createTokenExchangeRequest()) { resp, ex ->
-                if (ex != null) {
-                    continuation.resumeWithException(ex)
-                } else {
-                    continuation.resume(resp)
-                }
-            }
-        }
+    /**
+     * Creates and launches an intent to log the user out of the Keycloak session.
+     */
+    suspend fun performEndSessionRequest(idToken: String, launcher: ActivityResultLauncher<Intent>) {
+        val config = getAuthServiceConfig()
+        // The postLogoutRedirectUri tells Keycloak where to redirect after logout.
+        // It must be a valid redirect URI configured in your Keycloak client.
+        val endSessionRequest = EndSessionRequest.Builder(config)
+            .setIdTokenHint(idToken)
+            .setPostLogoutRedirectUri("org.friesoft.porturl:/oauth2redirect".toUri())
+            .build()
+
+        val endSessionIntent = authService.getEndSessionRequestIntent(endSessionRequest)
+        launcher.launch(endSessionIntent)
     }
 }
+
