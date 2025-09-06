@@ -34,11 +34,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     /**
-     * Provides the base URL for the backend API.
-     * This is the URL that the user can configure.
+     * Saves the provided backend URL to the DataStore.
+     *
+     * @param backendUrl The new backend URL to save.
      */
-    fun getBaseUrl(): Flow<String> {
-        return backendUrl
+    suspend fun saveBackendUrl(backendUrl: String) {
+        context.dataStore.edit { settings ->
+            settings[BACKEND_URL_KEY] = backendUrl
+        }
     }
 
     /**
@@ -51,9 +54,5 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     fun getBackendUrlBlocking(): String = runBlocking {
         backendUrl.first()
     }
-    suspend fun saveSettings(backendUrl: String) {
-        context.dataStore.edit { settings ->
-            settings[BACKEND_URL_KEY] = backendUrl
-        }
-    }
+
 }

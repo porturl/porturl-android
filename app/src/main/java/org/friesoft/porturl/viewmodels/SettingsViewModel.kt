@@ -5,9 +5,17 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
 import javax.inject.Inject
+
+// Represents the different states of the URL validation process
+enum class ValidationState {
+    IDLE, LOADING, SUCCESS, ERROR
+}
 
 /**
  * ViewModel for the SettingsScreen.
@@ -17,7 +25,10 @@ import javax.inject.Inject
  * and a method to update them.
  */
 @HiltViewModel
-class SettingsViewModel @Inject constructor(private val settingsRepository: SettingsRepository) : ViewModel() {
+class SettingsViewModel @Inject constructor(
+    private val settingsRepository: SettingsRepository,
+    private val configRepository: ConfigRepository
+) : ViewModel() {
 
     /**
      * A Flow that emits the current backend URL string. The UI collects this Flow to
@@ -28,8 +39,13 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
     /**
      * A SharedFlow to emit one-time events to the UI, such as showing a Snackbar
      * message. This is used to inform the user that settings have been saved.
+     * Used to send one-off messages to the UI (e.g., for Snackbars)
      */
-    val toastMessage = MutableSharedFlow<String>()
+    val userMessage = MutableSharedFlow<String>()
+
+    private val _validationState = MutableStateFlow(ValidationState.IDLE)
+    val validationState = _validationState.asStateFlow()
+
 
     /**
      * Saves the provided backend and Keycloak URLs to the DataStore via the repository.
@@ -37,10 +53,25 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
      *
      * @param backendUrl The new backend URL to save.
      */
-    fun saveSettings(backendUrl: String) {
+    fun saveAndValidateBackendUrl(url: String) {
         viewModelScope.launch {
-            settingsRepository.saveSettings(backendUrl)
-            toastMessage.emit("Settings Saved!")
+            _validationState.value = ValidationState.LOADING
+            // Attempt to validate the new URL
+            if (configRepository.validateBackendUrl(url)) {
+                // If valid, save it to persistent storage
+                settingsRepository.saveBackendUrl(url)
+                _validationState.value = ValidationState.SUCCESS
+                userMessage.emit("Backend URL saved successfully!")
+            } else {
+                // If invalid, report an error and do not save
+                _validationState.value = ValidationState.ERROR
+                userMessage.emit("Could not connect to the provided URL.")
+            }
         }
+    }
+
+    // Resets the validation state, for example, after the user dismisses an error.
+    fun resetValidationState() {
+        _validationState.value = ValidationState.IDLE
     }
 }

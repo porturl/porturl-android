@@ -1,6 +1,7 @@
 package org.friesoft.porturl.viewmodels
 
 import android.content.Intent
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,6 +47,10 @@ class AuthViewModel @Inject constructor(
     private val _showSessionExpiredDialog = MutableStateFlow(false)
     val showSessionExpiredDialog = _showSessionExpiredDialog.asStateFlow()
 
+    // New state to hold login-specific error messages
+    private val _loginError = MutableStateFlow<String?>(null)
+    val loginError = _loginError.asStateFlow()
+
     init {
         // When the ViewModel is created, determine the starting screen.
         // If the user's AuthState is authorized, go to the app list. Otherwise, go to login.
@@ -73,6 +78,10 @@ class AuthViewModel @Inject constructor(
         _showSessionExpiredDialog.value = false
     }
 
+    fun clearLoginError() {
+        _loginError.value = null
+    }
+
     /**
      * Initiates the login flow.
      *
@@ -81,7 +90,15 @@ class AuthViewModel @Inject constructor(
      */
     fun login(launcher: ActivityResultLauncher<Intent>) {
         viewModelScope.launch {
-            authService.performAuthorizationRequest(launcher)
+            try {
+                // Clear any old errors before attempting to log in
+                clearLoginError()
+                // This will throw an exception if the backend is down
+                authService.performAuthorizationRequest(launcher)
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Login failed: Could not get SSO config from backend.", e)
+                _loginError.value = "Could not connect to the backend. Please check the server URL in settings or try again later."
+            }
         }
     }
 

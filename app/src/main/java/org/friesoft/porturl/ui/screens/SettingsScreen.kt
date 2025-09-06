@@ -1,55 +1,41 @@
 package org.friesoft.porturl.ui.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.flow.collectLatest
 import org.friesoft.porturl.viewmodels.SettingsViewModel
-import androidx.compose.material3.MaterialTheme
+import org.friesoft.porturl.viewmodels.ValidationState
 
 /**
  * A screen that allows the user to configure the application's settings,
- * such as the backend and Keycloak URLs.
+ * such as the backend URL.
  *
  * It uses the [SettingsViewModel] to persist the settings to DataStore.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = hiltViewModel()) {
-    // Collect the persisted URLs from the ViewModel as state.
-    val backendUrl by viewModel.backendUrl.collectAsState(initial = "")
+    val backendUrl by viewModel.backendUrl.collectAsStateWithLifecycle(initialValue = "")
+    val validationState by viewModel.validationState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // This effect listens for messages from the ViewModel to show a snackbar (e.g., "Settings Saved!").
+    var currentBackendUrl by remember(backendUrl) { mutableStateOf(backendUrl) }
+
+    // Listen for messages from the ViewModel and show them in a Snackbar
     LaunchedEffect(Unit) {
-        viewModel.toastMessage.collect { message ->
+        viewModel.userMessage.collectLatest { message ->
             snackbarHostState.showSnackbar(message)
+            // After showing the message, reset the state so the user can try again
+            viewModel.resetValidationState()
         }
     }
 
@@ -73,32 +59,39 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Use local mutable state for text fields to prevent recomposing the whole
-            // screen on every key press. `remember(backendUrl)` ensures it updates if the
-            // underlying datastore value changes.
-            var currentBackendUrl by remember(backendUrl) { mutableStateOf(backendUrl) }
-
             OutlinedTextField(
                 value = currentBackendUrl,
                 onValueChange = { currentBackendUrl = it },
                 label = { Text("Backend Base URL") },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g., http://10.0.2.2:8080") }
+                placeholder = { Text("e.g., http://10.0.2.2:8080") },
+                isError = validationState == ValidationState.ERROR,
+                // Disable the field while validation is in progress
+                enabled = validationState != ValidationState.LOADING
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Use http://10.0.2.2 for a local server running on your host machine when using an Android Emulator.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.fillMaxWidth()
+                "Use http://10.0.2.2 for a local server on your host machine when using an Android Emulator.",
+                style = MaterialTheme.typography.bodySmall
             )
 
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = { viewModel.saveSettings(currentBackendUrl) },
-                modifier = Modifier.fillMaxWidth()
+                onClick = { viewModel.saveAndValidateBackendUrl(currentBackendUrl) },
+                modifier = Modifier.fillMaxWidth(),
+                // Disable the button while loading
+                enabled = validationState != ValidationState.LOADING
             ) {
-                Text("Save")
+                if (validationState == ValidationState.LOADING) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Save and Validate")
+                }
             }
         }
     }
 }
+

@@ -23,18 +23,11 @@ class AuthService @Inject constructor(
 ) {
     private val authService = AuthorizationService(context)
 
-    // Cache the configuration to avoid fetching it on every login attempt
-    private var authConfig: AuthorizationServiceConfiguration? = null
-
     private suspend fun getAuthServiceConfig(): AuthorizationServiceConfiguration {
-        if (authConfig != null) {
-            return authConfig!!
-        }
         val issuerUri = configRepository.getIssuerUri().toUri()
         return suspendCoroutine { continuation ->
             AuthorizationServiceConfiguration.fetchFromIssuer(issuerUri) { config, ex ->
                 if (config != null) {
-                    authConfig = config
                     continuation.resume(config)
                 } else {
                     continuation.resumeWithException(ex ?: RuntimeException("Failed to fetch OIDC configuration."))
