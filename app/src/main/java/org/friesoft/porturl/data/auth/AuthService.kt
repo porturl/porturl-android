@@ -43,7 +43,7 @@ class AuthService @Inject constructor(
             "porturl-android-client",
             ResponseTypeValues.CODE,
             "org.friesoft.porturl:/oauth2redirect".toUri()
-        ).setScope("openid profile email")
+        ).setScope("openid profile email offline_access")
             .build()
 
         val authIntent = authService.getAuthorizationRequestIntent(authRequest)
