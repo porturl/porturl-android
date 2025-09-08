@@ -6,27 +6,20 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.data.model.ApplicationCategory
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
 import javax.inject.Inject
 
-/**
- * ViewModel for the ApplicationDetailScreen.
- *
- * It handles the business logic for fetching, creating, and updating an application,
- * and exposes the state to the UI.
- */
 @HiltViewModel
 class ApplicationDetailViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
-    private val categoryRepository: CategoryRepository // Inject the new repository
+    private val categoryRepository: CategoryRepository
 ) : ViewModel() {
 
-    // The UI state now includes a list of all available categories for the selection UI.
     sealed class UiState {
         object Loading : UiState()
         data class Success(
@@ -35,32 +28,26 @@ class ApplicationDetailViewModel @Inject constructor(
         ) : UiState()
     }
 
-    // Private mutable state flow for the UI state.
     private val _applicationState = MutableStateFlow<UiState>(UiState.Loading)
-    // Publicly exposed, read-only state flow for the UI to observe.
     val applicationState: StateFlow<UiState> = _applicationState
 
-    // Stores the original application object when editing to track changes.
     private var originalApplication: Application? = null
-
-    // SharedFlow for one-time events like navigating back.
     val finishScreen = MutableSharedFlow<Boolean>()
-    // SharedFlow for one-time events like showing an error message.
     val errorMessage = MutableSharedFlow<String>()
 
-    /**
-     * Loads an application by its ID for editing, or prepares a new one for creation.
-     * @param id The ID of the application. If -1L, it prepares for creation.
-     */
     fun loadApplication(id: Long) {
         viewModelScope.launch {
             _applicationState.value = UiState.Loading
             try {
-                // Fetch both the application and all available categories in parallel
                 val allCategories = categoryRepository.getAllCategories()
                 val app = if (id == -1L) {
-                    // For a new app, create a blank template
-                    Application(null, "", "", emptyList(), 0, null, null, null, null, null, null)
+                    // Create a blank template for a new application
+                    Application(
+                        null, "", "", emptyList(), null, null, null,
+                        iconUrlLarge = null,
+                        iconUrlMedium = null,
+                        iconUrlThumbnail = null
+                    )
                 } else {
                     applicationRepository.getApplicationById(id)
                 }
@@ -73,15 +60,9 @@ class ApplicationDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Saves the application. Either creates a new one or updates an existing one.
-     * @param name The name of the application.
-     * @param url The URL of the application.
-     */
     fun saveApplication(
         name: String,
         url: String,
-        sortOrder: Int,
         selectedCategoryIds: Set<Long>,
         iconLarge: String?,
         iconMedium: String?,
@@ -91,21 +72,30 @@ class ApplicationDetailViewModel @Inject constructor(
             viewModelScope.launch { errorMessage.emit("Name and URL cannot be empty.") }
             return
         }
+        if (selectedCategoryIds.isEmpty()) {
+            viewModelScope.launch { errorMessage.emit("An application must belong to at least one category.") }
+            return
+        }
 
-        // Reconstruct the full Category objects from the selected IDs
-        val selectedCategories = (_applicationState.value as? UiState.Success)
-            ?.allCategories
-            ?.filter { it.id in selectedCategoryIds }
-            ?: emptyList()
+        val currentState = _applicationState.value
+        if (currentState !is UiState.Success) return
+
+        // Construct the list of ApplicationCategory relationships for the save operation.
+        // For new relationships, we assign a default sortOrder of 0.
+        // For existing relationships, we preserve the old sortOrder.
+        val newAppCategories = selectedCategoryIds.map { catId ->
+            val existingLink = originalApplication?.applicationCategories?.find { it.category.id == catId }
+            val category = currentState.allCategories.find { it.id == catId }!!
+            ApplicationCategory(category, existingLink?.sortOrder ?: 0)
+        }
 
         val appToSave = originalApplication!!.copy(
             name = name,
             url = url,
-            sortOrder = sortOrder,
-            categories = selectedCategories,
-            iconLarge = iconLarge?.takeIf { it.isNotBlank() },
-            iconMedium = iconMedium?.takeIf { it.isNotBlank() },
-            iconThumbnail = iconThumbnail?.takeIf { it.isNotBlank() }
+            applicationCategories = newAppCategories,
+            iconUrlLarge = iconLarge?.takeIf { it.isNotBlank() },
+            iconUrlMedium = iconMedium?.takeIf { it.isNotBlank() },
+            iconUrlThumbnail = iconThumbnail?.takeIf { it.isNotBlank() }
         )
 
         viewModelScope.launch {
@@ -122,3 +112,4 @@ class ApplicationDetailViewModel @Inject constructor(
         }
     }
 }
+

@@ -16,6 +16,8 @@ class CategoryRepository @Inject constructor(private val apiService: ApiService)
         return apiService.getCategoryById(id);
     }
 
+    suspend fun createCategory(category: Category): Category = apiService.createCategory(category)
+
     suspend fun updateCategory(category: Category): Category {
         return apiService.updateCategory(category.id, category)
     }

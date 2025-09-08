@@ -17,5 +17,14 @@ class ApplicationRepository @Inject constructor(
     suspend fun createApplication(application: Application): Application = apiService.createApplication(application)
     suspend fun updateApplication(id: Long, application: Application): Application = apiService.updateApplication(id, application)
     suspend fun deleteApplication(id: Long) = apiService.deleteApplication(id)
+
+    /**
+     * Sends a list of updated applications to the backend's batch-update endpoint.
+     */
+    suspend fun reorderApplications(applications: List<Application>) {
+        if (applications.isNotEmpty()) {
+            apiService.reorderApplications(applications)
+        }
+    }
 }
 

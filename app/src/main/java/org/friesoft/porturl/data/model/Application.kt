@@ -6,8 +6,9 @@ data class Application(
     @SerializedName("id") var id: Long?,
     @SerializedName("name") var name: String,
     @SerializedName("url") var url: String,
-    @SerializedName("categories") var categories: List<Category>,
-    @SerializedName("sortOrder") var sortOrder: Int,
+
+    // This provides access to the per-category sort order.
+    @SerializedName("applicationCategories") var applicationCategories: List<ApplicationCategory>,
 
     // Filename identifiers (e.g., "uuid.png") for editing and saving.
     // The backend expects these in POST/PUT requests.

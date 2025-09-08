@@ -23,8 +23,18 @@ interface ApiService {
     @DELETE("api/applications/{id}")
     suspend fun deleteApplication(@Path("id") id: Long)
 
+    /**
+     * A new endpoint for efficiently sending a batch of updated applications
+     * after a reorder operation.
+     */
+    @POST("api/applications/reorder")
+    suspend fun reorderApplications(@Body applications: List<Application>)
+
     @GET("api/categories")
     suspend fun getAllCategories(): List<Category>
+
+    @POST("api/categories")
+    suspend fun createCategory(@Body category: Category): Category
 
     @GET("api/categories/{id}")
     suspend fun getCategoryById(@Path("id") id: Long): Category;

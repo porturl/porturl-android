@@ -129,8 +129,20 @@ fun ApplicationListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate("${Routes.APP_DETAIL}/-1") }) {
-                Icon(Icons.Default.Add, "Add Application")
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AnimatedVisibility(visible = isInEditMode) {
+                    FloatingActionButton(
+                        onClick = { navController.navigate("${Routes.CATEGORY_DETAIL}/-1") },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Category")
+                    }
+                }
+                AnimatedVisibility(visible = isInEditMode) {
+                    FloatingActionButton(onClick = { navController.navigate("${Routes.APP_DETAIL}/-1") }) {
+                        Icon(Icons.Default.Apps, contentDescription = "Add Application")
+                    }
+                }
             }
         }
     ) { paddingValues ->
