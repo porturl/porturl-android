@@ -1,15 +1,17 @@
 package org.friesoft.porturl.viewmodels
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
+import org.friesoft.porturl.data.repository.CategoryRepository
 import javax.inject.Inject
 
 /**
@@ -20,24 +22,26 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ApplicationDetailViewModel @Inject constructor(
-    private val repository: ApplicationRepository
+    private val applicationRepository: ApplicationRepository,
+    private val categoryRepository: CategoryRepository // Inject the new repository
 ) : ViewModel() {
 
-    /**
-     * Represents the different states the UI can be in.
-     */
+    // The UI state now includes a list of all available categories for the selection UI.
     sealed class UiState {
         object Loading : UiState()
-        data class Success(val application: Application) : UiState()
+        data class Success(
+            val application: Application,
+            val allCategories: List<Category> = emptyList()
+        ) : UiState()
     }
 
     // Private mutable state flow for the UI state.
-    private val _applicationState = MutableStateFlow<UiState>(UiState.Success(Application(null, "", "")))
+    private val _applicationState = MutableStateFlow<UiState>(UiState.Loading)
     // Publicly exposed, read-only state flow for the UI to observe.
     val applicationState: StateFlow<UiState> = _applicationState
 
     // Stores the original application object when editing to track changes.
-    private val originalApplication = mutableStateOf<Application?>(null)
+    private var originalApplication: Application? = null
 
     // SharedFlow for one-time events like navigating back.
     val finishScreen = MutableSharedFlow<Boolean>()
@@ -49,23 +53,22 @@ class ApplicationDetailViewModel @Inject constructor(
      * @param id The ID of the application. If -1L, it prepares for creation.
      */
     fun loadApplication(id: Long) {
-        if (id == -1L) {
-            // This is 'Create' mode.
-            originalApplication.value = Application(id = null, name = "", url = "")
-            _applicationState.value = UiState.Success(originalApplication.value!!)
-            return
-        }
-
-        // This is 'Edit' mode.
         viewModelScope.launch {
             _applicationState.value = UiState.Loading
             try {
-                val app = repository.getApplicationById(id)
-                originalApplication.value = app
-                _applicationState.value = UiState.Success(app)
+                // Fetch both the application and all available categories in parallel
+                val allCategories = categoryRepository.getAllCategories()
+                val app = if (id == -1L) {
+                    // For a new app, create a blank template
+                    Application(null, "", "", emptyList(), 0, null, null, null, null, null, null)
+                } else {
+                    applicationRepository.getApplicationById(id)
+                }
+                originalApplication = app
+                _applicationState.value = UiState.Success(app, allCategories)
             } catch (e: Exception) {
-                errorMessage.emit("Failed to load application details.")
-                finishScreen.emit(true) // Go back if we can't load the data.
+                errorMessage.emit("Failed to load application data.")
+                finishScreen.emit(true)
             }
         }
     }
@@ -75,22 +78,44 @@ class ApplicationDetailViewModel @Inject constructor(
      * @param name The name of the application.
      * @param url The URL of the application.
      */
-    fun saveApplication(name: String, url: String) {
+    fun saveApplication(
+        name: String,
+        url: String,
+        sortOrder: Int,
+        selectedCategoryIds: Set<Long>,
+        iconLarge: String?,
+        iconMedium: String?,
+        iconThumbnail: String?
+    ) {
         if (name.isBlank() || url.isBlank()) {
             viewModelScope.launch { errorMessage.emit("Name and URL cannot be empty.") }
             return
         }
 
-        val appToSave = originalApplication.value!!.copy(name = name, url = url)
+        // Reconstruct the full Category objects from the selected IDs
+        val selectedCategories = (_applicationState.value as? UiState.Success)
+            ?.allCategories
+            ?.filter { it.id in selectedCategoryIds }
+            ?: emptyList()
+
+        val appToSave = originalApplication!!.copy(
+            name = name,
+            url = url,
+            sortOrder = sortOrder,
+            categories = selectedCategories,
+            iconLarge = iconLarge?.takeIf { it.isNotBlank() },
+            iconMedium = iconMedium?.takeIf { it.isNotBlank() },
+            iconThumbnail = iconThumbnail?.takeIf { it.isNotBlank() }
+        )
 
         viewModelScope.launch {
             try {
                 if (appToSave.id == null) {
-                    repository.createApplication(appToSave)
+                    applicationRepository.createApplication(appToSave)
                 } else {
-                    repository.updateApplication(appToSave.id!!, appToSave)
+                    applicationRepository.updateApplication(appToSave.id!!, appToSave)
                 }
-                finishScreen.emit(true) // Navigate back on successful save.
+                finishScreen.emit(true)
             } catch (e: Exception) {
                 errorMessage.emit("Failed to save application.")
             }

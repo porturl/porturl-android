@@ -87,6 +87,14 @@ fun AppNavigation() {
                 val appId = backStackEntry.arguments?.getLong(Routes.APP_ID_KEY) ?: -1L
                 ApplicationDetailScreen(navController = navController, applicationId = appId)
             }
+
+            composable(
+                route = "${Routes.CATEGORY_DETAIL}/{${Routes.CATEGORY_ID_KEY}}",
+                arguments = listOf(navArgument(Routes.CATEGORY_ID_KEY) { type = NavType.LongType })
+            ) { backStackEntry ->
+                val categoryId = backStackEntry.arguments?.getLong(Routes.CATEGORY_ID_KEY) ?: -1L
+                CategoryDetailScreen(navController = navController, categoryId = categoryId)
+            }
         }
     } else {
         // Show a centered loading indicator while the initial auth state is being checked.

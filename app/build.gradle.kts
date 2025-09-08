@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.materialcomponents)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended.android)
 
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.constraintlayout)
@@ -97,6 +98,12 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+
+    // Add Coil for loading images from URLs in Jetpack Compose
+    implementation(libs.coil.compose)
+
+    // reorderable list
+    implementation(libs.reorderable)
 
     implementation(libs.androidx.browser)
 
