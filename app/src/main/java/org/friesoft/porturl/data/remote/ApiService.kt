@@ -1,7 +1,9 @@
 package org.friesoft.porturl.data.remote
 
+import okhttp3.MultipartBody
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.Category
+import org.friesoft.porturl.data.model.ImageUploadResponse
 import retrofit2.http.*
 
 /**
@@ -44,6 +46,15 @@ interface ApiService {
 
     @DELETE("api/categories/{id}")
     suspend fun deleteCategory(@Path("id") id: Long)
+
+    /**
+     * endpoint for uploading an image file using a multipart request.
+     * @param file The image file part.
+     * @return A response containing the unique filename assigned by the backend.
+     */
+    @Multipart
+    @POST("api/images")
+    suspend fun uploadImage(@Part file: MultipartBody.Part): ImageUploadResponse
 
     // TODO: A new endpoint to update the sort order of multiple categories in one call would be efficient,
     // but for now, we will call the standard update endpoint for each reordered category.

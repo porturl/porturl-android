@@ -3,6 +3,7 @@ package org.friesoft.porturl.ui.screens
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +43,7 @@ import org.friesoft.porturl.viewmodels.ApplicationListViewModel
 import org.friesoft.porturl.viewmodels.AuthViewModel
 import org.friesoft.porturl.viewmodels.DashboardItem
 import androidx.core.net.toUri
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -258,9 +260,22 @@ fun ApplicationGridItem(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    val context = LocalContext.current
     // Animate the elevation and scale for a "lift" effect when dragging
     val elevation by animateDpAsState(if (isDragging) 12.dp else 4.dp, label = "elevation")
     val scale by animateFloatAsState(if (isDragging) 1.05f else 1f, label = "scale")
+
+    // This forces Coil to always fetch the image from the network or disk cache,
+    // ensuring the most up-to-date version is displayed.
+    val imageRequest = ImageRequest.Builder(context)
+        .data(application.iconUrlThumbnail)
+        .memoryCacheKey(application.iconUrlThumbnail) // Use URL as the key
+        .memoryCachePolicy(coil.request.CachePolicy.DISABLED) // Disable memory cache
+        .crossfade(true)
+        .build()
+
+    // 2. Add logging to confirm the correct URL is being received during recomposition.
+    Log.d("ApplicationGridItem", "Recomposing ${application.name} with icon URL: ${application.iconUrlThumbnail}")
 
     ElevatedCard(
         onClick = onClick,
@@ -277,7 +292,7 @@ fun ApplicationGridItem(
                 verticalArrangement = Arrangement.Center
             ) {
                 AsyncImage(
-                    model = application.iconUrlThumbnail,
+                    model = imageRequest,
                     application.name,
                     Modifier.size(48.dp),
                     error = rememberVectorPainter(Icons.Default.Info)

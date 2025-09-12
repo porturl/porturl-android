@@ -1,5 +1,6 @@
 package org.friesoft.porturl.viewmodels
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,8 @@ class ApplicationDetailViewModel @Inject constructor(
         object Loading : UiState()
         data class Success(
             val application: Application,
-            val allCategories: List<Category> = emptyList()
+            val allCategories: List<Category> = emptyList(),
+            val selectedImageUri: Uri? = null
         ) : UiState()
     }
 
@@ -34,6 +36,16 @@ class ApplicationDetailViewModel @Inject constructor(
     private var originalApplication: Application? = null
     val finishScreen = MutableSharedFlow<Boolean>()
     val errorMessage = MutableSharedFlow<String>()
+
+    /**
+     * Called by the UI when the user selects an image from their device.
+     */
+    fun onImageSelected(uri: Uri?) {
+        val currentState = _applicationState.value
+        if (currentState is UiState.Success) {
+            _applicationState.value = currentState.copy(selectedImageUri = uri)
+        }
+    }
 
     fun loadApplication(id: Long) {
         viewModelScope.launch {
@@ -46,7 +58,7 @@ class ApplicationDetailViewModel @Inject constructor(
                         null, "", "", emptyList(), null, null, null,
                         iconUrlLarge = null,
                         iconUrlMedium = null,
-                        iconUrlThumbnail = null
+                        iconUrlThumbnail = null,
                     )
                 } else {
                     applicationRepository.getApplicationById(id)
@@ -60,46 +72,48 @@ class ApplicationDetailViewModel @Inject constructor(
         }
     }
 
-    fun saveApplication(
-        name: String,
-        url: String,
-        selectedCategoryIds: Set<Long>,
-        iconLarge: String?,
-        iconMedium: String?,
-        iconThumbnail: String?
-    ) {
-        if (name.isBlank() || url.isBlank()) {
-            viewModelScope.launch { errorMessage.emit("Name and URL cannot be empty.") }
-            return
-        }
-        if (selectedCategoryIds.isEmpty()) {
-            viewModelScope.launch { errorMessage.emit("An application must belong to at least one category.") }
-            return
-        }
-
+    /**
+     * Orchestrates the save process. If a new image was selected, it uploads it first,
+     * then saves the application with the new icon filename.
+     */
+    fun saveApplication(name: String, url: String, selectedCategoryIds: Set<Long>) {
         val currentState = _applicationState.value
         if (currentState !is UiState.Success) return
 
-        // Construct the list of ApplicationCategory relationships for the save operation.
-        // For new relationships, we assign a default sortOrder of 0.
-        // For existing relationships, we preserve the old sortOrder.
-        val newAppCategories = selectedCategoryIds.map { catId ->
-            val existingLink = originalApplication?.applicationCategories?.find { it.category.id == catId }
-            val category = currentState.allCategories.find { it.id == catId }!!
-            ApplicationCategory(category, existingLink?.sortOrder ?: 0)
+        if (name.isBlank() || url.isBlank() || selectedCategoryIds.isEmpty()) {
+            viewModelScope.launch { errorMessage.emit("Name, URL, and at least one category are required.") }
+            return
         }
-
-        val appToSave = originalApplication!!.copy(
-            name = name,
-            url = url,
-            applicationCategories = newAppCategories,
-            iconUrlLarge = iconLarge?.takeIf { it.isNotBlank() },
-            iconUrlMedium = iconMedium?.takeIf { it.isNotBlank() },
-            iconUrlThumbnail = iconThumbnail?.takeIf { it.isNotBlank() }
-        )
 
         viewModelScope.launch {
             try {
+                var newIconFilename: String? = null
+                // Step 1: Upload the image if a new one has been selected
+                if (currentState.selectedImageUri != null) {
+                    newIconFilename = applicationRepository.uploadImage(currentState.selectedImageUri)
+                    if (newIconFilename == null) {
+                        errorMessage.emit("Failed to upload image.")
+                        return@launch
+                    }
+                }
+
+                // Step 2: Construct the final Application object to save
+                val newAppCategories = selectedCategoryIds.map { catId ->
+                    val existingLink = originalApplication?.applicationCategories?.find { it.category.id == catId }
+                    val category = currentState.allCategories.find { it.id == catId }!!
+                    ApplicationCategory(category, existingLink?.sortOrder ?: 0)
+                }
+
+                val appToSave = originalApplication!!.copy(
+                    name = name,
+                    url = url,
+                    applicationCategories = newAppCategories,
+                    // Use the new filename if one was uploaded, otherwise keep the original.
+                    // For simplicity, we're only handling the thumbnail here.
+                    iconThumbnail = newIconFilename ?: originalApplication?.iconUrlThumbnail
+                )
+
+                // Step 3: Save the application data
                 if (appToSave.id == null) {
                     applicationRepository.createApplication(appToSave)
                 } else {

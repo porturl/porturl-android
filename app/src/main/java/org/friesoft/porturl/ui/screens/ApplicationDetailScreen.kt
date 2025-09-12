@@ -1,19 +1,29 @@
 package org.friesoft.porturl.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
 import org.friesoft.porturl.viewmodels.ApplicationDetailViewModel
 
@@ -26,6 +36,13 @@ fun ApplicationDetailScreen(
 ) {
     val applicationState by viewModel.applicationState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        // When an image is picked, notify the ViewModel
+        viewModel.onImageSelected(uri)
+    }
 
     LaunchedEffect(applicationId) {
         viewModel.loadApplication(applicationId)
@@ -82,9 +99,12 @@ fun ApplicationDetailScreen(
                     var selectedCategoryIds by remember(state.application.applicationCategories) {
                         mutableStateOf(state.application.applicationCategories.map { it.category.id }.toSet())
                     }
-                    var iconLarge by remember(state.application.iconUrlLarge) { mutableStateOf(state.application.iconLarge ?: "") }
-                    var iconMedium by remember(state.application.iconUrlMedium) { mutableStateOf(state.application.iconUrlMedium ?: "") }
-                    var iconThumbnail by remember(state.application.iconUrlThumbnail) { mutableStateOf(state.application.iconUrlThumbnail ?: "") }
+
+                    ImagePicker(
+                        // If a new image is selected, show it. Otherwise, show the existing one.
+                        imageModel = state.selectedImageUri ?: state.application.iconUrlThumbnail,
+                        onClick = { imagePickerLauncher.launch("image/*") }
+                    )
 
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Application Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -111,10 +131,6 @@ fun ApplicationDetailScreen(
                         }
                     }
 
-                    Text("Icon Filenames (Optional)", style = MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(value = iconLarge, onValueChange = { iconLarge = it }, label = { Text("Large Icon Filename") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(value = iconMedium, onValueChange = { iconMedium = it }, label = { Text("Medium Icon Filename") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(value = iconThumbnail, onValueChange = { iconThumbnail = it }, label = { Text("Thumbnail Icon Filename") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
 
                     Spacer(Modifier.height(8.dp))
                     Button(
@@ -123,9 +139,6 @@ fun ApplicationDetailScreen(
                                 name = name,
                                 url = url,
                                 selectedCategoryIds = selectedCategoryIds,
-                                iconLarge = iconLarge,
-                                iconMedium = iconMedium,
-                                iconThumbnail = iconThumbnail
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -137,4 +150,33 @@ fun ApplicationDetailScreen(
         }
     }
 }
+
+/**
+ * A reusable composable for displaying and selecting an application icon.
+ *
+ * @param imageModel The model for Coil to load (can be a URL string or a content URI).
+ * @param onClick A lambda to be executed when the user clicks to change the image.
+ */
+@Composable
+fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(128.dp)
+            .clip(CircleShape)
+            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        // Use AsyncImage to display either the remote URL or the locally selected URI
+        AsyncImage(
+            model = imageModel,
+            contentDescription = "Application Icon",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            // If there's no image, show a placeholder icon
+            fallback = rememberVectorPainter(image = Icons.Default.AddAPhoto)
+        )
+    }
+}
+
 
