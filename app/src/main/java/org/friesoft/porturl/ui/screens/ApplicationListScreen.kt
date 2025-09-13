@@ -7,6 +7,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -21,6 +23,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -28,10 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.delay
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyGridState
@@ -82,6 +86,7 @@ fun ApplicationListRoute(
         onMoveCategory = viewModel::moveCategory,
         onSortApps = viewModel::sortAppsAlphabetically,
         onRefresh = viewModel::refreshData,
+        onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onApplicationClick = { app -> navController.navigate("${Routes.APP_DETAIL}/${app.id}") },
         onCategoryClick = { category -> navController.navigate("${Routes.CATEGORY_DETAIL}/${category.id}") },
         onAddApplication = { navController.navigate("${Routes.APP_DETAIL}/-1") },
@@ -104,6 +109,7 @@ fun ApplicationListScreen(
     onMoveCategory: (id: Long, direction: ApplicationListViewModel.MoveDirection) -> Unit,
     onSortApps: (categoryId: Long) -> Unit,
     onRefresh: () -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
     onApplicationClick: (Application) -> Unit,
     onCategoryClick: (Category) -> Unit,
     onAddApplication: () -> Unit,
@@ -115,6 +121,8 @@ fun ApplicationListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var itemToDelete by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    var searchBarVisible by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
 
     val reorderState = rememberReorderableLazyGridState(onMove = { from, to -> onDrag(from.index, to.index) })
 
@@ -128,6 +136,17 @@ fun ApplicationListScreen(
     val logoutLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {}
+
+    val showSearchBar = searchBarVisible || uiState.searchQuery.isNotBlank()
+
+    // When in edit mode, the back button should exit edit mode, not the screen.
+    BackHandler(enabled = isEditing) {
+        setIsEditing(false)
+    }
+    BackHandler(enabled = showSearchBar) {
+        onSearchQueryChanged("")
+        searchBarVisible = false
+    }
 
     fun openUrlInCustomTab(url: String) {
         val builder = CustomTabsIntent.Builder()
@@ -147,10 +166,6 @@ fun ApplicationListScreen(
         }
     }
 
-    // When in edit mode, the back button should exit edit mode, not the screen.
-    BackHandler(enabled = isEditing) {
-        setIsEditing(false)
-    }
 
     uiState.error?.let { LaunchedEffect(it) { snackbarHostState.showSnackbar(message = it) } }
 
@@ -170,13 +185,42 @@ fun ApplicationListScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Application Portal") },
-                actions = {
-                    IconButton(onClick = { /* TODO: Search */ }) { Icon(Icons.Filled.Search, "Search") }
-                    IconButton(onClick = { setIsEditing(!isEditing) }) {
-                        Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) "Done" else "Edit Mode")
+                title = {
+                    AnimatedVisibility(
+                        visible = !showSearchBar,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Text("Application Portal")
                     }
-                    IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Logout") }
+                },
+                actions = {
+                    if (showSearchBar) {
+                        OutlinedTextField(
+                            value = uiState.searchQuery,
+                            onValueChange = onSearchQueryChanged,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
+                                .focusRequester(focusRequester),
+                            placeholder = { Text("Search...") },
+                            trailingIcon = {
+                                IconButton(onClick = { onSearchQueryChanged("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                }
+                            }
+                        )
+                        LaunchedEffect(Unit) {
+                            delay(100)
+                            focusRequester.requestFocus()
+                        }
+                    } else {
+                        IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, "Search") }
+                        IconButton(onClick = { setIsEditing(!isEditing) }) {
+                            Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) "Done" else "Edit Mode")
+                        }
+                        IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Logout") }
+                    }
                 }
             )
         },
@@ -201,7 +245,7 @@ fun ApplicationListScreen(
         val screenContent = @Composable {
             when {
                 uiState.isLoading -> FullScreenLoader()
-                uiState.dashboardItems.isEmpty() && !uiState.isRefreshing -> EmptyState()
+                uiState.dashboardItems.isEmpty() && !uiState.isRefreshing -> EmptyState(showSearchBar)
                 else -> {
                     LazyVerticalGrid(
                         state = reorderState.gridState,
@@ -297,10 +341,10 @@ private fun FullScreenLoader() {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(isSearchActive: Boolean) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = "No applications or categories found.\nTap 'Edit' then '+' to add some!",
+            text = if (isSearchActive) "No results found." else "No applications or categories found.\nTap 'Edit' then '+' to add some!",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(16.dp)

@@ -30,11 +30,59 @@ sealed class DashboardItem {
 }
 
 data class ApplicationListState(
-    val dashboardItems: List<DashboardItem> = emptyList(),
+    val allItems: List<DashboardItem> = emptyList(),
+    val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null
-)
+) {
+    // Computed property to get the filtered list for the UI
+    val dashboardItems: List<DashboardItem>
+        get() {
+            if (searchQuery.isBlank()) {
+                return allItems
+            }
+            val lowerCaseQuery = searchQuery.lowercase()
+            val filteredItems = mutableListOf<DashboardItem>()
+            var currentCategory: DashboardItem.CategoryItem? = null
+            val appsInCategory = mutableListOf<DashboardItem.ApplicationItem>()
+
+            fun addCategoryBlock() {
+                if (currentCategory != null) {
+                    val categoryNameMatches = currentCategory!!.category.name.lowercase().contains(lowerCaseQuery)
+                    if (categoryNameMatches || appsInCategory.isNotEmpty()) {
+                        filteredItems.add(currentCategory!!)
+                        filteredItems.addAll(if (categoryNameMatches) {
+                            // If category name matches, add all its apps
+                            allItems.filterIsInstance<DashboardItem.ApplicationItem>().filter { it.parentCategoryId == currentCategory!!.category.id }
+                        } else {
+                            // Otherwise, add only the apps that matched
+                            appsInCategory
+                        })
+                    }
+                }
+                appsInCategory.clear()
+            }
+
+            allItems.forEach { item ->
+                when (item) {
+                    is DashboardItem.CategoryItem -> {
+                        addCategoryBlock()
+                        currentCategory = item
+                    }
+                    is DashboardItem.ApplicationItem -> {
+                        val app = item.application
+                        if (app.name.lowercase().contains(lowerCaseQuery) || app.url.lowercase().contains(lowerCaseQuery)) {
+                            appsInCategory.add(item)
+                        }
+                    }
+                }
+            }
+            addCategoryBlock()
+            return filteredItems
+        }
+}
+
 
 @HiltViewModel
 class ApplicationListViewModel @Inject constructor(
@@ -55,6 +103,10 @@ class ApplicationListViewModel @Inject constructor(
         loadData()
     }
 
+    fun onSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
     fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
@@ -65,7 +117,7 @@ class ApplicationListViewModel @Inject constructor(
                 val categories = categoryRepository.getAllCategories()
                 _uiState.update {
                     it.copy(
-                        dashboardItems = buildDashboardItems(applications, categories),
+                        allItems = buildDashboardItems(applications, categories),
                     )
                 }
             } catch (e: Exception) {
@@ -85,7 +137,7 @@ class ApplicationListViewModel @Inject constructor(
                 val categories = categoryRepository.getAllCategories()
                 _uiState.update {
                     it.copy(
-                        dashboardItems = buildDashboardItems(applications, categories),
+                        allItems = buildDashboardItems(applications, categories),
                     )
                 }
             } catch (e: Exception) {
@@ -148,9 +200,9 @@ class ApplicationListViewModel @Inject constructor(
      * This function only handles the visual reordering of the list.
      */
     fun onDrag(fromIndex: Int, toIndex: Int) {
-        val currentItems = _uiState.value.dashboardItems.toMutableList()
+        val currentItems = _uiState.value.allItems.toMutableList()
         currentItems.add(toIndex, currentItems.removeAt(fromIndex))
-        _uiState.update { it.copy(dashboardItems = currentItems) }
+        _uiState.update { it.copy(allItems = currentItems) }
         lastToIndex = toIndex // Keep track of the last position
     }
 
@@ -183,7 +235,7 @@ class ApplicationListViewModel @Inject constructor(
             }
         }
 
-        _uiState.update { it.copy(dashboardItems = currentItems) }
+        _uiState.update { it.copy(allItems = currentItems) }
         debouncedPersist(currentItems)
         lastToIndex = null // Reset for the next drag
     }
@@ -191,7 +243,7 @@ class ApplicationListViewModel @Inject constructor(
     enum class MoveDirection { UP, DOWN }
 
     fun moveCategory(categoryId: Long, direction: MoveDirection) {
-        val currentItems = _uiState.value.dashboardItems
+        val currentItems = _uiState.value.allItems
 
         val groups = mutableListOf<List<DashboardItem>>()
         var currentGroup = mutableListOf<DashboardItem>()
@@ -227,7 +279,7 @@ class ApplicationListViewModel @Inject constructor(
         }
 
         val newDashboardItems = newGroups.flatten()
-        _uiState.update { it.copy(dashboardItems = newDashboardItems) }
+        _uiState.update { it.copy(allItems = newDashboardItems) }
         debouncedPersist(newDashboardItems)
     }
 
@@ -340,7 +392,7 @@ class ApplicationListViewModel @Inject constructor(
 
         val newAppItems = applicationsToUpdate.map { DashboardItem.ApplicationItem(it, categoryId) }
         val newDashboardItems = currentItems.subList(0, appsStart) + newAppItems + currentItems.subList(appsEnd, currentItems.size)
-        _uiState.update { it.copy(dashboardItems = newDashboardItems) }
+        _uiState.update { it.copy(allItems = newDashboardItems) }
 
         // Persist the specific changes directly, bypassing the general-purpose persist function.
         persistenceJob?.cancel()
