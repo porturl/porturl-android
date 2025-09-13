@@ -342,7 +342,7 @@ class ApplicationListViewModel @Inject constructor(
         val newDashboardItems = currentItems.subList(0, appsStart) + newAppItems + currentItems.subList(appsEnd, currentItems.size)
         _uiState.update { it.copy(dashboardItems = newDashboardItems) }
 
-        // THE FIX: Persist the specific changes directly, bypassing the general-purpose persist function.
+        // Persist the specific changes directly, bypassing the general-purpose persist function.
         persistenceJob?.cancel()
         persistenceJob = viewModelScope.launch {
             delay(debounceTime)

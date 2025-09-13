@@ -175,7 +175,23 @@ fun ApplicationListScreen(
                 }
             )
         },
-        floatingActionButton = { if (isEditing) AddFab(onAddApplication, onAddCategory) }
+        floatingActionButton = {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AnimatedVisibility(visible = isEditing) {
+                    FloatingActionButton(
+                        onClick = onAddCategory,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Category")
+                    }
+                }
+                AnimatedVisibility(visible = isEditing) {
+                    FloatingActionButton(onClick = onAddApplication) {
+                        Icon(Icons.Default.Apps, contentDescription = "Add Application")
+                    }
+                }
+            }
+        }
     ) { padding ->
         val screenContent = @Composable {
             when {
