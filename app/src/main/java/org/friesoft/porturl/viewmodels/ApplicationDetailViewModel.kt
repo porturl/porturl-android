@@ -7,6 +7,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationCategory
@@ -21,19 +23,17 @@ class ApplicationDetailViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository
 ) : ViewModel() {
 
-    sealed class UiState {
-        object Loading : UiState()
-        data class Success(
-            val application: Application,
-            val allCategories: List<Category> = emptyList(),
-            val selectedImageUri: Uri? = null
-        ) : UiState()
-    }
+    data class UiState(
+        val application: Application? = null,
+        val allCategories: List<Category> = emptyList(),
+        val selectedImageUri: Uri? = null,
+        val isLoading: Boolean = true,
+        val isSaving: Boolean = false // To show a progress indicator on save
+    )
 
-    private val _applicationState = MutableStateFlow<UiState>(UiState.Loading)
-    val applicationState: StateFlow<UiState> = _applicationState
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    private var originalApplication: Application? = null
     val finishScreen = MutableSharedFlow<Boolean>()
     val errorMessage = MutableSharedFlow<String>()
 
@@ -41,30 +41,29 @@ class ApplicationDetailViewModel @Inject constructor(
      * Called by the UI when the user selects an image from their device.
      */
     fun onImageSelected(uri: Uri?) {
-        val currentState = _applicationState.value
-        if (currentState is UiState.Success) {
-            _applicationState.value = currentState.copy(selectedImageUri = uri)
-        }
+        _uiState.update { it.copy(selectedImageUri = uri) }
     }
 
     fun loadApplication(id: Long) {
         viewModelScope.launch {
-            _applicationState.value = UiState.Loading
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 val allCategories = categoryRepository.getAllCategories()
                 val app = if (id == -1L) {
                     // Create a blank template for a new application
                     Application(
-                        null, "", "", emptyList(), null, null, null,
-                        iconUrlLarge = null,
-                        iconUrlMedium = null,
-                        iconUrlThumbnail = null,
+                        id = null, name = "", url = "", applicationCategories = emptyList(),
+                        iconLarge = null, iconMedium = null, iconThumbnail = null,
+                        iconUrlLarge = null, iconUrlMedium = null, iconUrlThumbnail = null, description = null
                     )
                 } else {
                     applicationRepository.getApplicationById(id)
                 }
-                originalApplication = app
-                _applicationState.value = UiState.Success(app, allCategories)
+                _uiState.value = UiState(
+                    application = app,
+                    allCategories = allCategories,
+                    isLoading = false
+                )
             } catch (e: Exception) {
                 errorMessage.emit("Failed to load application data.")
                 finishScreen.emit(true)
@@ -77,8 +76,8 @@ class ApplicationDetailViewModel @Inject constructor(
      * then saves the application with the new icon filename.
      */
     fun saveApplication(name: String, url: String, selectedCategoryIds: Set<Long>) {
-        val currentState = _applicationState.value
-        if (currentState !is UiState.Success) return
+        val originalApplication = _uiState.value.application ?: return
+        if (_uiState.value.isSaving) return // Prevent duplicate saves
 
         if (name.isBlank() || url.isBlank() || selectedCategoryIds.isEmpty()) {
             viewModelScope.launch { errorMessage.emit("Name, URL, and at least one category are required.") }
@@ -86,34 +85,17 @@ class ApplicationDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
             try {
-                var newIconFilename: String? = null
-                // Step 1: Upload the image if a new one has been selected
-                if (currentState.selectedImageUri != null) {
-                    newIconFilename = applicationRepository.uploadImage(currentState.selectedImageUri)
-                    if (newIconFilename == null) {
-                        errorMessage.emit("Failed to upload image.")
-                        return@launch
-                    }
-                }
+                val iconFilename = handleImageUpload()
 
-                // Step 2: Construct the final Application object to save
-                val newAppCategories = selectedCategoryIds.map { catId ->
-                    val existingLink = originalApplication?.applicationCategories?.find { it.category.id == catId }
-                    val category = currentState.allCategories.find { it.id == catId }!!
-                    ApplicationCategory(category, existingLink?.sortOrder ?: 0)
-                }
-
-                val appToSave = originalApplication!!.copy(
+                val appToSave = originalApplication.copy(
                     name = name,
                     url = url,
-                    applicationCategories = newAppCategories,
-                    // Use the new filename if one was uploaded, otherwise keep the original.
-                    // For simplicity, we're only handling the thumbnail here.
-                    iconThumbnail = newIconFilename ?: originalApplication?.iconUrlThumbnail
+                    applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
+                    iconThumbnail = iconFilename ?: originalApplication.iconThumbnail
                 )
 
-                // Step 3: Save the application data
                 if (appToSave.id == null) {
                     applicationRepository.createApplication(appToSave)
                 } else {
@@ -121,7 +103,42 @@ class ApplicationDetailViewModel @Inject constructor(
                 }
                 finishScreen.emit(true)
             } catch (e: Exception) {
-                errorMessage.emit("Failed to save application.")
+                errorMessage.emit("Failed to save application: ${e.message}")
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
+            }
+        }
+    }
+
+    /**
+     * Handles the image upload process if a new image URI is present.
+     * @return The new filename if an image was uploaded, otherwise null.
+     */
+    private suspend fun handleImageUpload(): String? {
+        val selectedUri = _uiState.value.selectedImageUri
+        if (selectedUri != null) {
+            val newIconFilename = applicationRepository.uploadImage(selectedUri)
+            if (newIconFilename == null) {
+                throw Exception("Failed to upload image.")
+            }
+            return newIconFilename
+        }
+        return null
+    }
+
+    /**
+     * Constructs the new list of ApplicationCategory objects, preserving existing sort orders.
+     */
+    private fun updateApplicationCategories(
+        originalApp: Application,
+        selectedCategoryIds: Set<Long>
+    ): List<ApplicationCategory> {
+        val allCategoriesMap = _uiState.value.allCategories.associateBy { it.id }
+        // Use mapNotNull to safely find categories and create links, preventing crashes.
+        return selectedCategoryIds.mapNotNull { catId ->
+            allCategoriesMap[catId]?.let { category ->
+                val existingLink = originalApp.applicationCategories.find { it.category?.id == catId }
+                ApplicationCategory(category, existingLink?.sortOrder ?: 0)
             }
         }
     }

@@ -6,6 +6,7 @@ data class Application(
     @SerializedName("id") var id: Long?,
     @SerializedName("name") var name: String,
     @SerializedName("url") var url: String,
+    @SerializedName("description") var description: String?,
 
     // This provides access to the per-category sort order.
     @SerializedName("applicationCategories") var applicationCategories: List<ApplicationCategory>,

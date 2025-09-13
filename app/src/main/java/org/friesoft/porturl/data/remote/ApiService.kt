@@ -47,6 +47,9 @@ interface ApiService {
     @DELETE("api/categories/{id}")
     suspend fun deleteCategory(@Path("id") id: Long)
 
+    @POST("api/categories/reorder")
+    suspend fun reorderCategories(@Body categories: List<Category>)
+
     /**
      * endpoint for uploading an image file using a multipart request.
      * @param file The image file part.
@@ -55,8 +58,5 @@ interface ApiService {
     @Multipart
     @POST("api/images")
     suspend fun uploadImage(@Part file: MultipartBody.Part): ImageUploadResponse
-
-    // TODO: A new endpoint to update the sort order of multiple categories in one call would be efficient,
-    // but for now, we will call the standard update endpoint for each reordered category.
 
 }

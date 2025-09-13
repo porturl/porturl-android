@@ -28,4 +28,13 @@ class CategoryRepository @Inject constructor(private val apiService: ApiService)
     suspend fun deleteCategory(id: Long) {
         apiService.deleteCategory(id)
     }
+
+    /**
+     * Sends a list of updated categories to the backend's batch-update endpoint.
+     */
+    suspend fun reorderCategories(categories: List<Category>) {
+        if (categories.isNotEmpty()) {
+            apiService.reorderCategories(categories)
+        }
+    }
 }

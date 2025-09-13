@@ -2,6 +2,7 @@ package org.friesoft.porturl.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,22 +30,14 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
 import org.friesoft.porturl.viewmodels.ApplicationDetailViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ApplicationDetailScreen(
+fun ApplicationDetailRoute(
     navController: NavController,
     applicationId: Long,
     viewModel: ApplicationDetailViewModel = hiltViewModel()
 ) {
-    val applicationState by viewModel.applicationState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        // When an image is picked, notify the ViewModel
-        viewModel.onImageSelected(uri)
-    }
 
     LaunchedEffect(applicationId) {
         viewModel.loadApplication(applicationId)
@@ -50,102 +45,162 @@ fun ApplicationDetailScreen(
 
     LaunchedEffect(Unit) {
         viewModel.finishScreen.collect {
-            if (it) {
-                navController.previousBackStackEntry?.savedStateHandle?.set("refresh_list", true)
-                navController.popBackStack()
-            }
+            // Set the refresh signal before popping the back stack
+            navController.previousBackStackEntry?.savedStateHandle?.set("refresh_list", true)
+            navController.popBackStack()
         }
     }
 
     LaunchedEffect(Unit) {
         viewModel.errorMessage.collectLatest { message ->
-            if (message.isNotBlank()) {
-                snackbarHostState.showSnackbar(message)
-            }
+            snackbarHostState.showSnackbar(message)
         }
     }
+
+    ApplicationDetailScreen(
+        uiState = uiState,
+        snackbarHostState = snackbarHostState,
+        onImageSelected = viewModel::onImageSelected,
+        onSaveClick = viewModel::saveApplication,
+        onBackClick = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun ApplicationDetailScreen(
+    uiState: ApplicationDetailViewModel.UiState,
+    snackbarHostState: SnackbarHostState,
+    onImageSelected: (uri: android.net.Uri?) -> Unit,
+    onSaveClick: (name: String, url: String, categoryIds: Set<Long>) -> Unit,
+    onBackClick: () -> Unit
+) {
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri -> onImageSelected(uri) }
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (applicationId == -1L) "Add Application" else "Edit Application") },
+                title = { Text(if (uiState.application?.id == null) "Add Application" else "Edit Application") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         }
     ) { paddingValues ->
-        when (val state = applicationState) {
-            is ApplicationDetailViewModel.UiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (uiState.application != null) {
+                ApplicationForm(
+                    state = uiState,
+                    onImagePickerClick = { imagePickerLauncher.launch("image/*") },
+                    onSave = onSaveClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ApplicationForm(
+    state: ApplicationDetailViewModel.UiState,
+    onImagePickerClick: () -> Unit,
+    onSave: (name: String, url: String, categoryIds: Set<Long>) -> Unit
+) {
+    // This guard ensures the compiler knows 'application' is non-null below.
+    val application = state.application ?: return
+
+    val focusManager = LocalFocusManager.current
+
+    var name by remember(application.name) { mutableStateOf(application.name) }
+    var url by remember(application.url) { mutableStateOf(application.url) }
+    var selectedCategoryIds by remember(application.applicationCategories) {
+        // Now that 'application' is guaranteed non-null, this is safer.
+        mutableStateOf(application.applicationCategories.mapNotNull { it.category?.id }.toSet())
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ImagePicker(
+                imageModel = state.selectedImageUri ?: application.iconUrlThumbnail,
+                onClick = onImagePickerClick
+            )
+
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Application Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+
+            CategorySelector(
+                allCategories = state.allCategories,
+                selectedIds = selectedCategoryIds,
+                onSelectionChanged = { selectedCategoryIds = it }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                focusManager.clearFocus()
+                onSave(name, url, selectedCategoryIds)
+            },
+            enabled = !state.isSaving,
+            modifier = Modifier.fillMaxWidth().height(50.dp)
+        ) {
+            AnimatedContent(targetState = state.isSaving, label = "SaveButtonContent") { isSaving ->
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Save")
                 }
             }
-            is ApplicationDetailViewModel.UiState.Success -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    var name by remember(state.application.name) { mutableStateOf(state.application.name) }
-                    var url by remember(state.application.url) { mutableStateOf(state.application.url) }
-                    // The local state for sortOrder has been removed.
-                    var selectedCategoryIds by remember(state.application.applicationCategories) {
-                        mutableStateOf(state.application.applicationCategories.map { it.category.id }.toSet())
-                    }
+        }
+    }
+}
 
-                    ImagePicker(
-                        // If a new image is selected, show it. Otherwise, show the existing one.
-                        imageModel = state.selectedImageUri ?: state.application.iconUrlThumbnail,
-                        onClick = { imagePickerLauncher.launch("image/*") }
-                    )
-
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Application Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-
-                    Text("Categories (at least one is required)", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        state.allCategories.forEach { category ->
-                            val isSelected = selectedCategoryIds.contains(category.id)
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    selectedCategoryIds = if (isSelected) {
-                                        selectedCategoryIds - category.id
-                                    } else {
-                                        selectedCategoryIds + category.id
-                                    }
-                                },
-                                label = { Text(category.name) },
-                                leadingIcon = if (isSelected) { { Icon(Icons.Default.Check, "Selected") } } else { null }
-                            )
-                        }
-                    }
-
-
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = {
-                            viewModel.saveApplication(
-                                name = name,
-                                url = url,
-                                selectedCategoryIds = selectedCategoryIds,
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Save")
-                    }
-                }
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategorySelector(
+    allCategories: List<org.friesoft.porturl.data.model.Category>,
+    selectedIds: Set<Long>,
+    onSelectionChanged: (Set<Long>) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+        Text("Categories (at least one is required)", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            allCategories.forEach { category ->
+                val isSelected = selectedIds.contains(category.id)
+                FilterChip(
+                    selected = isSelected,
+                    onClick = {
+                        val newSelection = if (isSelected) selectedIds - category.id else selectedIds + category.id
+                        onSelectionChanged(newSelection)
+                    },
+                    label = { Text(category.name) },
+                    leadingIcon = if (isSelected) { { Icon(Icons.Default.Check, "Selected") } } else { null }
+                )
             }
         }
     }
@@ -158,7 +213,7 @@ fun ApplicationDetailScreen(
  * @param onClick A lambda to be executed when the user clicks to change the image.
  */
 @Composable
-fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
+private fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(128.dp)
@@ -167,16 +222,15 @@ fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // Use AsyncImage to display either the remote URL or the locally selected URI
         AsyncImage(
             model = imageModel,
             contentDescription = "Application Icon",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            // If there's no image, show a placeholder icon
-            fallback = rememberVectorPainter(image = Icons.Default.AddAPhoto)
+            fallback = rememberVectorPainter(image = Icons.Default.AddAPhoto),
+            placeholder = rememberVectorPainter(image = Icons.Default.AddAPhoto),
+            error = rememberVectorPainter(image = Icons.Default.AddAPhoto)
         )
     }
 }
-
 
