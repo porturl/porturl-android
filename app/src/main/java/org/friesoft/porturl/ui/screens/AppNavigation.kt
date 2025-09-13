@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,6 +23,7 @@ import androidx.navigation.navArgument
 import kotlinx.coroutines.flow.first
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.AuthViewModel
+import org.friesoft.porturl.viewmodels.EditModeViewModel
 
 /**
  * The main navigation component for the application.
@@ -30,6 +32,7 @@ import org.friesoft.porturl.viewmodels.AuthViewModel
 fun AppNavigation() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
+    val editModeViewModel: EditModeViewModel = viewModel() // Shared ViewModel
     val showSessionExpiredDialog by authViewModel.showSessionExpiredDialog.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
 
@@ -70,7 +73,8 @@ fun AppNavigation() {
         }
         composable(Routes.LOGIN) { LoginScreen(navController) }
         composable(Routes.SETTINGS) { SettingsScreen(navController) }
-        composable(Routes.APP_LIST) { ApplicationListRoute(navController = navController) }
+        composable(Routes.APP_LIST) { ApplicationListRoute(navController = navController,
+            editModeViewModel = editModeViewModel) }
 
         composable(
             route = "${Routes.APP_DETAIL}/{${Routes.APP_ID_KEY}}",

@@ -44,11 +44,13 @@ import org.friesoft.porturl.viewmodels.*
 @Composable
 fun ApplicationListRoute(
     navController: NavController,
+    editModeViewModel: EditModeViewModel,
     viewModel: ApplicationListViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
+    val isEditing by editModeViewModel.isEditing.collectAsStateWithLifecycle()
 
     val shouldRefresh by navController.currentBackStackEntry
         ?.savedStateHandle
@@ -73,6 +75,8 @@ fun ApplicationListRoute(
 
     ApplicationListScreen(
         uiState = uiState,
+        isEditing = isEditing,
+        setIsEditing = { editModeViewModel.setEditMode(it) },
         onDrag = viewModel::onDrag,
         onDragEnd = viewModel::onDragEnd,
         onMoveCategory = viewModel::moveCategory,
@@ -93,6 +97,8 @@ fun ApplicationListRoute(
 @Composable
 fun ApplicationListScreen(
     uiState: ApplicationListState,
+    isEditing: Boolean,
+    setIsEditing: (Boolean) -> Unit,
     onDrag: (from: Int, to: Int) -> Unit,
     onDragEnd: () -> Unit,
     onMoveCategory: (id: Long, direction: ApplicationListViewModel.MoveDirection) -> Unit,
@@ -106,7 +112,6 @@ fun ApplicationListScreen(
     onDeleteCategory: (id: Long) -> Unit,
     authViewModel: AuthViewModel
 ) {
-    var isEditing by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var itemToDelete by remember { mutableStateOf<Pair<String, Long>?>(null) }
@@ -144,7 +149,7 @@ fun ApplicationListScreen(
 
     // When in edit mode, the back button should exit edit mode, not the screen.
     BackHandler(enabled = isEditing) {
-        isEditing = false
+        setIsEditing(false)
     }
 
     uiState.error?.let { LaunchedEffect(it) { snackbarHostState.showSnackbar(message = it) } }
@@ -168,7 +173,7 @@ fun ApplicationListScreen(
                 title = { Text("Application Portal") },
                 actions = {
                     IconButton(onClick = { /* TODO: Search */ }) { Icon(Icons.Filled.Search, "Search") }
-                    IconButton(onClick = { isEditing = !isEditing }) {
+                    IconButton(onClick = { setIsEditing(!isEditing) }) {
                         Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) "Done" else "Edit Mode")
                     }
                     IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Logout") }
@@ -300,28 +305,6 @@ private fun EmptyState() {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(16.dp)
         )
-    }
-}
-
-@Composable
-private fun AddFab(onAddApplication: () -> Unit, onAddCategory: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Column(horizontalAlignment = Alignment.End) {
-        AnimatedVisibility(visible = expanded) {
-            Column(horizontalAlignment = Alignment.End) {
-                SmallFloatingActionButton(
-                    onClick = { onAddCategory(); expanded = false },
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) { Icon(Icons.Filled.CreateNewFolder, "Add Category") }
-                SmallFloatingActionButton(
-                    onClick = { onAddApplication(); expanded = false },
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) { Icon(Icons.Filled.NoteAdd, "Add Application") }
-            }
-        }
-        FloatingActionButton(onClick = { expanded = !expanded }) {
-            Icon(if (expanded) Icons.Filled.Close else Icons.Filled.Add, "Add")
-        }
     }
 }
 
