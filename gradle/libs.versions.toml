@@ -24,7 +24,7 @@ recyclerview = "1.4.0"
 constraintlayout = "2.2.1"
 lifecycleLivedataKtx = "2.9.3"
 lifecycleViewmodelKtx = "2.9.3"
-navigationFragmentKtx = "2.9.3"
+navigationFragmentKtx = "2.9.4"
 navigationUiKtx = "2.9.3"
 reorderable = "0.9.6"
 
