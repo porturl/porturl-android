@@ -16,11 +16,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -57,13 +59,26 @@ import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.*
 import kotlin.math.roundToInt
 
-// Data class to hold the state of the current drag operation
-private data class DragState(
-    val application: Application,
-    val fromCategory: Category,
-    var dragPosition: Offset,
-    val itemOffset: Offset
-)
+// A sealed class to represent the item currently being dragged.
+// This allows handling both Applications and Categories in a type-safe way.
+private sealed class DraggingItem {
+    abstract val key: String
+    abstract var dragPosition: Offset
+    abstract val itemOffset: Offset
+
+    // The composable that will be rendered as a "ghost" while dragging.
+    abstract val composable: @Composable () -> Unit
+
+    data class App(
+        val application: Application,
+        val fromCategory: Category,
+        override var dragPosition: Offset,
+        override val itemOffset: Offset,
+        override val composable: @Composable () -> Unit,
+    ) : DraggingItem() {
+        override val key: String = "app_${fromCategory.id}_${application.id}"
+    }
+}
 
 @Composable
 fun ApplicationListRoute(
@@ -101,7 +116,7 @@ fun ApplicationListRoute(
         uiState = uiState,
         isEditing = isEditing,
         setIsEditing = { editModeViewModel.setEditMode(it) },
-        onMoveCategory = viewModel::moveCategory,
+        onMoveCategory = viewModel::moveCategoryByDirection,
         onMoveApplication = viewModel::moveApplication,
         onSortApps = viewModel::sortAppsAlphabetically,
         onRefresh = viewModel::refreshData,
@@ -146,13 +161,14 @@ fun ApplicationListScreen(
     val windowWidthSize = calculateWindowSizeClass(activity).widthSizeClass
 
     // --- Drag and Drop State ---
-    var dragState by remember { mutableStateOf<DragState?>(null) }
+    var draggingItem by remember { mutableStateOf<DraggingItem?>(null) }
     val categoryBounds = remember { mutableStateMapOf<Long, androidx.compose.ui.geometry.Rect>() }
     val dropTargetCategoryId by remember {
         derivedStateOf {
-            dragState?.let { state ->
-                categoryBounds.entries.find { (_, rect) ->
-                    rect.contains(state.dragPosition)
+            draggingItem?.let { state ->
+                categoryBounds.entries.find { (id, rect) ->
+                    // Don't count the item being dragged as a potential drop target
+                    ("cat_$id" != state.key) && rect.contains(state.dragPosition)
                 }?.key
             }
         }
@@ -275,7 +291,9 @@ fun ApplicationListScreen(
         Box(modifier = Modifier.padding(padding)) {
             val screenContent = @Composable {
                 val groupedItems = uiState.groupedDashboardItems
-                val sortedCategories = groupedItems.keys.sortedBy { it.sortOrder }
+                val sortedCategories = uiState.allItems.mapNotNull {
+                    (it as? DashboardItem.CategoryItem)?.category
+                }
 
                 when {
                     uiState.isLoading -> FullScreenLoader()
@@ -287,37 +305,40 @@ fun ApplicationListScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                items(sortedCategories, key = { "cat_${it.id}" }) { category ->
+                                itemsIndexed(sortedCategories, key = { _, cat -> "cat_${cat.id}" }) { index, category ->
                                     val applications = groupedItems[category].orEmpty()
                                     CategoryColumn(
                                         category = category,
                                         applications = applications,
                                         isEditing = isEditing,
                                         isDropTarget = dropTargetCategoryId == category.id,
-                                        dragState = dragState,
+                                        draggingItem = draggingItem,
                                         onSortApps = onSortApps,
                                         onCategoryClick = onCategoryClick,
                                         onDeleteCategory = { itemToDelete = "Category" to category.id },
                                         onMoveCategory = onMoveCategory,
+                                        canMoveUp = index > 0,
+                                        canMoveDown = index < sortedCategories.lastIndex,
+                                        showMoveControls = true,
                                         onApplicationClick = onApplicationClick,
                                         onDeleteApplication = { app -> itemToDelete = "Application" to app.id!! },
-                                        onDragStart = { app, cat, pos ->
-                                            dragState = DragState(app, cat, pos, pos)
+                                        onAppDragStart = { app, cat, absolutePos, relativePos, composable ->
+                                            draggingItem = DraggingItem.App(app, cat, absolutePos, relativePos, composable)
                                         },
                                         onDrag = { dragAmount ->
-                                            dragState = dragState?.copy(
-                                                dragPosition = dragState!!.dragPosition + dragAmount
-                                            )
+                                            draggingItem?.let { it.dragPosition += dragAmount }
                                         },
                                         onDragEnd = {
-                                            dragState?.let { state ->
-                                                dropTargetCategoryId?.let { toCatId ->
-                                                    state.application.id?.let { appId ->
-                                                        onMoveApplication(appId, state.fromCategory.id, toCatId)
+                                            draggingItem?.let { state ->
+                                                if (state is DraggingItem.App) {
+                                                    dropTargetCategoryId?.let { toCatId ->
+                                                        state.application.id?.let { appId ->
+                                                            onMoveApplication(appId, state.fromCategory.id, toCatId)
+                                                        }
                                                     }
                                                 }
                                             }
-                                            dragState = null
+                                            draggingItem = null
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -335,37 +356,40 @@ fun ApplicationListScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalItemSpacing = 16.dp
                             ) {
-                                items(sortedCategories, key = { "cat_${it.id}" }) { category ->
+                                itemsIndexed(sortedCategories, key = { _, cat -> "cat_${cat.id}" }) { index, category ->
                                     val applications = groupedItems[category].orEmpty()
                                     CategoryColumn(
                                         category = category,
                                         applications = applications,
                                         isEditing = isEditing,
                                         isDropTarget = dropTargetCategoryId == category.id,
-                                        dragState = dragState,
+                                        draggingItem = draggingItem,
                                         onSortApps = onSortApps,
                                         onCategoryClick = onCategoryClick,
                                         onDeleteCategory = { itemToDelete = "Category" to category.id },
                                         onMoveCategory = onMoveCategory,
+                                        canMoveUp = index > 0,
+                                        canMoveDown = index < sortedCategories.lastIndex,
+                                        showMoveControls = false, // No up/down arrows in grid
                                         onApplicationClick = onApplicationClick,
                                         onDeleteApplication = { app -> itemToDelete = "Application" to app.id!! },
-                                        onDragStart = { app, cat, pos ->
-                                            dragState = DragState(app, cat, pos, pos)
+                                        onAppDragStart = { app, cat, absolutePos, relativePos, composable ->
+                                            draggingItem = DraggingItem.App(app, cat, absolutePos, relativePos, composable)
                                         },
                                         onDrag = { dragAmount ->
-                                            dragState = dragState?.copy(
-                                                dragPosition = dragState!!.dragPosition + dragAmount
-                                            )
+                                            draggingItem?.let { it.dragPosition += dragAmount }
                                         },
                                         onDragEnd = {
-                                            dragState?.let { state ->
-                                                dropTargetCategoryId?.let { toCatId ->
-                                                    state.application.id?.let { appId ->
-                                                        onMoveApplication(appId, state.fromCategory.id, toCatId)
+                                            draggingItem?.let { state ->
+                                                if (state is DraggingItem.App) {
+                                                    dropTargetCategoryId?.let { toCatId ->
+                                                        state.application.id?.let { appId ->
+                                                            onMoveApplication(appId, state.fromCategory.id, toCatId)
+                                                        }
                                                     }
                                                 }
                                             }
-                                            dragState = null
+                                            draggingItem = null
                                         },
                                         modifier = Modifier.onGloballyPositioned {
                                             categoryBounds[category.id] = it.boundsInRoot()
@@ -388,7 +412,7 @@ fun ApplicationListScreen(
             }
 
             // --- Drag Overlay ---
-            dragState?.let { state ->
+            draggingItem?.let { state ->
                 Box(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier
                         .offset {
@@ -398,13 +422,9 @@ fun ApplicationListScreen(
                             )
                         }
                         .zIndex(1f)
+                        .graphicsLayer(alpha = 0.9f)
                     ) {
-                        ApplicationGridItem(
-                            application = state.application,
-                            isEditing = false,
-                            onClick = {},
-                            onDeleteClick = {}
-                        )
+                       state.composable()
                     }
                 }
             }
@@ -419,14 +439,17 @@ private fun CategoryColumn(
     applications: List<Application>,
     isEditing: Boolean,
     isDropTarget: Boolean,
-    dragState: DragState?,
+    draggingItem: DraggingItem?,
     onSortApps: (categoryId: Long) -> Unit,
     onCategoryClick: (Category) -> Unit,
     onDeleteCategory: () -> Unit,
     onMoveCategory: (id: Long, direction: ApplicationListViewModel.MoveDirection) -> Unit,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    showMoveControls: Boolean,
     onApplicationClick: (Application) -> Unit,
     onDeleteApplication: (Application) -> Unit,
-    onDragStart: (Application, Category, Offset) -> Unit,
+    onAppDragStart: (Application, Category, Offset, Offset, @Composable () -> Unit) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
@@ -446,8 +469,14 @@ private fun CategoryColumn(
             onDeleteClick = onDeleteCategory,
             onMoveUp = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.UP) },
             onMoveDown = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.DOWN) },
-            canMoveUp = true,
-            canMoveDown = true
+            onMoveLeft = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.LEFT) },
+            onMoveRight = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.RIGHT) },
+            canMoveUp = canMoveUp,
+            canMoveDown = canMoveDown,
+            canMoveLeft = canMoveUp, // In a grid, left is equivalent to up
+            canMoveRight = canMoveDown, // In a grid, right is equivalent to down
+            showVerticalMoveControls = showMoveControls,
+            showHorizontalMoveControls = !showMoveControls
         )
 
         FlowRow(
@@ -457,17 +486,19 @@ private fun CategoryColumn(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             applications.forEach { application ->
-                val isBeingDragged = dragState?.application?.id == application.id && dragState?.fromCategory?.id == category.id
+                val isAppBeingDragged = draggingItem is DraggingItem.App &&
+                        draggingItem.application.id == application.id &&
+                        (draggingItem as DraggingItem.App).fromCategory.id == category.id
                 var itemBounds by remember { mutableStateOf(Offset.Zero) }
 
                 ApplicationGridItem(
                     application = application,
-                    isEditing = isEditing && !isBeingDragged,
+                    isEditing = isEditing && !isAppBeingDragged,
                     onClick = {
                         if (isEditing) onApplicationClick(application) else openUrlInCustomTab(application.url, context)
                     },
                     onDeleteClick = { onDeleteApplication(application) },
-                    modifier = if (isEditing && !isBeingDragged) {
+                    modifier = if (isEditing) {
                         Modifier
                             .onGloballyPositioned {
                                 itemBounds = it.boundsInRoot().topLeft
@@ -475,18 +506,22 @@ private fun CategoryColumn(
                             .pointerInput(application, category) {
                                 detectDragGestures(
                                     onDragStart = { offset ->
-                                        onDragStart(application, category, itemBounds + offset)
+                                        val composable: @Composable () -> Unit = {
+                                            ApplicationGridItem(application, isEditing=false, {}, {})
+                                        }
+                                        val absolutePosition = itemBounds + offset
+                                        onAppDragStart(application, category, absolutePosition, offset, composable)
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
                                         onDrag(dragAmount)
                                     },
-                                    onDragEnd = { onDragEnd() },
-                                    onDragCancel = { onDragEnd() } // Treat cancel as end
+                                    onDragEnd = onDragEnd,
+                                    onDragCancel = onDragEnd
                                 )
                             }
-                    } else Modifier,
-                    isGhost = isBeingDragged
+                    } else Modifier.clickable { openUrlInCustomTab(application.url, context) },
+                    isGhost = isAppBeingDragged
                 )
             }
         }
@@ -583,8 +618,14 @@ fun CategoryHeader(
     onDeleteClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onMoveLeft: () -> Unit,
+    onMoveRight: () -> Unit,
     canMoveUp: Boolean,
-    canMoveDown: Boolean
+    canMoveDown: Boolean,
+    canMoveLeft: Boolean,
+    canMoveRight: Boolean,
+    showVerticalMoveControls: Boolean,
+    showHorizontalMoveControls: Boolean
 ) {
     Surface(
         modifier = Modifier
@@ -603,8 +644,14 @@ fun CategoryHeader(
             Spacer(Modifier.width(8.dp))
             if (isEditing) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, "Move Up") }
-                    IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, "Move Down") }
+                    if (showVerticalMoveControls) {
+                        IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, "Move Up") }
+                        IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, "Move Down") }
+                    }
+                    if (showHorizontalMoveControls) {
+                        IconButton(onClick = onMoveLeft, enabled = canMoveLeft) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Move Left") }
+                        IconButton(onClick = onMoveRight, enabled = canMoveRight) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Move Right") }
+                    }
                     IconButton(onClick = onSortClick) { Icon(Icons.Filled.SortByAlpha, "Sort alphabetically") }
                     IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, "Delete Category", tint = MaterialTheme.colorScheme.error) }
                 }
@@ -632,4 +679,3 @@ private fun DeleteConfirmationDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
-

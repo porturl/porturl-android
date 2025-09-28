@@ -194,8 +194,6 @@ class ApplicationListViewModel @Inject constructor(
      * Handles moving an application from one category to another as a result of a drag-and-drop operation.
      */
     fun moveApplication(appId: Long, fromCatId: Long, toCatId: Long) {
-        if (fromCatId == toCatId) return
-
         val currentItems = _uiState.value.allItems.toMutableList()
 
         // Find the item to move.
@@ -221,50 +219,73 @@ class ApplicationListViewModel @Inject constructor(
         // Insert the item.
         currentItems.add(targetInsertionIndex, newItem)
 
-        // Clean up duplicates if the app now exists twice visually under the same category.
-        val stationaryItem = currentItems.find {
-            it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == toCatId && it !== newItem
+        // If the app was already in the target category, the original item is still there.
+        // We need to remove it to avoid visual duplication. This happens when an app belongs
+        // to multiple categories and is moved from one to another.
+        if (fromCatId != toCatId) {
+            val stationaryItemIndex = currentItems.indexOfFirst {
+                it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == toCatId && it !== newItem
+            }
+            if (stationaryItemIndex != -1) {
+                currentItems.removeAt(stationaryItemIndex)
+            }
         }
-        stationaryItem?.let { currentItems.remove(it) }
+
 
         _uiState.update { it.copy(allItems = currentItems) }
         debouncedPersist(currentItems)
     }
 
+    enum class MoveDirection { UP, DOWN, LEFT, RIGHT }
 
-    enum class MoveDirection { UP, DOWN }
-
-    fun moveCategory(categoryId: Long, direction: MoveDirection) {
+    fun moveCategoryByDirection(categoryId: Long, direction: MoveDirection) {
         val currentItems = _uiState.value.allItems.toMutableList()
 
-        // Find the start and end index of the category block (header + apps).
-        val categoryIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == categoryId }
-        if (categoryIndex == -1) return
-        var endIndex = categoryIndex + 1
-        while (endIndex < currentItems.size && currentItems[endIndex] is DashboardItem.ApplicationItem) {
-            endIndex++
+        // 1. Find the start and end index of the category block to move.
+        val moveStartIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == categoryId }
+        if (moveStartIndex == -1) return
+        var moveEndIndex = moveStartIndex + 1
+        while (moveEndIndex < currentItems.size && currentItems[moveEndIndex] is DashboardItem.ApplicationItem) {
+            moveEndIndex++
         }
-        val groupToMove = currentItems.subList(categoryIndex, endIndex).toList()
+        val groupToMove = currentItems.subList(moveStartIndex, moveEndIndex).toList()
 
-        // Determine the target index to move the block to.
-        val targetIndex = when (direction) {
-            MoveDirection.UP -> {
-                if (categoryIndex == 0) return
-                val prevItem = currentItems[categoryIndex - 1]
-                currentItems.indexOfFirst {
-                    it is DashboardItem.CategoryItem && it.category.id == (prevItem as? DashboardItem.ApplicationItem)?.parentCategoryId
-                }.takeIf { it != -1 } ?: (categoryIndex - 1)
+        // 2. Find the adjacent block to swap with and perform the swap.
+        when (direction) {
+            MoveDirection.UP, MoveDirection.LEFT -> {
+                if (moveStartIndex == 0) return // Already at the top/start
+
+                // Find the start of the previous category block by searching backwards.
+                var prevBlockStartIndex = moveStartIndex - 1
+                while (prevBlockStartIndex >= 0 && currentItems[prevBlockStartIndex] is DashboardItem.ApplicationItem) {
+                    prevBlockStartIndex--
+                }
+                if (prevBlockStartIndex < 0) return // Should not happen if moveStartIndex > 0
+
+                val prevGroup = currentItems.subList(prevBlockStartIndex, moveStartIndex).toList()
+
+                // Remove both blocks and re-insert them in the swapped order.
+                currentItems.subList(prevBlockStartIndex, moveEndIndex).clear()
+                currentItems.addAll(prevBlockStartIndex, groupToMove)
+                currentItems.addAll(prevBlockStartIndex + groupToMove.size, prevGroup)
             }
-            MoveDirection.DOWN -> {
-                if (endIndex >= currentItems.size) return
-                endIndex
+            MoveDirection.DOWN, MoveDirection.RIGHT -> {
+                if (moveEndIndex >= currentItems.size) return // Already at the bottom/end
+
+                // Find the end of the next category block by searching forwards.
+                val nextBlockStartIndex = moveEndIndex
+                var nextBlockEndIndex = nextBlockStartIndex + 1
+                while (nextBlockEndIndex < currentItems.size && currentItems[nextBlockEndIndex] is DashboardItem.ApplicationItem) {
+                    nextBlockEndIndex++
+                }
+                val nextGroup = currentItems.subList(nextBlockStartIndex, nextBlockEndIndex).toList()
+
+                // Remove both blocks and re-insert them in the swapped order.
+                currentItems.subList(moveStartIndex, nextBlockEndIndex).clear()
+                currentItems.addAll(moveStartIndex, nextGroup)
+                currentItems.addAll(moveStartIndex + nextGroup.size, groupToMove)
             }
         }
-
-        // Perform the move.
-        currentItems.removeAll(groupToMove)
-        currentItems.addAll(targetIndex.coerceAtMost(currentItems.size), groupToMove)
-
         _uiState.update { it.copy(allItems = currentItems) }
         debouncedPersist(currentItems)
     }
@@ -279,60 +300,92 @@ class ApplicationListViewModel @Inject constructor(
 
     /**
      * Persists the new order of categories and applications to the repository.
-     * This function correctly handles the many-to-many relationship of applications to categories.
+     * This implementation syncs the database with the visual state of the dashboard.
+     * It correctly handles moves, reorders, additions, and removals of app-category relationships.
      */
     private suspend fun persistDashboardOrder(items: List<DashboardItem>) {
         val categoriesToUpdate = mutableListOf<Category>()
-        val applicationsToUpdate = mutableMapOf<Long, Application>()
+        // A map of the most up-to-date version of an application object seen in the items list.
+        val baseApplications = mutableMapOf<Long, Application>()
+        // The definitive map of which categories each app should belong to, and its sort order.
+        val finalAppLayout = mutableMapOf<Long, MutableMap<Long, Int>>() // AppId -> { CatId -> SortOrder }
+
         var currentCategory: Category? = null
         var categoryOrder = 0
         var appOrder = 0
 
+        // 1. First pass: Scan the UI state to determine the final, desired layout.
         items.forEach { item ->
             when (item) {
                 is DashboardItem.CategoryItem -> {
                     currentCategory = item.category
-                    appOrder = 0 // Reset app order for the new category.
+                    appOrder = 0
                     if (item.category.sortOrder != categoryOrder) {
                         categoriesToUpdate.add(item.category.copy(sortOrder = categoryOrder))
                     }
                     categoryOrder++
                 }
                 is DashboardItem.ApplicationItem -> {
-                    val app = applicationsToUpdate[item.application.id] ?: item.application
-                    val updatedLinks = app.applicationCategories.toMutableList()
-                    var needsUpdate = false
-
-                    val newParentCategory = currentCategory!!
-
-                    // Find the link for the app within its *new* visual category.
-                    val linkIndex = updatedLinks.indexOfFirst { it.category?.id == newParentCategory.id }
-
-                    if (linkIndex != -1) {
-                        // Case 1: The app is already in this category.
-                        // We only need to check if its sort order has changed.
-                        if (updatedLinks[linkIndex].sortOrder != appOrder) {
-                            updatedLinks[linkIndex] = updatedLinks[linkIndex].copy(sortOrder = appOrder)
-                            needsUpdate = true
-                        }
-                    } else {
-                        // Case 2: The app was dragged into a new category it wasn't in before.
-                        // Add a new relationship link. We DO NOT remove old ones.
-                        updatedLinks.add(ApplicationCategory(category = newParentCategory, sortOrder = appOrder))
-                        needsUpdate = true
+                    val app = item.application
+                    val appId = app.id
+                    if (appId != null) {
+                        baseApplications.putIfAbsent(appId, app)
+                        finalAppLayout.getOrPut(appId) { mutableMapOf() }[currentCategory!!.id] = appOrder
+                        appOrder++
                     }
-
-                    if (needsUpdate) {
-                        applicationsToUpdate[app.id!!] = app.copy(applicationCategories = updatedLinks)
-                    }
-                    appOrder++
                 }
+            }
+        }
+
+        val applicationsToUpdate = mutableListOf<Application>()
+
+        // 2. Second pass: For each app, compare its original state with the final layout and apply changes.
+        for ((appId, baseApp) in baseApplications) {
+            val finalLayoutForApp = finalAppLayout[appId] ?: continue // App is not in the final layout.
+            val finalCatIdsForApp = finalLayoutForApp.keys
+
+            val originalLinks = baseApp.applicationCategories
+            val finalLinks = mutableListOf<ApplicationCategory>()
+            var needsUpdate = false
+
+            // 2a. Check existing links: keep the ones that are still valid and update their sort order.
+            originalLinks.forEach { link ->
+                val catId = link.category?.id
+                if (catId in finalCatIdsForApp) {
+                    val newSortOrder = finalLayoutForApp[catId]!!
+                    if (link.sortOrder != newSortOrder) {
+                        finalLinks.add(link.copy(sortOrder = newSortOrder))
+                        needsUpdate = true
+                    } else {
+                        finalLinks.add(link)
+                    }
+                } else {
+                    // This link's category is no longer present for this app in the UI, so it has been removed.
+                    needsUpdate = true
+                }
+            }
+
+            // 2b. Check for new links: add links for categories that were not in the original app data.
+            val originalCatIds = originalLinks.mapNotNull { it.category?.id }.toSet()
+            val newCatIds = finalCatIdsForApp - originalCatIds
+            if (newCatIds.isNotEmpty()) {
+                needsUpdate = true
+                newCatIds.forEach { catId ->
+                    // Find the category object from the items list to create the new link.
+                    val category = (items.find { it is DashboardItem.CategoryItem && it.category.id == catId } as DashboardItem.CategoryItem).category
+                    val newSortOrder = finalLayoutForApp[catId]!!
+                    finalLinks.add(ApplicationCategory(category = category, sortOrder = newSortOrder))
+                }
+            }
+
+            if (needsUpdate) {
+                applicationsToUpdate.add(baseApp.copy(applicationCategories = finalLinks))
             }
         }
 
         try {
             if (categoriesToUpdate.isNotEmpty()) categoryRepository.reorderCategories(categoriesToUpdate)
-            if (applicationsToUpdate.isNotEmpty()) applicationRepository.reorderApplications(applicationsToUpdate.values.toList())
+            if (applicationsToUpdate.isNotEmpty()) applicationRepository.reorderApplications(applicationsToUpdate)
         } catch (e: Exception) {
             Log.e("AppListViewModel", "Failed to persist order", e)
             _uiState.update { it.copy(error = "Failed to save new order.") }
@@ -366,18 +419,7 @@ class ApplicationListViewModel @Inject constructor(
         // Splice the sorted apps back into the main list.
         val newItems = currentItems.take(categoryIndex + 1) + sortedAppItems + currentItems.drop(categoryIndex + 1 + appsForCategory.size)
         _uiState.update { it.copy(allItems = newItems) }
-
-        // Debounce the persistence of the sorted apps.
-        val appsToUpdate = sortedAppItems.map { it.application }
-        persistenceJob?.cancel()
-        persistenceJob = viewModelScope.launch {
-            delay(debounceTime)
-            try {
-                if (appsToUpdate.isNotEmpty()) applicationRepository.reorderApplications(appsToUpdate)
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to save alphabetical sort order.") }
-            }
-        }
+        debouncedPersist(newItems)
     }
 
     fun deleteApplication(id: Long) {
@@ -402,4 +444,3 @@ class ApplicationListViewModel @Inject constructor(
         }
     }
 }
-
