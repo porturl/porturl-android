@@ -191,46 +191,49 @@ class ApplicationListViewModel @Inject constructor(
     }
 
     /**
-     * Handles moving an application from one category to another as a result of a drag-and-drop operation.
+     * Handles moving an application from one category to another with a specific insertion index.
      */
-    fun moveApplication(appId: Long, fromCatId: Long, toCatId: Long) {
+    fun moveApplication(appId: Long, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) {
+        if (appId == -1L) return
+
         val currentItems = _uiState.value.allItems.toMutableList()
 
-        // Find the item to move.
+        // 1. Find and remove the item being dragged from its original position.
         val itemToMoveIndex = currentItems.indexOfFirst {
             it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == fromCatId
         }
-        if (itemToMoveIndex == -1) return
-
+        if (itemToMoveIndex == -1) {
+            Log.e("ViewModel", "Drag-and-drop failed: Could not find app $appId in category $fromCatId")
+            return
+        }
         val itemToMove = currentItems.removeAt(itemToMoveIndex) as DashboardItem.ApplicationItem
-        val newItem = itemToMove.copy(parentCategoryId = toCatId)
 
-        // Find the end of the target category block.
+        // 2. Determine the correct global insertion index in the `allItems` list.
         val targetCategoryIndex = currentItems.indexOfFirst {
             it is DashboardItem.CategoryItem && it.category.id == toCatId
         }
-        if (targetCategoryIndex == -1) return
-
-        var targetInsertionIndex = targetCategoryIndex + 1
-        while (targetInsertionIndex < currentItems.size && currentItems[targetInsertionIndex] is DashboardItem.ApplicationItem) {
-            targetInsertionIndex++
+        if (targetCategoryIndex == -1) {
+            Log.e("ViewModel", "Drag-and-drop failed: Could not find target category $toCatId")
+            return
         }
+        // The insertion index is the position of the category header plus one, plus the target index within the app list.
+        val insertionIndex = targetCategoryIndex + 1 + targetIndexInCat
 
-        // Insert the item.
-        currentItems.add(targetInsertionIndex, newItem)
+        // 3. Create the new item and insert it.
+        val newItem = itemToMove.copy(parentCategoryId = toCatId)
+        currentItems.add(insertionIndex, newItem)
 
-        // If the app was already in the target category, the original item is still there.
-        // We need to remove it to avoid visual duplication. This happens when an app belongs
-        // to multiple categories and is moved from one to another.
+        // 4. Handle cases where an app can belong to multiple categories.
+        // If an app is moved to a category it's already in (not the one it was dragged from),
+        // we might have a visual duplicate that needs to be removed.
         if (fromCatId != toCatId) {
-            val stationaryItemIndex = currentItems.indexOfFirst {
+            val duplicateIndex = currentItems.indexOfFirst {
                 it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == toCatId && it !== newItem
             }
-            if (stationaryItemIndex != -1) {
-                currentItems.removeAt(stationaryItemIndex)
+            if (duplicateIndex != -1) {
+                currentItems.removeAt(duplicateIndex)
             }
         }
-
 
         _uiState.update { it.copy(allItems = currentItems) }
         debouncedPersist(currentItems)
