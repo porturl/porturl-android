@@ -118,13 +118,6 @@ fun LoginScreen(
             ) {
                 Text("Login with SSO")
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = { navController.navigate(Routes.SETTINGS) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Configure Backend")
-            }
         }
     }
 }
