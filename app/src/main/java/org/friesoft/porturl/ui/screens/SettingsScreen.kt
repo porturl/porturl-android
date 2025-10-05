@@ -132,21 +132,24 @@ private fun ColorSettings(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var colorToEdit by remember { mutableStateOf<String?>(null) }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
     if (showDialog && colorToEdit != null) {
         val initialColor = when (colorToEdit) {
-            "primary" -> userPreferences.customColors?.let { Color(it.primary) } ?: MaterialTheme.colorScheme.primary
-            "secondary" -> userPreferences.customColors?.let { Color(it.secondary) } ?: MaterialTheme.colorScheme.secondary
-            else -> userPreferences.customColors?.let { Color(it.tertiary) } ?: MaterialTheme.colorScheme.tertiary
+            "primary" -> userPreferences.customColors?.let { Color(it.primary) } ?: primaryColor
+            "secondary" -> userPreferences.customColors?.let { Color(it.secondary) } ?: secondaryColor
+            else -> userPreferences.customColors?.let { Color(it.tertiary) } ?: tertiaryColor
         }
         ColorPickerDialog(
             initialColor = initialColor,
             onDismiss = { showDialog = false },
             onColorSelected = { newColor ->
                 val newCustomColors = (userPreferences.customColors ?: CustomColors(
-                    primary = MaterialTheme.colorScheme.primary.value.toInt(),
-                    secondary = MaterialTheme.colorScheme.secondary.value.toInt(),
-                    tertiary = MaterialTheme.colorScheme.tertiary.value.toInt()
+                    primary = primaryColor.value.toInt(),
+                    secondary = secondaryColor.value.toInt(),
+                    tertiary = tertiaryColor.value.toInt()
                 )).let {
                     when (colorToEdit) {
                         "primary" -> it.copy(primary = newColor.value.toInt())
@@ -223,13 +226,13 @@ private fun ColorSettings(
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorPickerButton("Primary", customColors?.primary) {
+                ColorPickerButton("Primary", customColors?.primary, fallbackColor = primaryColor) {
                     colorToEdit = "primary"; showDialog = true
                 }
-                ColorPickerButton("Secondary", customColors?.secondary) {
+                ColorPickerButton("Secondary", customColors?.secondary, fallbackColor = secondaryColor) {
                     colorToEdit = "secondary"; showDialog = true
                 }
-                ColorPickerButton("Tertiary", customColors?.tertiary) {
+                ColorPickerButton("Tertiary", customColors?.tertiary, fallbackColor = tertiaryColor) {
                     colorToEdit = "tertiary"; showDialog = true
                 }
             }
@@ -238,8 +241,8 @@ private fun ColorSettings(
 }
 
 @Composable
-fun ColorPickerButton(label: String, colorValue: Int?, onClick: () -> Unit) {
-    val color = colorValue?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+fun ColorPickerButton(label: String, colorValue: Int?, fallbackColor: Color, onClick: () -> Unit) {
+    val color = colorValue?.let { Color(it) } ?: fallbackColor
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
