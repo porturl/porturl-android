@@ -66,7 +66,6 @@ class SettingsViewModel @Inject constructor(
                 // If valid, save it to persistent storage
                 settingsRepository.saveBackendUrl(url)
                 _validationState.value = ValidationState.SUCCESS
-                userMessage.emit("Backend URL saved successfully!")
             } else {
                 // If invalid, report an error and do not save
                 _validationState.value = ValidationState.ERROR

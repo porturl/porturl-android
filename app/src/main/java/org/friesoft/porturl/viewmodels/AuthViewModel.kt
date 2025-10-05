@@ -14,6 +14,7 @@ import net.openid.appauth.AuthState
 import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.auth.TokenManager
+import org.friesoft.porturl.data.repository.SettingsRepository
 import org.friesoft.porturl.ui.navigation.Routes
 import javax.inject.Inject
 
@@ -30,7 +31,8 @@ import javax.inject.Inject
 class AuthViewModel @Inject constructor(
     private val authService: AuthService,
     private val tokenManager: TokenManager,
-    private val sessionNotifier: SessionExpiredNotifier // Inject the notifier
+    private val sessionNotifier: SessionExpiredNotifier, // Inject the notifier
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     // Private mutable state flow to hold the current authentication state.
@@ -51,12 +53,17 @@ class AuthViewModel @Inject constructor(
     private val _loginError = MutableStateFlow<String?>(null)
     val loginError = _loginError.asStateFlow()
 
+    private val _isBackendUrlSet = MutableStateFlow(false)
+    val isBackendUrlSet = _isBackendUrlSet.asStateFlow()
+
+
     init {
         // When the ViewModel is created, determine the starting screen.
         // If the user's AuthState is authorized, go to the app list. Otherwise, go to login.
         viewModelScope.launch {
             _authState.value = tokenManager.getAuthState()
             _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
+            _isBackendUrlSet.value = settingsRepository.getBackendUrlBlocking() != SettingsRepository.DEFAULT_BACKEND_URL
         }
 
         // Listen for session expiration events from the notifier

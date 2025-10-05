@@ -39,6 +39,13 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
         initialValue = UserPreferences(ThemeMode.SYSTEM, ColorSource.SYSTEM, null, null)
     )
     val snackbarHostState = remember { SnackbarHostState() }
+    val validationState by viewModel.validationState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(validationState) {
+        if (validationState == ValidationState.SUCCESS) {
+            navController.popBackStack()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.userMessage.collectLatest { message ->
