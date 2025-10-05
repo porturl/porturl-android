@@ -144,7 +144,8 @@ fun ApplicationListRoute(
         onAddCategory = { navController.navigate("${Routes.CATEGORY_DETAIL}/-1") },
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
-        authViewModel = authViewModel
+        authViewModel = authViewModel,
+        onSettingsClick = { navController.navigate(Routes.SETTINGS) }
     )
 }
 
@@ -165,7 +166,8 @@ fun ApplicationListScreen(
     onAddCategory: () -> Unit,
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    onSettingsClick: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -244,6 +246,7 @@ fun ApplicationListScreen(
                             IconButton(onClick = { setIsEditing(!isEditing) }) {
                                 Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) "Done" else "Edit Mode")
                             }
+                            IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, "Settings") }
                             IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Logout") }
                         } else {
                             TextButton(onClick = { searchBarVisible = true }) {
@@ -253,6 +256,10 @@ fun ApplicationListScreen(
                             TextButton(onClick = { setIsEditing(!isEditing) }) {
                                 Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                                 Text(if (isEditing) "Done" else "Edit")
+                            }
+                            TextButton(onClick = onSettingsClick) {
+                                Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.padding(end = 8.dp))
+                                Text("Settings")
                             }
                             TextButton(onClick = { authViewModel.logout(logoutLauncher) }) {
                                 Icon(Icons.AutoMirrored.Filled.Logout, "Logout", modifier = Modifier.padding(end = 8.dp))

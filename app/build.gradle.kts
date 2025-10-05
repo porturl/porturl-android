@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.compose.compiler)
     id("pl.allegro.tech.build.axion-release") version "1.20.1"
@@ -112,6 +113,12 @@ dependencies {
 
     // DataStore for Preferences
     implementation(libs.androidx.datastore.preferences)
+
+    // Kotlinx Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // Color Picker
+    implementation(libs.compose.colorpicker)
 }
 
 tasks.register("printVersionName") {

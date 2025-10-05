@@ -6,10 +6,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -35,6 +38,9 @@ fun LoginScreen(
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val loginError by authViewModel.loginError.collectAsStateWithLifecycle()
+    val isBackendUrlSet by authViewModel.isBackendUrlSet.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
 
     // Create an ActivityResultLauncher to handle the result from the AppAuth activity.
     // When the Keycloak login flow completes, it returns to the app here.
@@ -61,14 +67,34 @@ fun LoginScreen(
         }
     }
 
+    LaunchedEffect(isBackendUrlSet) {
+        if (!isBackendUrlSet) {
+            snackbarHostState.showSnackbar(
+                message = "Backend URL is not set. Please configure it first.",
+                duration = SnackbarDuration.Short
+            )
+            navController.navigate(Routes.SETTINGS)
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("PortURL Login") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -117,13 +143,6 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Login with SSO")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = { navController.navigate(Routes.SETTINGS) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Configure Backend")
             }
         }
     }

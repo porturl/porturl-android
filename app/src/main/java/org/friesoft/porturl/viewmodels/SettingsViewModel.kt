@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.friesoft.porturl.data.model.ColorSource
+import org.friesoft.porturl.data.model.CustomColors
+import org.friesoft.porturl.data.model.ThemeMode
+import org.friesoft.porturl.data.model.UserPreferences
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
 import javax.inject.Inject
@@ -35,6 +39,7 @@ class SettingsViewModel @Inject constructor(
      * display the currently saved backend URL.
      */
     val backendUrl: Flow<String> = settingsRepository.backendUrl
+    val userPreferences: Flow<UserPreferences> = settingsRepository.userPreferences
 
     /**
      * A SharedFlow to emit one-time events to the UI, such as showing a Snackbar
@@ -61,7 +66,6 @@ class SettingsViewModel @Inject constructor(
                 // If valid, save it to persistent storage
                 settingsRepository.saveBackendUrl(url)
                 _validationState.value = ValidationState.SUCCESS
-                userMessage.emit("Backend URL saved successfully!")
             } else {
                 // If invalid, report an error and do not save
                 _validationState.value = ValidationState.ERROR
@@ -73,5 +77,29 @@ class SettingsViewModel @Inject constructor(
     // Resets the validation state, for example, after the user dismisses an error.
     fun resetValidationState() {
         _validationState.value = ValidationState.IDLE
+    }
+
+    fun saveThemeMode(themeMode: ThemeMode) {
+        viewModelScope.launch {
+            settingsRepository.saveThemeMode(themeMode)
+        }
+    }
+
+    fun saveColorSource(colorSource: ColorSource) {
+        viewModelScope.launch {
+            settingsRepository.saveColorSource(colorSource)
+        }
+    }
+
+    fun savePredefinedColorName(colorName: String) {
+        viewModelScope.launch {
+            settingsRepository.savePredefinedColorName(colorName)
+        }
+    }
+
+    fun saveCustomColors(customColors: CustomColors) {
+        viewModelScope.launch {
+            settingsRepository.saveCustomColors(customColors)
+        }
     }
 }
