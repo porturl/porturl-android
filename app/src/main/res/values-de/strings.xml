@@ -1,0 +1,48 @@
+<resources>
+    <string name="app_name">porturl</string>
+    <string name="navigation_drawer_open">Navigationsleiste öffnen</string>
+    <string name="navigation_drawer_close">Navigationsleiste schließen</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigationskopfzeile</string>
+    <string name="action_settings">Einstellungen</string>
+
+    <string name="menu_transform">Transformieren</string>
+    <string name="menu_reflow">Neu anordnen</string>
+    <string name="menu_slideshow">Diashow</string>
+    <string name="menu_settings">Einstellungen</string>
+
+    <string name="lorem_ipsum_title">Lorem Ipsum"</string>
+    <string name="lorem_ipsum">Lorem Ipsum ist einfach ein Platzhaltertext der Druck- und Satzindustrie. Lorem Ipsum ist seit dem 16. Jahrhundert der Standard-Platzhaltertext der Branche, als ein unbekannter Drucker eine Druckvorlage nahm und sie zu einem Musterbuch für Schriftarten machte.</string>
+    <string name="fab_content_description">Stellt eine Ansicht dar, um eine Aktion aufzurufen</string>
+    <string name="image_view_item_transform_content_description">Stellt eine Bildansicht im Element dar</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_back_button">Zurück</string>
+    <string name="settings_appearance_title">Erscheinungsbild</string>
+    <string name="settings_color_title">Farbe</string>
+    <string name="settings_color_primary">Primär</string>
+    <string name="settings_color_secondary">Sekundär</string>
+    <string name="settings_color_tertiary">Tertiär</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="ok">OK</string>
+    <string name="settings_server_title">Server</string>
+    <string name="settings_server_backend_url_label">Backend-Basis-URL</string>
+    <string name="settings_server_backend_url_placeholder">z.B. http://10.0.2.2:8080</string>
+    <string name="settings_server_backend_url_hint">Verwenden Sie http://10.0.2.2 für einen lokalen Server auf Ihrem Host-Computer, wenn Sie einen Android-Emulator verwenden.</string>
+    <string name="settings_server_save_and_validate_button">Speichern und validieren</string>
+    <string name="settings_language_title">Sprache</string>
+    <string name="settings_language_label">Sprache</string>
+    <string name="settings_language_dialog_title">Sprache auswählen</string>
+    <string name="theme_mode_system">System</string>
+    <string name="theme_mode_light">Hell</string>
+    <string name="theme_mode_dark">Dunkel</string>
+    <string name="color_source_system">System</string>
+    <string name="color_source_predefined">Vordefiniert</string>
+    <string name="color_source_custom">Benutzerdefiniert</string>
+
+    <!-- Session Expired Dialog -->
+    <string name="session_expired_dialog_title">Sitzung abgelaufen</string>
+    <string name="session_expired_dialog_text">Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an, um fortzufahren.</string>
+</resources>

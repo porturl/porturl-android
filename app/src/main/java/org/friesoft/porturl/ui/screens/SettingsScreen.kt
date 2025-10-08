@@ -14,9 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.window.Dialog
+import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -24,6 +27,7 @@ import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
 import kotlinx.coroutines.flow.collectLatest
+import org.friesoft.porturl.R
 import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
@@ -58,10 +62,13 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(id = R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(id = R.string.settings_back_button)
+                        )
                     }
                 }
             )
@@ -87,6 +94,10 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                     onCustomColorsSelected = { viewModel.saveCustomColors(it) }
                 )
                 Divider(modifier = Modifier.padding(vertical = 16.dp))
+                LanguageSettings(
+                    onLanguageSelected = { viewModel.saveLanguage(it) }
+                )
+                Divider(modifier = Modifier.padding(vertical = 16.dp))
                 ServerSettings(viewModel = viewModel)
             }
         }
@@ -109,7 +120,7 @@ private fun ThemeSettings(
     onThemeModeSelected: (ThemeMode) -> Unit
 ) {
     Column {
-        SectionTitle("Appearance")
+        SectionTitle(stringResource(id = R.string.settings_appearance_title))
         ThemeMode.values().forEach { themeMode ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -123,7 +134,12 @@ private fun ThemeSettings(
                     onClick = { onThemeModeSelected(themeMode) }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = themeMode.name.lowercase().replaceFirstChar { it.titlecase() })
+                val themeName = when (themeMode) {
+                    ThemeMode.SYSTEM -> stringResource(id = R.string.theme_mode_system)
+                    ThemeMode.LIGHT -> stringResource(id = R.string.theme_mode_light)
+                    ThemeMode.DARK -> stringResource(id = R.string.theme_mode_dark)
+                }
+                Text(text = themeName)
             }
         }
     }
@@ -171,7 +187,7 @@ private fun ColorSettings(
     }
 
     Column {
-        SectionTitle("Color")
+        SectionTitle(stringResource(id = R.string.settings_color_title))
         ColorSource.values().forEach { colorSource ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -185,7 +201,12 @@ private fun ColorSettings(
                     onClick = { onColorSourceSelected(colorSource) }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = colorSource.name.lowercase().replaceFirstChar { it.titlecase() })
+                val colorSourceName = when (colorSource) {
+                    ColorSource.SYSTEM -> stringResource(id = R.string.color_source_system)
+                    ColorSource.PREDEFINED -> stringResource(id = R.string.color_source_predefined)
+                    ColorSource.CUSTOM -> stringResource(id = R.string.color_source_custom)
+                }
+                Text(text = colorSourceName)
             }
         }
 
@@ -233,13 +254,13 @@ private fun ColorSettings(
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorPickerButton("Primary", customColors?.primary, fallbackColor = primaryColor) {
+                ColorPickerButton(stringResource(id = R.string.settings_color_primary), customColors?.primary, fallbackColor = primaryColor) {
                     colorToEdit = "primary"; showDialog = true
                 }
-                ColorPickerButton("Secondary", customColors?.secondary, fallbackColor = secondaryColor) {
+                ColorPickerButton(stringResource(id = R.string.settings_color_secondary), customColors?.secondary, fallbackColor = secondaryColor) {
                     colorToEdit = "secondary"; showDialog = true
                 }
-                ColorPickerButton("Tertiary", customColors?.tertiary, fallbackColor = tertiaryColor) {
+                ColorPickerButton(stringResource(id = R.string.settings_color_tertiary), customColors?.tertiary, fallbackColor = tertiaryColor) {
                     colorToEdit = "tertiary"; showDialog = true
                 }
             }
@@ -292,16 +313,92 @@ fun ColorPickerDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(id = R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = { onColorSelected(controller.selectedColor.value) }) {
-                        Text("OK")
+                        Text(stringResource(id = R.string.ok))
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun LanguageSettings(
+    onLanguageSelected: (String) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    val currentLanguageTag = AppCompatDelegate.getApplicationLocales().get(0)?.toLanguageTag() ?: "en"
+
+    if (showDialog) {
+        LanguageSelectionDialog(
+            currentLanguage = currentLanguageTag,
+            onLanguageSelected = {
+                onLanguageSelected(it)
+                showDialog = false
+            },
+            onDismiss = { showDialog = false }
+        )
+    }
+
+    Column {
+        SectionTitle(stringResource(id = R.string.settings_language_title))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showDialog = true }
+                .padding(vertical = 8.dp)
+        ) {
+            Text(stringResource(id = R.string.settings_language_label), modifier = Modifier.weight(1f))
+            val currentLanguageName = when {
+                currentLanguageTag.startsWith("de") -> "Deutsch"
+                else -> "English"
+            }
+            Text(currentLanguageName)
+        }
+    }
+}
+
+@Composable
+private fun LanguageSelectionDialog(
+    currentLanguage: String,
+    onLanguageSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val languages = listOf("en", "de")
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.settings_language_dialog_title)) },
+        text = {
+            LazyColumn {
+                items(languages.size) { index ->
+                    val language = languages[index]
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLanguageSelected(language) }
+                            .padding(vertical = 12.dp)
+                    ) {
+                        RadioButton(
+                            selected = currentLanguage.startsWith(language),
+                            onClick = { onLanguageSelected(language) }
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(if (language == "en") "English" else "Deutsch")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -311,20 +408,20 @@ private fun ServerSettings(viewModel: SettingsViewModel) {
     var currentBackendUrl by remember(backendUrl) { mutableStateOf(backendUrl) }
 
     Column {
-        SectionTitle("Server")
+        SectionTitle(stringResource(id = R.string.settings_server_title))
         OutlinedTextField(
             value = currentBackendUrl,
             onValueChange = { currentBackendUrl = it },
-            label = { Text("Backend Base URL") },
+            label = { Text(stringResource(id = R.string.settings_server_backend_url_label)) },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("e.g., http://10.0.2.2:8080") },
+            placeholder = { Text(stringResource(id = R.string.settings_server_backend_url_placeholder)) },
             isError = validationState == ValidationState.ERROR,
             enabled = validationState != ValidationState.LOADING,
             singleLine = true
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Use http://10.0.2.2 for a local server on your host machine when using an Android Emulator.",
+            stringResource(id = R.string.settings_server_backend_url_hint),
             style = MaterialTheme.typography.bodySmall
         )
         Spacer(Modifier.height(16.dp))
@@ -339,7 +436,7 @@ private fun ServerSettings(viewModel: SettingsViewModel) {
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Save and Validate")
+                Text(stringResource(id = R.string.settings_server_save_and_validate_button))
             }
         }
     }

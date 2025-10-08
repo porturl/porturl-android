@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.flow.first
+import org.friesoft.porturl.R
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.AuthViewModel
 import org.friesoft.porturl.viewmodels.EditModeViewModel
@@ -56,11 +58,11 @@ fun AppNavigation() {
     if (showSessionExpiredDialog) {
         AlertDialog(
             onDismissRequest = { authViewModel.onSessionExpiredDialogDismissed() },
-            title = { Text("Session Expired") },
-            text = { Text("Your session has expired. Please log in again to continue.") },
+            title = { Text(stringResource(id = R.string.session_expired_dialog_title)) },
+            text = { Text(stringResource(id = R.string.session_expired_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = { authViewModel.onSessionExpiredDialogDismissed() }) {
-                    Text("OK")
+                    Text(stringResource(id = R.string.ok))
                 }
             }
         )

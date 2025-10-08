@@ -1,5 +1,7 @@
 package org.friesoft.porturl.viewmodels
 
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -101,5 +103,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.saveCustomColors(customColors)
         }
+    }
+
+    fun saveLanguage(language: String) {
+        val appLocale = LocaleListCompat.forLanguageTags(language)
+        AppCompatDelegate.setApplicationLocales(appLocale)
     }
 }
