@@ -449,7 +449,7 @@ private fun LanguageSelectionDialog(
                             onClick = { onLanguageSelected(language.code) }
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(language.displayLanguage)
+                        Text(stringResource(id = language.displayLanguage))
                     }
                 }
             }

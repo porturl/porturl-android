@@ -1,23 +1,23 @@
 package org.friesoft.porturl
 
-import android.app.LocaleManager
-import android.content.Context
-import android.os.Build
-import android.os.LocaleList
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+const val SYSTEM_DEFAULT = "system"
+
 data class Language(
     val code: String,
-    val displayLanguage: String
+    @StringRes val displayLanguageResId: Int
 )
 
 val appLanguages = listOf(
-    Language("en", "English"), // default language
-    Language("de", "Deutsch")
+    Language(SYSTEM_DEFAULT, R.string.language_system_default),
+    Language("en", R.string.language_en),
+    Language("de", R.string.language_de)
 )
 
 @Singleton
@@ -26,29 +26,16 @@ class AppLocaleManager @Inject constructor(
 ) {
 
     fun changeLanguage(languageCode: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.getSystemService(LocaleManager::class.java).applicationLocales =
-                LocaleList.forLanguageTags(languageCode)
+        val localeList = if (languageCode == SYSTEM_DEFAULT) {
+            LocaleListCompat.getEmptyLocaleList()
         } else {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(languageCode))
+            LocaleListCompat.forLanguageTags(languageCode)
         }
+        AppCompatDelegate.setApplicationLocales(localeList)
     }
 
     fun getLanguageCode(): String {
-        val locale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.getSystemService(LocaleManager::class.java)
-                ?.applicationLocales
-                ?.takeUnless { it.isEmpty }
-                ?.get(0)
-        } else {
-            AppCompatDelegate.getApplicationLocales()
-                .takeIf { !it.isEmpty }
-                ?.get(0)
-        }
-        return locale?.language ?: getDefaultLanguageCode()
-    }
-
-    private fun getDefaultLanguageCode(): String {
-        return appLanguages.first().code
+        return AppCompatDelegate.getApplicationLocales().takeIf { !it.isEmpty }?.get(0)?.language
+            ?: SYSTEM_DEFAULT
     }
 }
