@@ -1,15 +1,17 @@
 package org.friesoft.porturl.viewmodels
 
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.friesoft.porturl.AppLocaleManager
+import org.friesoft.porturl.Language
+import org.friesoft.porturl.appLanguages
 import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
@@ -33,7 +35,8 @@ enum class ValidationState {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
+    private val appLocaleManager: AppLocaleManager
 ) : ViewModel() {
 
     /**
@@ -53,6 +56,25 @@ class SettingsViewModel @Inject constructor(
     private val _validationState = MutableStateFlow(ValidationState.IDLE)
     val validationState = _validationState.asStateFlow()
 
+    private val _settingState = MutableStateFlow(SettingState())
+    val settingState: StateFlow<SettingState> = _settingState.asStateFlow()
+
+    init {
+        loadInitialLanguage()
+    }
+
+    private fun loadInitialLanguage() {
+        val currentLanguage = appLocaleManager.getLanguageCode()
+        _settingState.value = SettingState(
+            selectedLanguage = currentLanguage,
+            availableLanguages = appLanguages
+        )
+    }
+
+    fun changeLanguage(languageCode: String) {
+        appLocaleManager.changeLanguage(languageCode)
+        _settingState.value = _settingState.value.copy(selectedLanguage = languageCode)
+    }
 
     /**
      * Saves the provided backend and Keycloak URLs to the DataStore via the repository.
@@ -104,9 +126,9 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.saveCustomColors(customColors)
         }
     }
-
-    fun saveLanguage(language: String) {
-        val appLocale = LocaleListCompat.forLanguageTags(language)
-        AppCompatDelegate.setApplicationLocales(appLocale)
-    }
 }
+
+data class SettingState(
+    val selectedLanguage: String = "",
+    val availableLanguages: List<Language> = emptyList()
+)

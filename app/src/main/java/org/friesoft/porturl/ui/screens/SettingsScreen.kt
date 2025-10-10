@@ -3,13 +3,48 @@ package org.friesoft.porturl.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,9 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.window.Dialog
-import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -27,6 +60,7 @@ import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
 import kotlinx.coroutines.flow.collectLatest
+import org.friesoft.porturl.Language
 import org.friesoft.porturl.R
 import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
@@ -44,6 +78,8 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
     )
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
+    val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
+
 
     LaunchedEffect(validationState) {
         if (validationState == ValidationState.SUCCESS) {
@@ -66,8 +102,8 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = stringResource(id = R.string.settings_back_button)
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(id = R.string.back_description)
                         )
                     }
                 }
@@ -86,18 +122,28 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                     selectedThemeMode = userPreferences.themeMode,
                     onThemeModeSelected = { viewModel.saveThemeMode(it) }
                 )
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
                 ColorSettings(
                     userPreferences = userPreferences,
                     onColorSourceSelected = { viewModel.saveColorSource(it) },
                     onPredefinedColorSelected = { viewModel.savePredefinedColorName(it) },
                     onCustomColorsSelected = { viewModel.saveCustomColors(it) }
                 )
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
-                LanguageSettings(
-                    onLanguageSelected = { viewModel.saveLanguage(it) }
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
                 )
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
+                LanguageSettings(
+                    currentLanguage = settingsState.selectedLanguage,
+                    availableLanguages = settingsState.availableLanguages,
+                    onLanguageSelected = {
+                        viewModel.changeLanguage(it)
+                    }
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
                 ServerSettings(viewModel = viewModel)
             }
         }
@@ -225,7 +271,9 @@ private fun ColorSettings(
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor()
+                    modifier = Modifier.menuAnchor(
+                        type = ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                    )
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
@@ -254,13 +302,25 @@ private fun ColorSettings(
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorPickerButton(stringResource(id = R.string.settings_color_primary), customColors?.primary, fallbackColor = primaryColor) {
+                ColorPickerButton(
+                    stringResource(id = R.string.settings_color_primary),
+                    customColors?.primary,
+                    fallbackColor = primaryColor
+                ) {
                     colorToEdit = "primary"; showDialog = true
                 }
-                ColorPickerButton(stringResource(id = R.string.settings_color_secondary), customColors?.secondary, fallbackColor = secondaryColor) {
+                ColorPickerButton(
+                    stringResource(id = R.string.settings_color_secondary),
+                    customColors?.secondary,
+                    fallbackColor = secondaryColor
+                ) {
                     colorToEdit = "secondary"; showDialog = true
                 }
-                ColorPickerButton(stringResource(id = R.string.settings_color_tertiary), customColors?.tertiary, fallbackColor = tertiaryColor) {
+                ColorPickerButton(
+                    stringResource(id = R.string.settings_color_tertiary),
+                    customColors?.tertiary,
+                    fallbackColor = tertiaryColor
+                ) {
                     colorToEdit = "tertiary"; showDialog = true
                 }
             }
@@ -327,14 +387,16 @@ fun ColorPickerDialog(
 
 @Composable
 private fun LanguageSettings(
+    currentLanguage: String,
+    availableLanguages: List<Language>,
     onLanguageSelected: (String) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val currentLanguageTag = AppCompatDelegate.getApplicationLocales().get(0)?.toLanguageTag() ?: "en"
 
     if (showDialog) {
         LanguageSelectionDialog(
-            currentLanguage = currentLanguageTag,
+            currentLanguage = currentLanguage,
+            availableLanguages = availableLanguages,
             onLanguageSelected = {
                 onLanguageSelected(it)
                 showDialog = false
@@ -352,12 +414,11 @@ private fun LanguageSettings(
                 .clickable { showDialog = true }
                 .padding(vertical = 8.dp)
         ) {
-            Text(stringResource(id = R.string.settings_language_label), modifier = Modifier.weight(1f))
-            val currentLanguageName = when {
-                currentLanguageTag.startsWith("de") -> "Deutsch"
-                else -> "English"
-            }
-            Text(currentLanguageName)
+            Text(
+                stringResource(id = R.string.settings_language_label),
+                modifier = Modifier.weight(1f)
+            )
+            Text(availableLanguages.find { it.code == currentLanguage }?.displayLanguage ?: currentLanguage)
         }
     }
 }
@@ -365,30 +426,30 @@ private fun LanguageSettings(
 @Composable
 private fun LanguageSelectionDialog(
     currentLanguage: String,
+    availableLanguages: List<Language>,
     onLanguageSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val languages = listOf("en", "de")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(id = R.string.settings_language_dialog_title)) },
         text = {
             LazyColumn {
-                items(languages.size) { index ->
-                    val language = languages[index]
+                items(availableLanguages.size) { index ->
+                    val language = availableLanguages[index]
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onLanguageSelected(language) }
+                            .clickable { onLanguageSelected(language.code) }
                             .padding(vertical = 12.dp)
                     ) {
                         RadioButton(
-                            selected = currentLanguage.startsWith(language),
-                            onClick = { onLanguageSelected(language) }
+                            selected = currentLanguage == language.code,
+                            onClick = { onLanguageSelected(language.code) }
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(if (language == "en") "English" else "Deutsch")
+                        Text(language.displayLanguage)
                     }
                 }
             }
