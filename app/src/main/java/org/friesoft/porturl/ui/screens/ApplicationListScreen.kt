@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -65,6 +66,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
+import org.friesoft.porturl.R
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.ui.navigation.Routes
@@ -200,8 +202,10 @@ fun ApplicationListScreen(
     uiState.error?.let { LaunchedEffect(it) { snackbarHostState.showSnackbar(message = it) } }
 
     if (itemToDelete != null) {
+        val itemType = if (itemToDelete!!.first == "Application") stringResource(id = R.string.item_type_application)
+        else stringResource(id = R.string.item_type_category)
         DeleteConfirmationDialog(
-            itemType = itemToDelete!!.first,
+            itemType = itemType,
             onConfirm = {
                 if (itemToDelete!!.first == "Application") onDeleteApplication(itemToDelete!!.second)
                 else onDeleteCategory(itemToDelete!!.second)
@@ -217,7 +221,7 @@ fun ApplicationListScreen(
             TopAppBar(
                 title = {
                     AnimatedVisibility(visible = !showSearchBar, enter = fadeIn(), exit = fadeOut()) {
-                        Text("Application Portal")
+                        Text(stringResource(id = R.string.app_list_title))
                     }
                 },
                 actions = {
@@ -229,10 +233,10 @@ fun ApplicationListScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp)
                                 .focusRequester(focusRequester),
-                            placeholder = { Text("Search...") },
+                            placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
                             trailingIcon = {
                                 IconButton(onClick = { onSearchQueryChanged("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                    Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_search_description))
                                 }
                             }
                         )
@@ -242,28 +246,28 @@ fun ApplicationListScreen(
                         }
                     } else {
                         if (windowWidthSize == WindowWidthSizeClass.Compact) {
-                            IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, "Search") }
+                            IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, stringResource(id = R.string.search_description)) }
                             IconButton(onClick = { setIsEditing(!isEditing) }) {
-                                Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) "Done" else "Edit Mode")
+                                Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_mode_description))
                             }
-                            IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, "Settings") }
-                            IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Logout") }
+                            IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description)) }
+                            IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description)) }
                         } else {
                             TextButton(onClick = { searchBarVisible = true }) {
-                                Icon(Icons.Filled.Search, "Search", modifier = Modifier.padding(end = 8.dp))
-                                Text("Search")
+                                Icon(Icons.Filled.Search, stringResource(id = R.string.search_description), modifier = Modifier.padding(end = 8.dp))
+                                Text(stringResource(id = R.string.search_description))
                             }
                             TextButton(onClick = { setIsEditing(!isEditing) }) {
                                 Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                                Text(if (isEditing) "Done" else "Edit")
+                                Text(if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_button_text))
                             }
                             TextButton(onClick = onSettingsClick) {
-                                Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.padding(end = 8.dp))
-                                Text("Settings")
+                                Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description), modifier = Modifier.padding(end = 8.dp))
+                                Text(stringResource(id = R.string.settings_description))
                             }
                             TextButton(onClick = { authViewModel.logout(logoutLauncher) }) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, "Logout", modifier = Modifier.padding(end = 8.dp))
-                                Text("Logout")
+                                Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description), modifier = Modifier.padding(end = 8.dp))
+                                Text(stringResource(id = R.string.logout_description))
                             }
                         }
                     }
@@ -277,10 +281,10 @@ fun ApplicationListScreen(
                         FloatingActionButton(
                             onClick = onAddCategory,
                             containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ) { Icon(Icons.Default.Add, contentDescription = "Add Category") }
+                        ) { Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_category_description)) }
                     } else {
                         ExtendedFloatingActionButton(
-                            text = { Text("Add Category") },
+                            text = { Text(stringResource(id = R.string.add_category_description)) },
                             icon = { Icon(Icons.Default.Add, contentDescription = null) },
                             onClick = onAddCategory,
                             containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -290,11 +294,11 @@ fun ApplicationListScreen(
                 AnimatedVisibility(visible = isEditing) {
                     if (windowWidthSize == WindowWidthSizeClass.Compact) {
                         FloatingActionButton(onClick = onAddApplication) {
-                            Icon(Icons.Default.Apps, contentDescription = "Add Application")
+                            Icon(Icons.Default.Apps, contentDescription = stringResource(id = R.string.add_application_description))
                         }
                     } else {
                         ExtendedFloatingActionButton(
-                            text = { Text("Add Application") },
+                            text = { Text(stringResource(id = R.string.add_application_description)) },
                             icon = { Icon(Icons.Default.Apps, contentDescription = null) },
                             onClick = onAddApplication
                         )
@@ -676,7 +680,7 @@ private fun FullScreenLoader() {
 private fun EmptyState(isSearchActive: Boolean) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = if (isSearchActive) "No results found." else "No applications or categories found.\nTap 'Edit' then '+' to add some!",
+            text = if (isSearchActive) stringResource(id = R.string.empty_state_no_results) else stringResource(id = R.string.empty_state_no_items),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(16.dp)
@@ -715,7 +719,7 @@ fun ApplicationGridItem(
                         .build(),
                     placeholder = rememberVectorPainter(Icons.Default.Image),
                     error = rememberVectorPainter(Icons.Default.BrokenImage),
-                    contentDescription = "${application.name} icon",
+                    contentDescription = stringResource(id = R.string.application_icon_description, application.name),
                     modifier = Modifier.size(40.dp)
                 )
                 Spacer(Modifier.height(8.dp))
@@ -735,7 +739,7 @@ fun ApplicationGridItem(
                     .offset(x = 12.dp, y = (-12).dp)
                     .graphicsLayer { this.alpha = alpha }
             ) {
-                Icon(Icons.Filled.Delete, "Delete Application", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Filled.Delete, stringResource(id = R.string.delete_application_description), tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -777,15 +781,15 @@ fun CategoryHeader(
             if (isEditing) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (showVerticalMoveControls) {
-                        IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, "Move Up") }
-                        IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, "Move Down") }
+                        IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, stringResource(id = R.string.move_up_description)) }
+                        IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, stringResource(id = R.string.move_down_description)) }
                     }
                     if (showHorizontalMoveControls) {
-                        IconButton(onClick = onMoveLeft, enabled = canMoveLeft) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Move Left") }
-                        IconButton(onClick = onMoveRight, enabled = canMoveRight) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Move Right") }
+                        IconButton(onClick = onMoveLeft, enabled = canMoveLeft) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.move_left_description)) }
+                        IconButton(onClick = onMoveRight, enabled = canMoveRight) { Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(id = R.string.move_right_description)) }
                     }
-                    IconButton(onClick = onSortClick) { Icon(Icons.Filled.SortByAlpha, "Sort alphabetically") }
-                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, "Delete Category", tint = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = onSortClick) { Icon(Icons.Filled.SortByAlpha, stringResource(id = R.string.sort_alpha_description)) }
+                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, stringResource(id = R.string.delete_category_description), tint = MaterialTheme.colorScheme.error) }
                 }
             }
         }
@@ -800,18 +804,17 @@ private fun DeleteConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete $itemType") },
-        text = { Text("Are you sure you want to permanently delete this $itemType?") },
+        title = { Text(stringResource(id = R.string.delete_dialog_title, itemType)) },
+        text = { Text(stringResource(id = R.string.delete_dialog_text, itemType)) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) { Text("Delete") }
+            ) { Text(stringResource(id = R.string.delete_button_text)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(id = R.string.cancel)) } }
     )
 }
 
 // Extension for vector magnitude
 private fun Offset.getDistance() = sqrt(x.pow(2) + y.pow(2))
-

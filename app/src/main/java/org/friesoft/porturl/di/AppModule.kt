@@ -2,12 +2,15 @@
 
 package org.friesoft.porturl.di
 
+import android.content.Context
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import org.friesoft.porturl.AppLocaleManager
 import org.friesoft.porturl.data.auth.AuthInterceptor
 import org.friesoft.porturl.data.remote.ApiService
 import org.friesoft.porturl.data.repository.SettingsRepository
@@ -80,4 +83,16 @@ object AppModule {
     fun provideApiService(@Named("authenticated_retrofit") retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideContext(@ApplicationContext context: Context?): Context? {
+        return context
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppLocaleManager(
+        @ApplicationContext context: Context
+    ): AppLocaleManager = AppLocaleManager(context)
 }

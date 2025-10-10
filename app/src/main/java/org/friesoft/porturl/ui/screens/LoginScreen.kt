@@ -15,10 +15,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import org.friesoft.porturl.R
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.AuthViewModel
 
@@ -67,10 +69,11 @@ fun LoginScreen(
         }
     }
 
+    val backendNotSetMessage = stringResource(id = R.string.login_backend_not_set)
     LaunchedEffect(isBackendUrlSet) {
         if (!isBackendUrlSet) {
             snackbarHostState.showSnackbar(
-                message = "Backend URL is not set. Please configure it first.",
+                message = backendNotSetMessage,
                 duration = SnackbarDuration.Short
             )
             navController.navigate(Routes.SETTINGS)
@@ -81,7 +84,7 @@ fun LoginScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("PortURL Login") },
+                title = { Text(stringResource(id = R.string.login_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -91,7 +94,7 @@ fun LoginScreen(
                     IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings"
+                            contentDescription = stringResource(id = R.string.settings_description)
                         )
                     }
                 }
@@ -106,7 +109,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Welcome to PortURL", style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(id = R.string.login_welcome), style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(32.dp))
 
             // A prominent error card is now displayed if the login fails.
@@ -123,7 +126,7 @@ fun LoginScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = loginError ?: "An unknown error occurred.",
+                            text = loginError ?: stringResource(id = R.string.login_unknown_error),
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Spacer(Modifier.height(8.dp))
@@ -131,7 +134,7 @@ fun LoginScreen(
                             onClick = { authViewModel.clearLoginError() },
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("Dismiss")
+                            Text(stringResource(id = R.string.login_dismiss_error))
                         }
                     }
                 }
@@ -142,9 +145,8 @@ fun LoginScreen(
                 onClick = { authViewModel.login(launcher) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Login with SSO")
+                Text(stringResource(id = R.string.login_sso_button))
             }
         }
     }
 }
-

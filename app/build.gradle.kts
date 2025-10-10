@@ -31,6 +31,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    androidResources {
+        generateLocaleConfig = true
+        localeFilters += arrayOf("en", "de")
+    }
 
     signingConfigs {
         create("release") {

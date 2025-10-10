@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,12 +21,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
+import org.friesoft.porturl.R
 import org.friesoft.porturl.viewmodels.ApplicationDetailViewModel
 
 @Composable
@@ -45,7 +46,6 @@ fun ApplicationDetailRoute(
 
     LaunchedEffect(Unit) {
         viewModel.finishScreen.collect {
-            // Set the refresh signal before popping the back stack
             navController.previousBackStackEntry?.savedStateHandle?.set("refresh_list", true)
             navController.popBackStack()
         }
@@ -62,7 +62,8 @@ fun ApplicationDetailRoute(
         snackbarHostState = snackbarHostState,
         onImageSelected = viewModel::onImageSelected,
         onSaveClick = viewModel::saveApplication,
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        applicationId = applicationId,
     )
 }
 
@@ -73,7 +74,8 @@ fun ApplicationDetailScreen(
     snackbarHostState: SnackbarHostState,
     onImageSelected: (uri: android.net.Uri?) -> Unit,
     onSaveClick: (name: String, url: String, categoryIds: Set<Long>) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    applicationId: Long
 ) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -84,16 +86,29 @@ fun ApplicationDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (uiState.application?.id == null) "Add Application" else "Edit Application") },
+                title = {
+                    Text(
+                        stringResource(
+                            if (applicationId == -1L) R.string.app_detail_add_title else R.string.app_detail_edit_title
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(id = R.string.back_description)
+                        )
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.application != null) {
@@ -113,15 +128,11 @@ private fun ApplicationForm(
     onImagePickerClick: () -> Unit,
     onSave: (name: String, url: String, categoryIds: Set<Long>) -> Unit
 ) {
-    // This guard ensures the compiler knows 'application' is non-null below.
     val application = state.application ?: return
-
     val focusManager = LocalFocusManager.current
-
     var name by remember(application.name) { mutableStateOf(application.name) }
     var url by remember(application.url) { mutableStateOf(application.url) }
     var selectedCategoryIds by remember(application.applicationCategories) {
-        // Now that 'application' is guaranteed non-null, this is safer.
         mutableStateOf(application.applicationCategories.mapNotNull { it.category?.id }.toSet())
     }
 
@@ -132,7 +143,9 @@ private fun ApplicationForm(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -141,8 +154,20 @@ private fun ApplicationForm(
                 onClick = onImagePickerClick
             )
 
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Application Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(id = R.string.app_detail_name_label)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text(stringResource(id = R.string.app_detail_url_label)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
 
             CategorySelector(
                 allCategories = state.allCategories,
@@ -159,7 +184,9 @@ private fun ApplicationForm(
                 onSave(name, url, selectedCategoryIds)
             },
             enabled = !state.isSaving,
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
         ) {
             AnimatedContent(targetState = state.isSaving, label = "SaveButtonContent") { isSaving ->
                 if (isSaving) {
@@ -168,7 +195,7 @@ private fun ApplicationForm(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Save")
+                    Text(stringResource(id = R.string.save))
                 }
             }
         }
@@ -183,7 +210,10 @@ private fun CategorySelector(
     onSelectionChanged: (Set<Long>) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
-        Text("Categories (at least one is required)", style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(id = R.string.app_detail_categories_title),
+            style = MaterialTheme.typography.titleMedium
+        )
         Spacer(Modifier.height(8.dp))
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -195,11 +225,21 @@ private fun CategorySelector(
                 FilterChip(
                     selected = isSelected,
                     onClick = {
-                        val newSelection = if (isSelected) selectedIds - category.id else selectedIds + category.id
+                        val newSelection =
+                            if (isSelected) selectedIds - category.id else selectedIds + category.id
                         onSelectionChanged(newSelection)
                     },
                     label = { Text(category.name) },
-                    leadingIcon = if (isSelected) { { Icon(Icons.Default.Check, "Selected") } } else { null }
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                Icons.Default.Check,
+                                stringResource(id = R.string.app_detail_category_selected)
+                            )
+                        }
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -224,7 +264,7 @@ private fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
     ) {
         AsyncImage(
             model = imageModel,
-            contentDescription = "Application Icon",
+            contentDescription = stringResource(id = R.string.app_detail_icon_description),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             fallback = rememberVectorPainter(image = Icons.Default.AddAPhoto),
@@ -233,4 +273,3 @@ private fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
         )
     }
 }
-
