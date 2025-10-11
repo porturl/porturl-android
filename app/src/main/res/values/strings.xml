@@ -40,6 +40,11 @@
     <string name="color_source_predefined">Predefined</string>
     <string name="color_source_custom">Custom</string>
 
+    <!-- Languages -->
+    <string name="language_system_default">System default</string>
+    <string name="language_en">English</string>
+    <string name="language_de">German</string>
+
     <!-- Session Expired Dialog -->
     <string name="session_expired_dialog_title">Session Expired</string>
     <string name="session_expired_dialog_text">Your session has expired. Please log in again to continue.</string>

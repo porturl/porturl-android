@@ -1,5 +1,6 @@
 package org.friesoft.porturl.ui.screens
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -79,6 +81,7 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
     val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
 
     LaunchedEffect(validationState) {
@@ -139,6 +142,7 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                     availableLanguages = settingsState.availableLanguages,
                     onLanguageSelected = {
                         viewModel.changeLanguage(it)
+                        (context as? Activity)?.recreate()
                     }
                 )
                 HorizontalDivider(
@@ -418,7 +422,10 @@ private fun LanguageSettings(
                 stringResource(id = R.string.settings_language_label),
                 modifier = Modifier.weight(1f)
             )
-            Text(availableLanguages.find { it.code == currentLanguage }?.displayLanguage ?: currentLanguage)
+            val currentLanguageName = availableLanguages.find { it.code == currentLanguage }
+                ?.let { stringResource(id = it.displayLanguage) }
+                ?: currentLanguage // Fallback to the language code if its name isn't found
+            Text(text = currentLanguageName)
         }
     }
 }
@@ -431,8 +438,7 @@ private fun LanguageSelectionDialog(
     onDismiss: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.settings_language_dialog_title)) },
+        onDismissRequest = onDismiss, title = { Text(stringResource(id = R.string.settings_language_dialog_title)) },
         text = {
             LazyColumn {
                 items(availableLanguages.size) { index ->
@@ -449,7 +455,7 @@ private fun LanguageSelectionDialog(
                             onClick = { onLanguageSelected(language.code) }
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(language.displayLanguage)
+                        Text(stringResource(id = language.displayLanguage))
                     }
                 }
             }

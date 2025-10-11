@@ -3,21 +3,25 @@ package org.friesoft.porturl
 import android.app.LocaleManager
 import android.content.Context
 import android.os.Build
-import android.os.LocaleList
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import android.os.LocaleList
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+const val SYSTEM_DEFAULT = "system"
+
 data class Language(
     val code: String,
-    val displayLanguage: String
+    @StringRes val displayLanguage: Int
 )
 
 val appLanguages = listOf(
-    Language("en", "English"), // default language
-    Language("de", "Deutsch")
+    Language(SYSTEM_DEFAULT, R.string.language_system_default),
+    Language("en", R.string.language_en),
+    Language("de", R.string.language_de)
 )
 
 @Singleton
@@ -45,10 +49,7 @@ class AppLocaleManager @Inject constructor(
                 .takeIf { !it.isEmpty }
                 ?.get(0)
         }
-        return locale?.language ?: getDefaultLanguageCode()
+        return locale?.language ?: SYSTEM_DEFAULT
     }
 
-    private fun getDefaultLanguageCode(): String {
-        return appLanguages.first().code
-    }
 }
