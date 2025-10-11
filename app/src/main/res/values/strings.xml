@@ -102,4 +102,14 @@
     <string name="app_detail_category_selected">Selected</string>
     <string name="app_detail_icon_description">Application Icon</string>
 
+    <!-- VPN Settings -->
+    <string name="settings_vpn_title">VPN Settings</string>
+    <string name="settings_vpn_enable_check">Enable VPN Check</string>
+    <string name="settings_vpn_profile_name_label">VPN Profile Name</string>
+    <string name="settings_vpn_enable_liveness_check">Enable Liveness Check</string>
+    <string name="settings_vpn_liveness_check_host_label">Liveness Check Host</string>
+    <string name="settings_vpn_wifi_whitelist_title">Wi-Fi Whitelist</string>
+    <string name="settings_vpn_add_current_wifi_button">Add Current Wi-Fi</string>
+    <string name="settings_vpn_app_title">VPN App</string>
+    <string name="settings_vpn_select_app_button">Select VPN App</string>
 </resources>

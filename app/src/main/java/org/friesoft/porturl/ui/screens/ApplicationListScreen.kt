@@ -104,11 +104,13 @@ fun ApplicationListRoute(
     navController: NavController,
     editModeViewModel: EditModeViewModel,
     viewModel: ApplicationListViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val isEditing by editModeViewModel.isEditing.collectAsStateWithLifecycle()
+    val vpnStatus by mainViewModel.vpnStatus.collectAsStateWithLifecycle()
 
     val shouldRefresh by navController.currentBackStackEntry
         ?.savedStateHandle
@@ -147,7 +149,9 @@ fun ApplicationListRoute(
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         authViewModel = authViewModel,
-        onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+        onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+        vpnStatus = vpnStatus,
+        onVpnIconClick = { mainViewModel.launchVpnApp() }
     )
 }
 
@@ -169,7 +173,9 @@ fun ApplicationListScreen(
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
     authViewModel: AuthViewModel,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    vpnStatus: VpnStatus,
+    onVpnIconClick: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -245,6 +251,7 @@ fun ApplicationListScreen(
                             focusRequester.requestFocus()
                         }
                     } else {
+                        VpnStatusIcon(vpnStatus = vpnStatus, onClick = onVpnIconClick)
                         if (windowWidthSize == WindowWidthSizeClass.Compact) {
                             IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, stringResource(id = R.string.search_description)) }
                             IconButton(onClick = { setIsEditing(!isEditing) }) {
@@ -814,6 +821,36 @@ private fun DeleteConfirmationDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(id = R.string.cancel)) } }
     )
+}
+
+@Composable
+private fun VpnStatusIcon(vpnStatus: VpnStatus, onClick: () -> Unit) {
+    val icon = when (vpnStatus) {
+        VpnStatus.CONNECTED -> Icons.Default.VpnKey
+        VpnStatus.DISCONNECTED -> Icons.Default.VpnKeyOff
+        VpnStatus.NOT_CONFIGURED -> Icons.Default.VpnLock
+        VpnStatus.WHITELISTED -> Icons.Default.Wifi
+    }
+    val color = when (vpnStatus) {
+        VpnStatus.CONNECTED -> MaterialTheme.colorScheme.primary
+        VpnStatus.DISCONNECTED -> MaterialTheme.colorScheme.error
+        VpnStatus.NOT_CONFIGURED -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        VpnStatus.WHITELISTED -> MaterialTheme.colorScheme.primary
+    }
+    val contentDescription = when (vpnStatus) {
+        VpnStatus.CONNECTED -> "VPN Connected"
+        VpnStatus.DISCONNECTED -> "VPN Disconnected"
+        VpnStatus.NOT_CONFIGURED -> "VPN Not Configured"
+        VpnStatus.WHITELISTED -> "On Whitelisted Wi-Fi"
+    }
+
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = color
+        )
+    }
 }
 
 // Extension for vector magnitude

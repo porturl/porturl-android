@@ -1,13 +1,17 @@
 package org.friesoft.porturl.viewmodels
 
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.AppLocaleManager
 import org.friesoft.porturl.Language
@@ -16,8 +20,10 @@ import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
 import org.friesoft.porturl.data.model.UserPreferences
+import org.friesoft.porturl.data.model.VpnPreferences
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
+import org.friesoft.porturl.util.VpnStatusChecker
 import javax.inject.Inject
 
 // Represents the different states of the URL validation process
@@ -36,7 +42,9 @@ enum class ValidationState {
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val configRepository: ConfigRepository,
-    private val appLocaleManager: AppLocaleManager
+    private val appLocaleManager: AppLocaleManager,
+    private val vpnStatusChecker: VpnStatusChecker,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     /**
@@ -126,9 +134,82 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.saveCustomColors(customColors)
         }
     }
+
+    val vpnPreferences: Flow<VpnPreferences> = settingsRepository.vpnPreferences
+
+    fun saveVpnCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.saveVpnCheckEnabled(enabled)
+        }
+    }
+
+    fun saveVpnProfileName(name: String) {
+        viewModelScope.launch {
+            settingsRepository.saveVpnProfileName(name)
+        }
+    }
+
+    fun saveLivenessCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.saveLivenessCheckEnabled(enabled)
+        }
+    }
+
+    fun saveLivenessCheckHost(host: String) {
+        viewModelScope.launch {
+            settingsRepository.saveLivenessCheckHost(host)
+        }
+    }
+
+    fun saveWifiWhitelist(whitelist: Set<String>) {
+        viewModelScope.launch {
+            settingsRepository.saveWifiWhitelist(whitelist)
+        }
+    }
+
+    fun saveVpnAppPackageName(packageName: String) {
+        viewModelScope.launch {
+            settingsRepository.saveVpnAppPackageName(packageName)
+        }
+    }
+
+    fun addCurrentWifiToWhitelist() {
+        viewModelScope.launch {
+            val currentSsid = vpnStatusChecker.getCurrentSsid()
+            if (currentSsid != null) {
+                val currentWhitelist = vpnPreferences.first().wifiWhitelist
+                val newWhitelist = currentWhitelist.toMutableSet()
+                newWhitelist.add(currentSsid)
+                settingsRepository.saveWifiWhitelist(newWhitelist)
+            }
+        }
+    }
+
+    fun loadInstalledApps() {
+        viewModelScope.launch {
+            val pm = context.packageManager
+            val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                .map {
+                    AppInfo(
+                        name = it.loadLabel(pm).toString(),
+                        packageName = it.packageName,
+                        icon = it.loadIcon(pm)
+                    )
+                }
+                .sortedBy { it.name }
+            _settingState.value = _settingState.value.copy(installedApps = apps)
+        }
+    }
 }
+
+data class AppInfo(
+    val name: String,
+    val packageName: String,
+    val icon: android.graphics.drawable.Drawable
+)
 
 data class SettingState(
     val selectedLanguage: String = "",
-    val availableLanguages: List<Language> = emptyList()
+    val availableLanguages: List<Language> = emptyList(),
+    val installedApps: List<AppInfo> = emptyList()
 )

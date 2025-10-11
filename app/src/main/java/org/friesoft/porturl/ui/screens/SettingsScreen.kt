@@ -16,13 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Switch
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -48,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -149,7 +153,133 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
+                VpnSettings(viewModel = viewModel)
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
                 ServerSettings(viewModel = viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun VpnSettings(viewModel: SettingsViewModel) {
+    val vpnPreferences by viewModel.vpnPreferences.collectAsStateWithLifecycle(
+        initialValue = org.friesoft.porturl.data.model.VpnPreferences(
+            vpnCheckEnabled = false,
+            vpnProfileName = null,
+            livenessCheckEnabled = false,
+            livenessCheckHost = null,
+            wifiWhitelist = emptySet(),
+            vpnAppPackageName = null
+        )
+    )
+
+    Column {
+        SectionTitle(stringResource(id = R.string.settings_vpn_title))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { viewModel.saveVpnCheckEnabled(!vpnPreferences.vpnCheckEnabled) }
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                stringResource(id = R.string.settings_vpn_enable_check),
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = vpnPreferences.vpnCheckEnabled,
+                onCheckedChange = { viewModel.saveVpnCheckEnabled(it) }
+            )
+        }
+        if (vpnPreferences.vpnCheckEnabled) {
+            OutlinedTextField(
+                value = vpnPreferences.vpnProfileName ?: "",
+                onValueChange = { viewModel.saveVpnProfileName(it) },
+                label = { Text(stringResource(id = R.string.settings_vpn_profile_name_label)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                singleLine = true
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.saveLivenessCheckEnabled(!vpnPreferences.livenessCheckEnabled) }
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    stringResource(id = R.string.settings_vpn_enable_liveness_check),
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = vpnPreferences.livenessCheckEnabled,
+                    onCheckedChange = { viewModel.saveLivenessCheckEnabled(it) }
+                )
+            }
+            if (vpnPreferences.livenessCheckEnabled) {
+                OutlinedTextField(
+                    value = vpnPreferences.livenessCheckHost ?: "",
+                    onValueChange = { viewModel.saveLivenessCheckHost(it) },
+                    label = { Text(stringResource(id = R.string.settings_vpn_liveness_check_host_label)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    singleLine = true
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle(stringResource(id = R.string.settings_vpn_wifi_whitelist_title))
+            vpnPreferences.wifiWhitelist.forEach { ssid ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(ssid, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        val updatedWhitelist = vpnPreferences.wifiWhitelist.toMutableSet()
+                        updatedWhitelist.remove(ssid)
+                        viewModel.saveWifiWhitelist(updatedWhitelist)
+                    }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Remove")
+                    }
+                }
+            }
+            Button(
+                onClick = { viewModel.addCurrentWifiToWhitelist() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(id = R.string.settings_vpn_add_current_wifi_button))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            var showAppPickerDialog by remember { mutableStateOf(false) }
+            val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
+
+
+            if (showAppPickerDialog) {
+                AppSelectionDialog(
+                    apps = settingsState.installedApps,
+                    onAppSelected = {
+                        viewModel.saveVpnAppPackageName(it.packageName)
+                        showAppPickerDialog = false
+                    },
+                    onDismiss = { showAppPickerDialog = false }
+                )
+            }
+
+            SectionTitle(stringResource(id = R.string.settings_vpn_app_title))
+            Button(
+                onClick = {
+                    viewModel.loadInstalledApps()
+                    showAppPickerDialog = true
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(vpnPreferences.vpnAppPackageName ?: stringResource(id = R.string.settings_vpn_select_app_button))
             }
         }
     }
@@ -470,6 +600,44 @@ private fun LanguageSelectionDialog(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(stringResource(id = language.displayLanguage))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun AppSelectionDialog(
+    apps: List<org.friesoft.porturl.viewmodels.AppInfo>,
+    onAppSelected: (org.friesoft.porturl.viewmodels.AppInfo) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select VPN App") },
+        text = {
+            LazyColumn {
+                items(apps) { app ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAppSelected(app) }
+                            .padding(vertical = 12.dp)
+                    ) {
+                        Image(
+                            painter = com.google.accompanist.drawablepainter.rememberDrawablePainter(drawable = app.icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(app.name)
                     }
                 }
             }
