@@ -167,12 +167,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun saveVpnAppPackageName(packageName: String) {
-        viewModelScope.launch {
-            settingsRepository.saveVpnAppPackageName(packageName)
-        }
-    }
-
     fun addCurrentWifiToWhitelist() {
         viewModelScope.launch {
             val currentSsid = vpnStatusChecker.getCurrentSsid()
@@ -184,32 +178,9 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-
-    fun loadInstalledApps() {
-        viewModelScope.launch {
-            val pm = context.packageManager
-            val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                .map {
-                    AppInfo(
-                        name = it.loadLabel(pm).toString(),
-                        packageName = it.packageName,
-                        icon = it.loadIcon(pm)
-                    )
-                }
-                .sortedBy { it.name }
-            _settingState.value = _settingState.value.copy(installedApps = apps)
-        }
-    }
 }
-
-data class AppInfo(
-    val name: String,
-    val packageName: String,
-    val icon: android.graphics.drawable.Drawable
-)
 
 data class SettingState(
     val selectedLanguage: String = "",
-    val availableLanguages: List<Language> = emptyList(),
-    val installedApps: List<AppInfo> = emptyList()
+    val availableLanguages: List<Language> = emptyList()
 )

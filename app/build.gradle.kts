@@ -125,9 +125,6 @@ dependencies {
     // Color Picker
     implementation(libs.compose.colorpicker)
     implementation("com.google.accompanist:accompanist-drawablepainter:0.34.0")
-
-    // WireGuard
-    implementation("com.wireguard.android:tunnel:1.0.20210211")
 }
 
 tasks.register("printVersionName") {

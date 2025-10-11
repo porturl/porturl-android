@@ -43,7 +43,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val LIVENESS_CHECK_ENABLED_KEY = booleanPreferencesKey("liveness_check_enabled")
         val LIVENESS_CHECK_HOST_KEY = stringPreferencesKey("liveness_check_host")
         val WIFI_WHITELIST_KEY = stringSetPreferencesKey("wifi_whitelist")
-        val VPN_APP_PACKAGE_NAME_KEY = stringPreferencesKey("vpn_app_package_name")
 
         // Default URL for a local server accessed from the Android emulator
         const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080" // Default if nothing is set
@@ -90,10 +89,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         preferences[WIFI_WHITELIST_KEY] ?: emptySet()
     }
 
-    private val vpnAppPackageName: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[VPN_APP_PACKAGE_NAME_KEY]
-    }
-
     val userPreferences: Flow<UserPreferences> = combine(
         themeMode,
         colorSource,
@@ -108,23 +103,20 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         vpnProfileName,
         livenessCheckEnabled,
         livenessCheckHost,
-        wifiWhitelist,
-        vpnAppPackageName
+        wifiWhitelist
     ) { values ->
         val vpnCheckEnabled = values[0] as Boolean
         val vpnProfileName = values[1] as String?
         val livenessCheckEnabled = values[2] as Boolean
         val livenessCheckHost = values[3] as String?
         val wifiWhitelist = values[4] as Set<String>
-        val vpnAppPackageName = values[5] as String?
 
         VpnPreferences(
             vpnCheckEnabled,
             vpnProfileName,
             livenessCheckEnabled,
             livenessCheckHost,
-            wifiWhitelist,
-            vpnAppPackageName
+            wifiWhitelist
         )
     }
 
@@ -190,12 +182,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun saveWifiWhitelist(whitelist: Set<String>) {
         context.dataStore.edit { settings ->
             settings[WIFI_WHITELIST_KEY] = whitelist
-        }
-    }
-
-    suspend fun saveVpnAppPackageName(packageName: String) {
-        context.dataStore.edit { settings ->
-            settings[VPN_APP_PACKAGE_NAME_KEY] = packageName
         }
     }
 

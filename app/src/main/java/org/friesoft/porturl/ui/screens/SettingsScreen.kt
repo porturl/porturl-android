@@ -171,8 +171,7 @@ private fun VpnSettings(viewModel: SettingsViewModel) {
             vpnProfileName = null,
             livenessCheckEnabled = false,
             livenessCheckHost = null,
-            wifiWhitelist = emptySet(),
-            vpnAppPackageName = null
+            wifiWhitelist = emptySet()
         )
     )
 
@@ -253,33 +252,6 @@ private fun VpnSettings(viewModel: SettingsViewModel) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(id = R.string.settings_vpn_add_current_wifi_button))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            var showAppPickerDialog by remember { mutableStateOf(false) }
-            val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
-
-
-            if (showAppPickerDialog) {
-                AppSelectionDialog(
-                    apps = settingsState.installedApps,
-                    onAppSelected = {
-                        viewModel.saveVpnAppPackageName(it.packageName)
-                        showAppPickerDialog = false
-                    },
-                    onDismiss = { showAppPickerDialog = false }
-                )
-            }
-
-            SectionTitle(stringResource(id = R.string.settings_vpn_app_title))
-            Button(
-                onClick = {
-                    viewModel.loadInstalledApps()
-                    showAppPickerDialog = true
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(vpnPreferences.vpnAppPackageName ?: stringResource(id = R.string.settings_vpn_select_app_button))
             }
         }
     }
@@ -600,44 +572,6 @@ private fun LanguageSelectionDialog(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(stringResource(id = language.displayLanguage))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.cancel))
-            }
-        }
-    )
-}
-
-@Composable
-private fun AppSelectionDialog(
-    apps: List<org.friesoft.porturl.viewmodels.AppInfo>,
-    onAppSelected: (org.friesoft.porturl.viewmodels.AppInfo) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select VPN App") },
-        text = {
-            LazyColumn {
-                items(apps) { app ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onAppSelected(app) }
-                            .padding(vertical = 12.dp)
-                    ) {
-                        Image(
-                            painter = com.google.accompanist.drawablepainter.rememberDrawablePainter(drawable = app.icon),
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(app.name)
                     }
                 }
             }

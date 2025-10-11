@@ -5,6 +5,5 @@ data class VpnPreferences(
     val vpnProfileName: String?,
     val livenessCheckEnabled: Boolean,
     val livenessCheckHost: String?,
-    val wifiWhitelist: Set<String>,
-    val vpnAppPackageName: String?
+    val wifiWhitelist: Set<String>
 )

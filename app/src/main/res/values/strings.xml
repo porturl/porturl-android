@@ -110,6 +110,4 @@
     <string name="settings_vpn_liveness_check_host_label">Liveness Check Host</string>
     <string name="settings_vpn_wifi_whitelist_title">Wi-Fi Whitelist</string>
     <string name="settings_vpn_add_current_wifi_button">Add Current Wi-Fi</string>
-    <string name="settings_vpn_app_title">VPN App</string>
-    <string name="settings_vpn_select_app_button">Select VPN App</string>
 </resources>

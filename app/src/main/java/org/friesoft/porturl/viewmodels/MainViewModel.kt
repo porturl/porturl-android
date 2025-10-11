@@ -60,13 +60,13 @@ class MainViewModel @Inject constructor(
 
     fun launchVpnApp() {
         viewModelScope.launch {
-            val vpnAppPackageName = settingsRepository.vpnPreferences.first().vpnAppPackageName
-            if (vpnAppPackageName != null) {
-                val intent = context.packageManager.getLaunchIntentForPackage(vpnAppPackageName)
-                if (intent != null) {
-                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                }
+            val vpnProfileName = settingsRepository.vpnPreferences.first().vpnProfileName
+            if (vpnProfileName != null) {
+                val intent = android.content.Intent("com.wireguard.android.action.SET_TUNNEL_UP")
+                intent.setPackage("com.wireguard.android")
+                intent.putExtra("tunnel", vpnProfileName)
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
             }
         }
     }
