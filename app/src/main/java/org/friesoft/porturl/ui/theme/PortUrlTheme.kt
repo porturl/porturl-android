@@ -52,10 +52,41 @@ fun PortUrlTheme(
                 val primary = Color(custom.primary)
                 val secondary = Color(custom.secondary)
                 val tertiary = Color(custom.tertiary)
+                val background = generateBackgroundColor(primary, darkTheme)
+                val surface = generateSurfaceColor(background, darkTheme)
+
+                val onPrimary = if (primary.isLight()) Color.Black else Color.White
+                val onSecondary = if (secondary.isLight()) Color.Black else Color.White
+                val onTertiary = if (tertiary.isLight()) Color.Black else Color.White
+                val onBackground = if (background.isLight()) Color.Black else Color.White
+                val onSurface = if (surface.isLight()) Color.Black else Color.White
+
                 if (darkTheme) {
-                    darkColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
+                    darkColorScheme(
+                        primary = primary,
+                        secondary = secondary,
+                        tertiary = tertiary,
+                        background = background,
+                        surface = surface,
+                        onPrimary = onPrimary,
+                        onSecondary = onSecondary,
+                        onTertiary = onTertiary,
+                        onBackground = onBackground,
+                        onSurface = onSurface
+                    )
                 } else {
-                    lightColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
+                    lightColorScheme(
+                        primary = primary,
+                        secondary = secondary,
+                        tertiary = tertiary,
+                        background = background,
+                        surface = surface,
+                        onPrimary = onPrimary,
+                        onSecondary = onSecondary,
+                        onTertiary = onTertiary,
+                        onBackground = onBackground,
+                        onSurface = onSurface
+                    )
                 }
             } ?: (if (darkTheme) defaultDarkColors else defaultLightColors) // Fallback if custom colors are null
         }

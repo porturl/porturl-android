@@ -3,6 +3,7 @@ package org.friesoft.porturl.ui.theme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 
 // Default (Original) Colors
 val defaultLightColors = lightColorScheme(
@@ -82,3 +83,45 @@ val predefinedThemes = mapOf(
     "Ocean" to (oceanLightColors to oceanDarkColors),
     "Sunset" to (sunsetLightColors to sunsetDarkColors)
 )
+
+/**
+ * Generates a background color by reducing the saturation and increasing the brightness of the primary color.
+ *
+ * @param primary The primary color.
+ * @param isDark Whether the theme is dark or not.
+ * @return The generated background color.
+ */
+fun generateBackgroundColor(primary: Color, isDark: Boolean): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(primary.toArgb(), hsv)
+    hsv[1] = if (isDark) hsv[1] * 0.4f else hsv[1] * 0.1f // Reduce saturation
+    hsv[2] = if (isDark) 0.1f else 0.98f // Adjust brightness for dark/light theme
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/**
+ * Generates a surface color that is slightly different from the background color.
+ *
+ * @param background The background color.
+ * @param isDark Whether the theme is dark or not.
+ * @return The generated surface color.
+ */
+fun generateSurfaceColor(background: Color, isDark: Boolean): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(background.toArgb(), hsv)
+    hsv[2] = if (isDark) hsv[2] * 1.2f else hsv[2] * 0.95f // Adjust brightness
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/**
+ * Determines whether a color is light or dark.
+ *
+ * @return The perceived luminance of the color.
+ */
+fun Color.isLight(): Boolean {
+    val red = this.red * 255
+    val green = this.green * 255
+    val blue = this.blue * 255
+    val luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+    return luminance > 0.5
+}
