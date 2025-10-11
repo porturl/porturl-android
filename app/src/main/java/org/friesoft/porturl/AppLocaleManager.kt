@@ -1,8 +1,12 @@
 package org.friesoft.porturl
 
+import android.app.LocaleManager
+import android.content.Context
+import android.os.Build
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import android.os.LocaleList
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,7 +15,7 @@ const val SYSTEM_DEFAULT = "system"
 
 data class Language(
     val code: String,
-    @StringRes val displayLanguageResId: Int
+    @StringRes val displayLanguage: Int
 )
 
 val appLanguages = listOf(
@@ -26,16 +30,26 @@ class AppLocaleManager @Inject constructor(
 ) {
 
     fun changeLanguage(languageCode: String) {
-        val localeList = if (languageCode == SYSTEM_DEFAULT) {
-            LocaleListCompat.getEmptyLocaleList()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.getSystemService(LocaleManager::class.java).applicationLocales =
+                LocaleList.forLanguageTags(languageCode)
         } else {
-            LocaleListCompat.forLanguageTags(languageCode)
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(languageCode))
         }
-        AppCompatDelegate.setApplicationLocales(localeList)
     }
 
     fun getLanguageCode(): String {
-        return AppCompatDelegate.getApplicationLocales().takeIf { !it.isEmpty }?.get(0)?.language
-            ?: SYSTEM_DEFAULT
+        val locale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.getSystemService(LocaleManager::class.java)
+                ?.applicationLocales
+                ?.takeUnless { it.isEmpty }
+                ?.get(0)
+        } else {
+            AppCompatDelegate.getApplicationLocales()
+                .takeIf { !it.isEmpty }
+                ?.get(0)
+        }
+        return locale?.language ?: SYSTEM_DEFAULT
     }
+
 }
