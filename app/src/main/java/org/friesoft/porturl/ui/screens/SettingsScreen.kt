@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -209,6 +210,19 @@ private fun ColorSettings(
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
+    // This effect will run when the user selects 'CUSTOM' color source for the first time
+    LaunchedEffect(userPreferences.colorSource) {
+        if (userPreferences.colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
+            onCustomColorsSelected(
+                CustomColors(
+                    primary = primaryColor.toArgb(),
+                    secondary = secondaryColor.toArgb(),
+                    tertiary = tertiaryColor.toArgb()
+                )
+            )
+        }
+    }
+
     if (showDialog && colorToEdit != null) {
         val initialColor = when (colorToEdit) {
             "primary" -> userPreferences.customColors?.let { Color(it.primary) } ?: primaryColor
@@ -220,14 +234,14 @@ private fun ColorSettings(
             onDismiss = { showDialog = false },
             onColorSelected = { newColor ->
                 val newCustomColors = (userPreferences.customColors ?: CustomColors(
-                    primary = primaryColor.value.toInt(),
-                    secondary = secondaryColor.value.toInt(),
-                    tertiary = tertiaryColor.value.toInt()
+                    primary = primaryColor.toArgb(),
+                    secondary = secondaryColor.toArgb(),
+                    tertiary = tertiaryColor.toArgb()
                 )).let {
                     when (colorToEdit) {
-                        "primary" -> it.copy(primary = newColor.value.toInt())
-                        "secondary" -> it.copy(secondary = newColor.value.toInt())
-                        else -> it.copy(tertiary = newColor.value.toInt())
+                        "primary" -> it.copy(primary = newColor.toArgb())
+                        "secondary" -> it.copy(secondary = newColor.toArgb())
+                        else -> it.copy(tertiary = newColor.toArgb())
                     }
                 }
                 onCustomColorsSelected(newCustomColors)
