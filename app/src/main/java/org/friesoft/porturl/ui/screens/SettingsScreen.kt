@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,7 +78,13 @@ import org.friesoft.porturl.viewmodels.ValidationState
 @Composable
 fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = hiltViewModel()) {
     val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle(
-        initialValue = UserPreferences(ThemeMode.SYSTEM, ColorSource.SYSTEM, null, null)
+        initialValue = UserPreferences(
+            ThemeMode.SYSTEM,
+            ColorSource.SYSTEM,
+            null,
+            null,
+            translucentBackground = false
+        )
     )
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
@@ -124,7 +131,9 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                 Spacer(modifier = Modifier.height(16.dp))
                 ThemeSettings(
                     selectedThemeMode = userPreferences.themeMode,
-                    onThemeModeSelected = { viewModel.saveThemeMode(it) }
+                    onThemeModeSelected = { viewModel.saveThemeMode(it) },
+                    translucentBackground = userPreferences.translucentBackground,
+                    onTranslucentBackgroundChange = { viewModel.saveTranslucentBackground(it) }
                 )
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 16.dp),
@@ -168,7 +177,9 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun ThemeSettings(
     selectedThemeMode: ThemeMode,
-    onThemeModeSelected: (ThemeMode) -> Unit
+    onThemeModeSelected: (ThemeMode) -> Unit,
+    translucentBackground: Boolean,
+    onTranslucentBackgroundChange: (Boolean) -> Unit
 ) {
     Column {
         SectionTitle(stringResource(id = R.string.settings_appearance_title))
@@ -192,6 +203,23 @@ private fun ThemeSettings(
                 }
                 Text(text = themeName)
             }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onTranslucentBackgroundChange(!translucentBackground) }
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.settings_translucent_background_label),
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = translucentBackground,
+                onCheckedChange = onTranslucentBackgroundChange
+            )
         }
     }
 }

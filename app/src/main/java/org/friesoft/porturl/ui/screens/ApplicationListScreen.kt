@@ -105,11 +105,21 @@ fun ApplicationListRoute(
     navController: NavController,
     editModeViewModel: EditModeViewModel,
     viewModel: ApplicationListViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val isEditing by editModeViewModel.isEditing.collectAsStateWithLifecycle()
+    val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
+        initialValue = org.friesoft.porturl.data.model.UserPreferences(
+            org.friesoft.porturl.data.model.ThemeMode.SYSTEM,
+            org.friesoft.porturl.data.model.ColorSource.SYSTEM,
+            null,
+            null,
+            translucentBackground = false
+        )
+    )
 
     val shouldRefresh by navController.currentBackStackEntry
         ?.savedStateHandle
@@ -148,7 +158,8 @@ fun ApplicationListRoute(
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         authViewModel = authViewModel,
-        onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+        onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+        translucentBackground = userPreferences.translucentBackground
     )
 }
 
@@ -170,7 +181,8 @@ fun ApplicationListScreen(
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
     authViewModel: AuthViewModel,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    translucentBackground: Boolean
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -405,6 +417,7 @@ fun ApplicationListScreen(
                                         onDrag = onDrag,
                                         onDragEnd = onDragEnd,
                                         onAppBoundsChanged = { key, rect -> applicationBounds[key] = rect },
+                                        translucentBackground = translucentBackground,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .onGloballyPositioned {
@@ -443,6 +456,7 @@ fun ApplicationListScreen(
                                         onDrag = onDrag,
                                         onDragEnd = onDragEnd,
                                         onAppBoundsChanged = { key, rect -> applicationBounds[key] = rect },
+                                        translucentBackground = translucentBackground,
                                         modifier = Modifier
                                             .onGloballyPositioned {
                                                 categoryBounds[category.id] = it.boundsInRoot()
@@ -512,7 +526,8 @@ private fun CategoryColumn(
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     onAppBoundsChanged: (key: String, bounds: Rect) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    translucentBackground: Boolean
 ) {
     val isDropTarget = dropTargetInfo?.categoryId == category.id
     val borderDp by animateDpAsState(if (isDropTarget) 2.dp else 0.dp, label = "DropTargetBorder")
@@ -620,7 +635,8 @@ private fun CategoryColumn(
                                                     isEditing = false,
                                                     {},
                                                     {},
-                                                    color = color)
+                                                    color = color,
+                                                    translucentBackground = translucentBackground)
                                             }
                                             val fingerAbsolutePosition = itemBounds + offset
                                             // To make the drag feel more natural, we center the dragged item
@@ -653,7 +669,8 @@ private fun CategoryColumn(
                             }
                         ),
                     isGhost = draggingItem?.key == appKey,
-                    color = color
+                    color = color,
+                    translucentBackground = translucentBackground
                 )
             }
         }
@@ -701,15 +718,17 @@ fun ApplicationGridItem(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
     isGhost: Boolean = false,
-    color: Color
+    color: Color,
+    translucentBackground: Boolean
 ) {
     Box(modifier = modifier) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
+        val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
         ElevatedCard(
             onClick = onClick,
             enabled = !isGhost,
             modifier = Modifier.graphicsLayer { this.alpha = alpha },
-            colors = CardDefaults.cardColors(containerColor = color)
+            colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
             Column(
                 modifier = Modifier

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +36,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val COLOR_SOURCE_KEY = stringPreferencesKey("color_source")
         val PREDEFINED_COLOR_NAME_KEY = stringPreferencesKey("predefined_color_name")
         val CUSTOM_COLORS_KEY = stringPreferencesKey("custom_colors")
+        val TRANSLUCENT_BACKGROUND_KEY = booleanPreferencesKey("translucent_background")
 
         // Default URL for a local server accessed from the Android emulator
         const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080" // Default if nothing is set
@@ -61,13 +63,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         preferences[CUSTOM_COLORS_KEY]?.let { Json.decodeFromString<CustomColors>(it) }
     }
 
+    private val translucentBackground: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[TRANSLUCENT_BACKGROUND_KEY] ?: false
+    }
+
     val userPreferences: Flow<UserPreferences> = combine(
         themeMode,
         colorSource,
         predefinedColorName,
-        customColors
-    ) { themeMode, colorSource, predefinedColorName, customColors ->
-        UserPreferences(themeMode, colorSource, predefinedColorName, customColors)
+        customColors,
+        translucentBackground
+    ) { themeMode, colorSource, predefinedColorName, customColors, translucentBackground ->
+        UserPreferences(themeMode, colorSource, predefinedColorName, customColors, translucentBackground)
     }
 
     /**
@@ -102,6 +109,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun saveCustomColors(customColors: CustomColors) {
         context.dataStore.edit { settings ->
             settings[CUSTOM_COLORS_KEY] = Json.encodeToString(customColors)
+        }
+    }
+
+    suspend fun saveTranslucentBackground(translucent: Boolean) {
+        context.dataStore.edit { settings ->
+            settings[TRANSLUCENT_BACKGROUND_KEY] = translucent
         }
     }
 
