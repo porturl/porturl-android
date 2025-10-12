@@ -126,6 +126,12 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.saveCustomColors(customColors)
         }
     }
+
+    fun saveTranslucentBackground(translucent: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.saveTranslucentBackground(translucent)
+        }
+    }
 }
 
 data class SettingState(

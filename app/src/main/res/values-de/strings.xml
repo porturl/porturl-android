@@ -101,5 +101,6 @@
     <string name="app_detail_categories_title">Kategorien (mindestens eine ist erforderlich)</string>
     <string name="app_detail_category_selected">Ausgewählt</string>
     <string name="app_detail_icon_description">Anwendungssymbol</string>
+    <string name="settings_translucent_background_label">Durchscheinender Anwendungshintergrund</string>
 
 </resources>

@@ -89,5 +89,6 @@ data class UserPreferences(
     val themeMode: ThemeMode,
     val colorSource: ColorSource,
     val predefinedColorName: String?,
-    val customColors: CustomColors?
+    val customColors: CustomColors?,
+    val translucentBackground: Boolean = false
 )
