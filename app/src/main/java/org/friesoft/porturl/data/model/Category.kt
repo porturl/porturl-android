@@ -24,4 +24,3 @@ data class Category(
     @SerializedName("description") val description: String?,
     @SerializedName("enabled") val enabled: Boolean = true
 )
-
