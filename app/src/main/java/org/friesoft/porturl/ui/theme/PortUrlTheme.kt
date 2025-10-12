@@ -1,10 +1,10 @@
 package org.friesoft.porturl.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.ThemeMode
@@ -34,12 +34,11 @@ fun PortUrlTheme(
 
     val colorScheme = when (userPreferences.colorSource) {
         ColorSource.SYSTEM -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val context = LocalContext.current
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            val context = LocalContext.current
+            if (darkTheme) {
+                dynamicDarkColorScheme(context)
             } else {
-                // Fallback for older Android versions without Material You
-                if (darkTheme) defaultDarkColors else defaultLightColors
+                dynamicLightColorScheme(context)
             }
         }
         ColorSource.PREDEFINED -> {
@@ -52,10 +51,62 @@ fun PortUrlTheme(
                 val primary = Color(custom.primary)
                 val secondary = Color(custom.secondary)
                 val tertiary = Color(custom.tertiary)
+                val background = generateBackgroundColor(primary, darkTheme)
+                val surface = generateSurfaceColor(background, darkTheme)
+
+                val onPrimary = if (primary.isLight()) Color.Black else Color.White
+                val onSecondary = if (secondary.isLight()) Color.Black else Color.White
+                val onTertiary = if (tertiary.isLight()) Color.Black else Color.White
+                val onBackground = if (background.isLight()) Color.Black else Color.White
+                val onSurface = if (surface.isLight()) Color.Black else Color.White
+
+                // Generate container colors by blending with the surface
+                val primaryContainer = primary.copy(alpha = 0.12f).compositeOver(surface)
+                val secondaryContainer = secondary.copy(alpha = 0.12f).compositeOver(surface)
+                val tertiaryContainer = tertiary.copy(alpha = 0.12f).compositeOver(surface)
+
+                val onPrimaryContainer = if (primaryContainer.isLight()) Color.Black else Color.White
+                val onSecondaryContainer = if (secondaryContainer.isLight()) Color.Black else Color.White
+                val onTertiaryContainer = if (tertiaryContainer.isLight()) Color.Black else Color.White
+
                 if (darkTheme) {
-                    darkColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
+                    darkColorScheme(
+                        primary = primary,
+                        secondary = secondary,
+                        tertiary = tertiary,
+                        background = background,
+                        surface = surface,
+                        onPrimary = onPrimary,
+                        onSecondary = onSecondary,
+                        onTertiary = onTertiary,
+                        onBackground = onBackground,
+                        onSurface = onSurface,
+                        primaryContainer = primaryContainer,
+                        onPrimaryContainer = onPrimaryContainer,
+                        secondaryContainer = secondaryContainer,
+                        onSecondaryContainer = onSecondaryContainer,
+                        tertiaryContainer = tertiaryContainer,
+                        onTertiaryContainer = onTertiaryContainer
+                    )
                 } else {
-                    lightColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
+                    lightColorScheme(
+                        primary = primary,
+                        secondary = secondary,
+                        tertiary = tertiary,
+                        background = background,
+                        surface = surface,
+                        onPrimary = onPrimary,
+                        onSecondary = onSecondary,
+                        onTertiary = onTertiary,
+                        onBackground = onBackground,
+                        onSurface = onSurface,
+                        primaryContainer = primaryContainer,
+                        onPrimaryContainer = onPrimaryContainer,
+                        secondaryContainer = secondaryContainer,
+                        onSecondaryContainer = onSecondaryContainer,
+                        tertiaryContainer = tertiaryContainer,
+                        onTertiaryContainer = onTertiaryContainer
+                    )
                 }
             } ?: (if (darkTheme) defaultDarkColors else defaultLightColors) // Fallback if custom colors are null
         }

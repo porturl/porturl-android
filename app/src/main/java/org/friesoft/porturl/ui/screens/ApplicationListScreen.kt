@@ -46,6 +46,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
@@ -516,6 +517,7 @@ private fun CategoryColumn(
     val isDropTarget = dropTargetInfo?.categoryId == category.id
     val borderDp by animateDpAsState(if (isDropTarget) 2.dp else 0.dp, label = "DropTargetBorder")
     val context = LocalContext.current
+    val color = MaterialTheme.colorScheme.primaryContainer
 
     Column(
         modifier = modifier.border(borderDp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium),
@@ -536,7 +538,8 @@ private fun CategoryColumn(
             canMoveLeft = canMoveUp,
             canMoveRight = canMoveDown,
             showVerticalMoveControls = showMoveControls,
-            showHorizontalMoveControls = !showMoveControls
+            showHorizontalMoveControls = !showMoveControls,
+            color = color
         )
 
         FlowRow(
@@ -616,7 +619,8 @@ private fun CategoryColumn(
                                                     application,
                                                     isEditing = false,
                                                     {},
-                                                    {})
+                                                    {},
+                                                    color = color)
                                             }
                                             val fingerAbsolutePosition = itemBounds + offset
                                             // To make the drag feel more natural, we center the dragged item
@@ -648,7 +652,8 @@ private fun CategoryColumn(
                                 )
                             }
                         ),
-                    isGhost = draggingItem?.key == appKey
+                    isGhost = draggingItem?.key == appKey,
+                    color = color
                 )
             }
         }
@@ -695,14 +700,16 @@ fun ApplicationGridItem(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isGhost: Boolean = false
+    isGhost: Boolean = false,
+    color: Color
 ) {
     Box(modifier = modifier) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
         ElevatedCard(
             onClick = onClick,
             enabled = !isGhost,
-            modifier = Modifier.graphicsLayer { this.alpha = alpha }
+            modifier = Modifier.graphicsLayer { this.alpha = alpha },
+            colors = CardDefaults.cardColors(containerColor = color)
         ) {
             Column(
                 modifier = Modifier
@@ -727,7 +734,8 @@ fun ApplicationGridItem(
                     text = application.name,
                     style = MaterialTheme.typography.titleSmall,
                     textAlign = TextAlign.Center,
-                    maxLines = 2
+                    maxLines = 2,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -761,13 +769,14 @@ fun CategoryHeader(
     canMoveLeft: Boolean,
     canMoveRight: Boolean,
     showVerticalMoveControls: Boolean,
-    showHorizontalMoveControls: Boolean
+    showHorizontalMoveControls: Boolean,
+    color: Color
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick, enabled = isEditing),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = color,
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 2.dp
     ) {
@@ -776,19 +785,24 @@ fun CategoryHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = category.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f, fill = false))
+            Text(
+                text = category.name,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f, fill = false),
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
             Spacer(Modifier.width(8.dp))
             if (isEditing) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (showVerticalMoveControls) {
-                        IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, stringResource(id = R.string.move_up_description)) }
-                        IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, stringResource(id = R.string.move_down_description)) }
+                        IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, stringResource(id = R.string.move_up_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                        IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, stringResource(id = R.string.move_down_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                     }
                     if (showHorizontalMoveControls) {
-                        IconButton(onClick = onMoveLeft, enabled = canMoveLeft) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.move_left_description)) }
-                        IconButton(onClick = onMoveRight, enabled = canMoveRight) { Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(id = R.string.move_right_description)) }
+                        IconButton(onClick = onMoveLeft, enabled = canMoveLeft) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.move_left_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                        IconButton(onClick = onMoveRight, enabled = canMoveRight) { Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(id = R.string.move_right_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                     }
-                    IconButton(onClick = onSortClick) { Icon(Icons.Filled.SortByAlpha, stringResource(id = R.string.sort_alpha_description)) }
+                    IconButton(onClick = onSortClick) { Icon(Icons.Filled.SortByAlpha, stringResource(id = R.string.sort_alpha_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                     IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, stringResource(id = R.string.delete_category_description), tint = MaterialTheme.colorScheme.error) }
                 }
             }
