@@ -3,7 +3,6 @@ package org.friesoft.porturl.viewmodels
 import android.content.Intent
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,8 +57,8 @@ class AuthViewModel @Inject constructor(
     private val _loginError = MutableStateFlow<Int?>(null)
     val loginError = _loginError.asStateFlow()
 
-    private val _isBackendUrlSet = MutableStateFlow(false)
-    val isBackendUrlSet = _isBackendUrlSet.asStateFlow()
+    private val _isBackendUrlValid = MutableStateFlow(false)
+    val isBackendUrlValid = _isBackendUrlValid.asStateFlow()
 
 
     init {
@@ -68,7 +67,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = tokenManager.getAuthState()
             _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
-            checkBackendUrlSet()
+            checkBackendUrlValid()
         }
 
         // Listen for session expiration events from the notifier
@@ -97,10 +96,10 @@ class AuthViewModel @Inject constructor(
     /**
      * Checks if the backend URL is set and updates the corresponding state.
      */
-    fun checkBackendUrlSet() {
+    fun checkBackendUrlValid() {
         viewModelScope.launch {
             val url = settingsRepository.backendUrl.first()
-            _isBackendUrlSet.value = configRepository.validateBackendUrl(url)
+            _isBackendUrlValid.value = configRepository.validateBackendUrl(url)
         }
     }
 
@@ -155,7 +154,7 @@ class AuthViewModel @Inject constructor(
             // Clear the local tokens regardless
             tokenManager.clearAuthState()
             _authState.value = AuthState()
-            checkBackendUrlSet()
+            checkBackendUrlValid()
         }
     }
 }

@@ -57,9 +57,8 @@ fun LoginScreen(
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val loginErrorResId by authViewModel.loginError.collectAsStateWithLifecycle()
-    val isBackendUrlSet by authViewModel.isBackendUrlSet.collectAsStateWithLifecycle()
+    val isBackendUrlValid by authViewModel.isBackendUrlValid.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-
 
     // Create an ActivityResultLauncher to handle the result from the AppAuth activity.
     // When the Keycloak login flow completes, it returns to the app here.
@@ -146,7 +145,7 @@ fun LoginScreen(
                 }
             }
 
-            if (!isBackendUrlSet) {
+            if (!isBackendUrlValid) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -177,7 +176,7 @@ fun LoginScreen(
             Button(
                 onClick = { authViewModel.login(launcher) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = isBackendUrlSet
+                enabled = isBackendUrlValid
             ) {
                 Text(stringResource(id = R.string.login_sso_button))
             }
