@@ -52,18 +52,19 @@ fun PortUrlTheme(
                 val secondary = Color(custom.secondary)
                 val tertiary = Color(custom.tertiary)
                 val background = generateBackgroundColor(primary, darkTheme)
-                val surface = generateSurfaceColor(background, darkTheme)
+                val surface = secondary
+                val surfaceVariant = generateBackgroundColor(tertiary, darkTheme)
 
                 val onPrimary = if (primary.isLight()) Color.Black else Color.White
                 val onSecondary = if (secondary.isLight()) Color.Black else Color.White
                 val onTertiary = if (tertiary.isLight()) Color.Black else Color.White
                 val onBackground = if (background.isLight()) Color.Black else Color.White
                 val onSurface = if (surface.isLight()) Color.Black else Color.White
+                val onSurfaceVariant = if (surfaceVariant.isLight()) Color.Black else Color.White
 
-                // Generate container colors by blending with the surface
-                val primaryContainer = primary.copy(alpha = 0.12f).compositeOver(surface)
-                val secondaryContainer = secondary.copy(alpha = 0.12f).compositeOver(surface)
-                val tertiaryContainer = tertiary.copy(alpha = 0.12f).compositeOver(surface)
+                val primaryContainer = primary.copy(alpha = 0.8f).compositeOver(surface)
+                val secondaryContainer = secondary.copy(alpha = 0.8f).compositeOver(surface)
+                val tertiaryContainer = tertiary.copy(alpha = 0.8f).compositeOver(surface)
 
                 val onPrimaryContainer = if (primaryContainer.isLight()) Color.Black else Color.White
                 val onSecondaryContainer = if (secondaryContainer.isLight()) Color.Black else Color.White
@@ -76,11 +77,13 @@ fun PortUrlTheme(
                         tertiary = tertiary,
                         background = background,
                         surface = surface,
+                        surfaceVariant = surfaceVariant,
                         onPrimary = onPrimary,
                         onSecondary = onSecondary,
                         onTertiary = onTertiary,
                         onBackground = onBackground,
                         onSurface = onSurface,
+                        onSurfaceVariant = onSurfaceVariant,
                         primaryContainer = primaryContainer,
                         onPrimaryContainer = onPrimaryContainer,
                         secondaryContainer = secondaryContainer,
@@ -95,11 +98,13 @@ fun PortUrlTheme(
                         tertiary = tertiary,
                         background = background,
                         surface = surface,
+                        surfaceVariant = surfaceVariant,
                         onPrimary = onPrimary,
                         onSecondary = onSecondary,
                         onTertiary = onTertiary,
                         onBackground = onBackground,
                         onSurface = onSurface,
+                        onSurfaceVariant = onSurfaceVariant,
                         primaryContainer = primaryContainer,
                         onPrimaryContainer = onPrimaryContainer,
                         secondaryContainer = secondaryContainer,
