@@ -306,14 +306,18 @@ fun ApplicationListScreen(
                 }
                 AnimatedVisibility(visible = isEditing) {
                     if (windowWidthSize == WindowWidthSizeClass.Compact) {
-                        FloatingActionButton(onClick = onAddApplication) {
+                        FloatingActionButton(
+                            onClick = onAddApplication,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
                             Icon(Icons.Default.Apps, contentDescription = stringResource(id = R.string.add_application_description))
                         }
                     } else {
                         ExtendedFloatingActionButton(
                             text = { Text(stringResource(id = R.string.add_application_description)) },
                             icon = { Icon(Icons.Default.Apps, contentDescription = null) },
-                            onClick = onAddApplication
+                            onClick = onAddApplication,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
                         )
                     }
                 }
