@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.AppLocaleManager
 import org.friesoft.porturl.Language
+import org.friesoft.porturl.R
 import org.friesoft.porturl.appLanguages
 import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
@@ -51,7 +52,7 @@ class SettingsViewModel @Inject constructor(
      * message. This is used to inform the user that settings have been saved.
      * Used to send one-off messages to the UI (e.g., for Snackbars)
      */
-    val userMessage = MutableSharedFlow<String>()
+    val userMessage = MutableSharedFlow<Int>()
 
     private val _validationState = MutableStateFlow(ValidationState.IDLE)
     val validationState = _validationState.asStateFlow()
@@ -93,7 +94,7 @@ class SettingsViewModel @Inject constructor(
             } else {
                 // If invalid, report an error and do not save
                 _validationState.value = ValidationState.ERROR
-                userMessage.emit("Could not connect to the provided URL.")
+                userMessage.emit(R.string.settingsviewmodel_error_could_not_connect_url)
             }
         }
     }

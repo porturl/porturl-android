@@ -3,6 +3,7 @@ package org.friesoft.porturl.viewmodels
 import android.content.Intent
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthState
+import org.friesoft.porturl.R
 import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.auth.TokenManager
@@ -53,7 +55,7 @@ class AuthViewModel @Inject constructor(
     val showSessionExpiredDialog = _showSessionExpiredDialog.asStateFlow()
 
     // New state to hold login-specific error messages
-    private val _loginError = MutableStateFlow<String?>(null)
+    private val _loginError = MutableStateFlow<Int?>(null)
     val loginError = _loginError.asStateFlow()
 
     private val _isBackendUrlSet = MutableStateFlow(false)
@@ -117,7 +119,7 @@ class AuthViewModel @Inject constructor(
                 authService.performAuthorizationRequest(launcher)
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Login failed: Could not get SSO config from backend.", e)
-                _loginError.value = "Could not connect to the backend. Please check the server URL in settings or try again later."
+                _loginError.value = R.string.authviewmodel_error_could_not_connect_backend
             }
         }
     }

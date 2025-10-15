@@ -99,8 +99,8 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
     }
 
     LaunchedEffect(Unit) {
-        viewModel.userMessage.collectLatest { message ->
-            snackbarHostState.showSnackbar(message)
+        viewModel.userMessage.collectLatest { messageResId ->
+            snackbarHostState.showSnackbar(context.getString(messageResId))
             viewModel.resetValidationState()
         }
     }
@@ -114,7 +114,7 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.back_description)
+                            contentDescription = stringResource(    id = R.string.back_description)
                         )
                     }
                 }

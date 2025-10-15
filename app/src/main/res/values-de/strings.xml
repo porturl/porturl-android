@@ -104,4 +104,10 @@
     <string name="app_detail_icon_description">Anwendungssymbol</string>
     <string name="settings_translucent_background_label">Durchscheinender Anwendungshintergrund</string>
 
+    <!-- AuthViewModel -->
+    <string name="authviewmodel_error_could_not_connect_backend">Verbindung zum Backend nicht möglich. Bitte überprüfen Sie die Backend-Basis-URL in den Einstellungen oder versuchen Sie es später noch einmal.</string>
+
+    <!-- SettingsViewModel -->
+    <string name="settingsviewmodel_error_could_not_connect_url">Verbindung zur angegeben URL nicht möglich.</string>
+
 </resources>

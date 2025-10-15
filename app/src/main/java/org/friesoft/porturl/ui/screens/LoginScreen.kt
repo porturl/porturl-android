@@ -56,7 +56,7 @@ fun LoginScreen(
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
-    val loginError by authViewModel.loginError.collectAsStateWithLifecycle()
+    val loginErrorResId by authViewModel.loginError.collectAsStateWithLifecycle()
     val isBackendUrlSet by authViewModel.isBackendUrlSet.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -119,7 +119,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // A prominent error card is now displayed if the login fails.
-            AnimatedVisibility(visible = loginError != null) {
+            AnimatedVisibility(visible = loginErrorResId != null) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -132,7 +132,7 @@ fun LoginScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = loginError ?: stringResource(id = R.string.login_unknown_error),
+                            text = stringResource(id = loginErrorResId!!),
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Spacer(Modifier.height(8.dp))
