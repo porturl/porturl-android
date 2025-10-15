@@ -413,13 +413,17 @@ fun ColorPickerDialog(
                 HsvColorPicker(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
+                        .height(300.dp)
+                        .padding(10.dp),
                     controller = controller,
                     initialColor = initialColor
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 BrightnessSlider(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp)
+                        .height(35.dp),
                     controller = controller
                 )
                 Spacer(modifier = Modifier.height(16.dp))
