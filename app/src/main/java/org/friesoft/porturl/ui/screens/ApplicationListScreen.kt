@@ -558,7 +558,7 @@ private fun CategoryColumn(
             canMoveRight = canMoveDown,
             showVerticalMoveControls = showMoveControls,
             showHorizontalMoveControls = !showMoveControls,
-            color = color
+            color = MaterialTheme.colorScheme.tertiaryContainer
         )
 
         FlowRow(
