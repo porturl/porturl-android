@@ -1,14 +1,31 @@
 package org.friesoft.porturl.ui.screens
 
 import android.app.Activity
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,17 +83,6 @@ fun LoginScreen(
                 // from navigating back to it with the back button.
                 popUpTo(Routes.LOGIN) { inclusive = true }
             }
-        }
-    }
-
-    val backendNotSetMessage = stringResource(id = R.string.login_backend_not_set)
-    LaunchedEffect(isBackendUrlSet) {
-        if (!isBackendUrlSet) {
-            snackbarHostState.showSnackbar(
-                message = backendNotSetMessage,
-                duration = SnackbarDuration.Short
-            )
-            navController.navigate(Routes.SETTINGS)
         }
     }
 
@@ -140,10 +146,38 @@ fun LoginScreen(
                 }
             }
 
+            if (!isBackendUrlSet) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.login_backend_not_valid),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = { navController.navigate(Routes.SETTINGS) },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text(stringResource(id = R.string.login_go_to_settings))
+                        }
+                    }
+                }
+            }
 
             Button(
                 onClick = { authViewModel.login(launcher) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isBackendUrlSet
             ) {
                 Text(stringResource(id = R.string.login_sso_button))
             }

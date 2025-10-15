@@ -55,7 +55,8 @@
     <string name="login_unknown_error">An unknown error occurred.</string>
     <string name="login_dismiss_error">Dismiss</string>
     <string name="login_sso_button">Login with SSO</string>
-    <string name="login_backend_not_set">Backend URL is not set. Please configure it first.</string>
+    <string name="login_backend_not_valid">Backend URL is not valid/reachable. Please configure it correctly.</string>
+    <string name="login_go_to_settings">Go to settings</string>
 
     <!-- Application List Screen -->
     <string name="app_list_title">Application Portal</string>

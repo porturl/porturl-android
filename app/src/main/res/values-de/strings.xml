@@ -55,7 +55,8 @@
     <string name="login_unknown_error">Ein unbekannter Fehler ist aufgetreten.</string>
     <string name="login_dismiss_error">Verwerfen</string>
     <string name="login_sso_button">Mit SSO anmelden</string>
-    <string name="login_backend_not_set">Die Backend-URL ist nicht festgelegt. Bitte konfigurieren Sie sie zuerst.</string>
+    <string name="login_backend_not_valid">Die Backend-URL ist nicht gültig/erreichbar. Bitte konfigurieren Sie sie korrekt.</string>
+    <string name="login_go_to_settings">Einstellungen öffnen</string>
 
     <!-- Application List Screen -->
     <string name="app_list_title">Anwendungsportal</string>

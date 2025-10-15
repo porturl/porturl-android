@@ -9,11 +9,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthState
 import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.auth.TokenManager
+import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
 import org.friesoft.porturl.ui.navigation.Routes
 import javax.inject.Inject
@@ -32,7 +34,8 @@ class AuthViewModel @Inject constructor(
     private val authService: AuthService,
     private val tokenManager: TokenManager,
     private val sessionNotifier: SessionExpiredNotifier, // Inject the notifier
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val configRepository: ConfigRepository
 ) : ViewModel() {
 
     // Private mutable state flow to hold the current authentication state.
@@ -63,7 +66,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = tokenManager.getAuthState()
             _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
-            _isBackendUrlSet.value = settingsRepository.getBackendUrlBlocking() != SettingsRepository.DEFAULT_BACKEND_URL
+            checkBackendUrlSet()
         }
 
         // Listen for session expiration events from the notifier
@@ -87,6 +90,16 @@ class AuthViewModel @Inject constructor(
 
     fun clearLoginError() {
         _loginError.value = null
+    }
+
+    /**
+     * Checks if the backend URL is set and updates the corresponding state.
+     */
+    fun checkBackendUrlSet() {
+        viewModelScope.launch {
+            val url = settingsRepository.backendUrl.first()
+            _isBackendUrlSet.value = configRepository.validateBackendUrl(url)
+        }
     }
 
     /**
@@ -140,6 +153,7 @@ class AuthViewModel @Inject constructor(
             // Clear the local tokens regardless
             tokenManager.clearAuthState()
             _authState.value = AuthState()
+            checkBackendUrlSet()
         }
     }
 }
