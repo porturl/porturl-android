@@ -238,19 +238,6 @@ private fun ColorSettings(
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
-    // This effect will run when the user selects 'CUSTOM' color source for the first time
-    LaunchedEffect(userPreferences.colorSource) {
-        if (userPreferences.colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
-            onCustomColorsSelected(
-                CustomColors(
-                    primary = primaryColor.toArgb(),
-                    secondary = secondaryColor.toArgb(),
-                    tertiary = tertiaryColor.toArgb()
-                )
-            )
-        }
-    }
-
     if (showDialog && colorToEdit != null) {
         val initialColor = when (colorToEdit) {
             "primary" -> userPreferences.customColors?.let { Color(it.primary) } ?: primaryColor
@@ -285,12 +272,34 @@ private fun ColorSettings(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onColorSourceSelected(colorSource) }
+                    .clickable {
+                        if (colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
+                            onCustomColorsSelected(
+                                CustomColors(
+                                    primary = primaryColor.toArgb(),
+                                    secondary = secondaryColor.toArgb(),
+                                    tertiary = tertiaryColor.toArgb()
+                                )
+                            )
+                        }
+                        onColorSourceSelected(colorSource)
+                    }
                     .padding(vertical = 8.dp)
             ) {
                 RadioButton(
                     selected = userPreferences.colorSource == colorSource,
-                    onClick = { onColorSourceSelected(colorSource) }
+                    onClick = {
+                        if (colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
+                            onCustomColorsSelected(
+                                CustomColors(
+                                    primary = primaryColor.toArgb(),
+                                    secondary = secondaryColor.toArgb(),
+                                    tertiary = tertiaryColor.toArgb()
+                                )
+                            )
+                        }
+                        onColorSourceSelected(colorSource)
+                    }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 val colorSourceName = when (colorSource) {
