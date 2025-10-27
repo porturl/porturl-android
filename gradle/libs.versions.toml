@@ -31,7 +31,7 @@ navigationUiKtx = "2.9.5"
 reorderable = "0.9.6"
 window = "1.5.0"
 material3WindowSizeClass = "1.4.0"
-uiText = "1.9.3"
+uiText = "1.9.4"
 
 [libraries]
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
