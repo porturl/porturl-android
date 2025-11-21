@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.data.auth.AuthService
+import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.model.ApplicationCategory
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
@@ -20,7 +22,9 @@ import javax.inject.Inject
 @HiltViewModel
 class ApplicationDetailViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val authService: AuthService,
+    private val sessionNotifier: SessionExpiredNotifier
 ) : ViewModel() {
 
     data class UiState(
@@ -101,6 +105,13 @@ class ApplicationDetailViewModel @Inject constructor(
                 } else {
                     applicationRepository.updateApplication(appToSave.id!!, appToSave)
                 }
+
+                // Force token refresh to update roles
+                if (!authService.forceTokenRefresh()) {
+                    sessionNotifier.notifySessionExpired()
+                    return@launch
+                }
+
                 finishScreen.emit(true)
             } catch (e: Exception) {
                 errorMessage.emit("Failed to save application: ${e.message}")
