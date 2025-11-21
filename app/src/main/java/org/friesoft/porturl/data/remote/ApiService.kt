@@ -4,6 +4,7 @@ import okhttp3.MultipartBody
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.model.ImageUploadResponse
+import org.friesoft.porturl.data.model.User
 import retrofit2.http.*
 
 /**
@@ -59,4 +60,28 @@ interface ApiService {
     @POST("api/images")
     suspend fun uploadImage(@Part file: MultipartBody.Part): ImageUploadResponse
 
+    // --- User Management & Roles ---
+
+    @GET("api/users")
+    suspend fun getAllUsers(): List<User>
+
+    @GET("api/user/roles")
+    suspend fun getCurrentUserRoles(): List<String>
+
+    @GET("api/user/{id}/roles")
+    suspend fun getUserRoles(@Path("id") id: Long): List<String>
+
+    @POST("api/applications/{appId}/assign/{userId}/{role}")
+    suspend fun assignRole(
+        @Path("appId") appId: Long,
+        @Path("userId") userId: Long,
+        @Path("role") role: String
+    )
+
+    @POST("api/applications/{appId}/unassign/{userId}/{role}")
+    suspend fun unassignRole(
+        @Path("appId") appId: Long,
+        @Path("userId") userId: Long,
+        @Path("role") role: String
+    )
 }

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
@@ -110,6 +111,7 @@ fun ApplicationListRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
+    val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
     val isEditing by editModeViewModel.isEditing.collectAsStateWithLifecycle()
     val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
         initialValue = org.friesoft.porturl.data.model.UserPreferences(
@@ -159,6 +161,8 @@ fun ApplicationListRoute(
         onDeleteCategory = viewModel::deleteCategory,
         authViewModel = authViewModel,
         onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+        onManageUsers = { navController.navigate(Routes.USER_LIST) },
+        isAdmin = isAdmin,
         translucentBackground = userPreferences.translucentBackground
     )
 }
@@ -182,6 +186,8 @@ fun ApplicationListScreen(
     onDeleteCategory: (id: Long) -> Unit,
     authViewModel: AuthViewModel,
     onSettingsClick: () -> Unit,
+    onManageUsers: () -> Unit,
+    isAdmin: Boolean,
     translucentBackground: Boolean
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -263,6 +269,9 @@ fun ApplicationListScreen(
                             IconButton(onClick = { setIsEditing(!isEditing) }) {
                                 Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_mode_description))
                             }
+                            if (isAdmin) {
+                                IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, "Manage Users") }
+                            }
                             IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description)) }
                             IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description)) }
                         } else {
@@ -273,6 +282,12 @@ fun ApplicationListScreen(
                             TextButton(onClick = { setIsEditing(!isEditing) }) {
                                 Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                                 Text(if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_button_text))
+                            }
+                            if (isAdmin) {
+                                TextButton(onClick = onManageUsers) {
+                                    Icon(Icons.Filled.Person, "Manage Users", modifier = Modifier.padding(end = 8.dp))
+                                    Text("Manage Users")
+                                }
                             }
                             TextButton(onClick = onSettingsClick) {
                                 Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description), modifier = Modifier.padding(end = 8.dp))

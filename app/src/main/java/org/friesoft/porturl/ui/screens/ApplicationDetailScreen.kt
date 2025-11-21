@@ -11,8 +11,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,7 +75,7 @@ fun ApplicationDetailScreen(
     uiState: ApplicationDetailViewModel.UiState,
     snackbarHostState: SnackbarHostState,
     onImageSelected: (uri: android.net.Uri?) -> Unit,
-    onSaveClick: (name: String, url: String, categoryIds: Set<Long>) -> Unit,
+    onSaveClick: (name: String, url: String, categoryIds: Set<Long>, roles: List<String>) -> Unit,
     onBackClick: () -> Unit,
     applicationId: Long
 ) {
@@ -126,12 +128,13 @@ fun ApplicationDetailScreen(
 private fun ApplicationForm(
     state: ApplicationDetailViewModel.UiState,
     onImagePickerClick: () -> Unit,
-    onSave: (name: String, url: String, categoryIds: Set<Long>) -> Unit
+    onSave: (name: String, url: String, categoryIds: Set<Long>, roles: List<String>) -> Unit
 ) {
     val application = state.application ?: return
     val focusManager = LocalFocusManager.current
     var name by remember(application.name) { mutableStateOf(application.name) }
     var url by remember(application.url) { mutableStateOf(application.url) }
+    var roles by remember(application.roles) { mutableStateOf(application.roles) }
     var selectedCategoryIds by remember(application.applicationCategories) {
         mutableStateOf(application.applicationCategories.mapNotNull { it.category?.id }.toSet())
     }
@@ -174,6 +177,11 @@ private fun ApplicationForm(
                 selectedIds = selectedCategoryIds,
                 onSelectionChanged = { selectedCategoryIds = it }
             )
+
+            RolesEditor(
+                roles = roles,
+                onRolesChanged = { roles = it }
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -181,7 +189,7 @@ private fun ApplicationForm(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                onSave(name, url, selectedCategoryIds)
+                onSave(name, url, selectedCategoryIds, roles)
             },
             enabled = !state.isSaving,
             modifier = Modifier
@@ -197,6 +205,68 @@ private fun ApplicationForm(
                 } else {
                     Text(stringResource(id = R.string.save))
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RolesEditor(
+    roles: List<String>,
+    onRolesChanged: (List<String>) -> Unit
+) {
+    var newRole by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+        Text(
+            text = "Roles", // TODO: resource
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = newRole,
+                onValueChange = { newRole = it },
+                label = { Text("New Role") }, // TODO: resource
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = {
+                if (newRole.isNotBlank() && !roles.contains(newRole)) {
+                    onRolesChanged(roles + newRole.trim())
+                    newRole = ""
+                }
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Role")
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            roles.forEach { role ->
+                InputChip(
+                    selected = true,
+                    onClick = { /* Do nothing or select */ },
+                    label = { Text(role) },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove Role",
+                            modifier = Modifier.clickable {
+                                onRolesChanged(roles - role)
+                            }
+                        )
+                    }
+                )
             }
         }
     }

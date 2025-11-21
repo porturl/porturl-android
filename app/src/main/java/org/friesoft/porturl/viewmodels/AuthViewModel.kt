@@ -18,6 +18,7 @@ import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.auth.TokenManager
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
+import org.friesoft.porturl.data.repository.UserRepository
 import org.friesoft.porturl.ui.navigation.Routes
 import javax.inject.Inject
 
@@ -36,13 +37,17 @@ class AuthViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val sessionNotifier: SessionExpiredNotifier, // Inject the notifier
     private val settingsRepository: SettingsRepository,
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     // Private mutable state flow to hold the current authentication state.
     private val _authState = MutableStateFlow(AuthState())
     // Publicly exposed, read-only state flow for the UI to observe.
     val authState: StateFlow<AuthState> = _authState
+
+    private val _isAdmin = MutableStateFlow(false)
+    val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
 
     // Private mutable state flow for the initial navigation route.
     private val _startDestination = MutableStateFlow("")
@@ -68,6 +73,7 @@ class AuthViewModel @Inject constructor(
             _authState.value = tokenManager.getAuthState()
             _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
             checkBackendUrlValid()
+            checkIsAdmin()
         }
 
         // Listen for session expiration events from the notifier
@@ -103,6 +109,21 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun checkIsAdmin() {
+        viewModelScope.launch {
+            if (_authState.value.isAuthorized) {
+                try {
+                    val roles = userRepository.getCurrentUserRoles()
+                    _isAdmin.value = roles.contains("ROLE_ADMIN")
+                } catch (e: Exception) {
+                    _isAdmin.value = false
+                }
+            } else {
+                _isAdmin.value = false
+            }
+        }
+    }
+
     /**
      * Initiates the login flow.
      *
@@ -135,6 +156,7 @@ class AuthViewModel @Inject constructor(
             tokenManager.saveAuthState(authState)
             // Update the in-memory state to trigger UI updates.
             _authState.value = authState
+            checkIsAdmin()
         }
     }
 
@@ -154,6 +176,7 @@ class AuthViewModel @Inject constructor(
             // Clear the local tokens regardless
             tokenManager.clearAuthState()
             _authState.value = AuthState()
+            _isAdmin.value = false
             checkBackendUrlValid()
         }
     }
