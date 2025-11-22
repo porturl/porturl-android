@@ -152,8 +152,8 @@ class ApplicationListViewModel @Inject constructor(
     }
 
     private suspend fun loadAllItemsFromRepositories() {
-        val applications = applicationRepository.getAllApplications()
-        val categories = categoryRepository.getAllCategories()
+        val applications = applicationRepository.getAllApplications() ?: emptyList()
+        val categories = categoryRepository.getAllCategories() ?: emptyList()
         _uiState.update {
             it.copy(allItems = buildDashboardItems(applications, categories))
         }
@@ -169,7 +169,7 @@ class ApplicationListViewModel @Inject constructor(
 
         // Efficiently populate the map of which apps belong to which category.
         applications.forEach { app ->
-            app.applicationCategories.forEach { appCategory ->
+            app.applicationCategories?.forEach { appCategory ->
                 appCategory.category?.id?.let { catId ->
                     appsByCategoryId.getOrPut(catId) { mutableListOf() }.add(app)
                 }
@@ -181,7 +181,7 @@ class ApplicationListViewModel @Inject constructor(
             dashboardItems.add(DashboardItem.CategoryItem(category))
             val appsForCategory = appsByCategoryId[category.id]
                 ?.sortedBy { app ->
-                    app.applicationCategories.find { it.category?.id == category.id }?.sortOrder ?: Int.MAX_VALUE
+                    app.applicationCategories?.find { it.category?.id == category.id }?.sortOrder ?: Int.MAX_VALUE
                 }
             appsForCategory?.forEach { app ->
                 dashboardItems.add(DashboardItem.ApplicationItem(app, category.id))
