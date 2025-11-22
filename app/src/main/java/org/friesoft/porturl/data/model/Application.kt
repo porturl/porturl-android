@@ -7,7 +7,7 @@ data class Application(
     @SerializedName("name") var name: String,
     @SerializedName("url") var url: String,
     @SerializedName("description") var description: String?,
-    @SerializedName("roles") var roles: List<String> = emptyList(),
+    @SerializedName("availableRoles") var availableRoles: List<String> = emptyList(),
 
     // This provides access to the per-category sort order.
     @SerializedName("applicationCategories") var applicationCategories: List<ApplicationCategory>,

@@ -82,7 +82,7 @@ fun AppPermissionItem(
             Text(text = app.name, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
-            if (app.roles.isEmpty()) {
+            if (app.availableRoles.isEmpty()) {
                  Text("No roles defined for this app.", style = MaterialTheme.typography.bodySmall)
             } else {
                 FlowRow(
@@ -90,7 +90,7 @@ fun AppPermissionItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    app.roles.forEach { role ->
+                    app.availableRoles.forEach { role ->
                         val isChecked = hasRole(role)
                         FilterChip(
                             selected = isChecked,

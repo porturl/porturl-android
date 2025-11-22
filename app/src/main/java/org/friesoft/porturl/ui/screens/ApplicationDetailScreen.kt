@@ -75,7 +75,7 @@ fun ApplicationDetailScreen(
     uiState: ApplicationDetailViewModel.UiState,
     snackbarHostState: SnackbarHostState,
     onImageSelected: (uri: android.net.Uri?) -> Unit,
-    onSaveClick: (name: String, url: String, categoryIds: Set<Long>, roles: List<String>) -> Unit,
+    onSaveClick: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>) -> Unit,
     onBackClick: () -> Unit,
     applicationId: Long
 ) {
@@ -128,15 +128,15 @@ fun ApplicationDetailScreen(
 private fun ApplicationForm(
     state: ApplicationDetailViewModel.UiState,
     onImagePickerClick: () -> Unit,
-    onSave: (name: String, url: String, categoryIds: Set<Long>, roles: List<String>) -> Unit
+    onSave: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>) -> Unit
 ) {
     val application = state.application ?: return
     val focusManager = LocalFocusManager.current
     var name by remember(application.name) { mutableStateOf(application.name) }
     var url by remember(application.url) { mutableStateOf(application.url) }
-    var roles by remember(application.roles) { mutableStateOf(application.roles) }
+    var availableRoles by remember(application.availableRoles) { mutableStateOf(application.availableRoles) }
     var selectedCategoryIds by remember(application.applicationCategories) {
-        mutableStateOf(application.applicationCategories.mapNotNull { it.category?.id }.toSet())
+        mutableStateOf(application.applicationCategories.map { it.category.id }.toSet())
     }
 
     Column(
@@ -179,8 +179,8 @@ private fun ApplicationForm(
             )
 
             RolesEditor(
-                roles = roles,
-                onRolesChanged = { roles = it }
+                roles = availableRoles,
+                onRolesChanged = { availableRoles = it }
             )
         }
 
@@ -189,7 +189,7 @@ private fun ApplicationForm(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                onSave(name, url, selectedCategoryIds, roles)
+                onSave(name, url, selectedCategoryIds, availableRoles ?: emptyList())
             },
             enabled = !state.isSaving,
             modifier = Modifier
@@ -213,7 +213,7 @@ private fun ApplicationForm(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RolesEditor(
-    roles: List<String>,
+    roles: List<String>?,
     onRolesChanged: (List<String>) -> Unit
 ) {
     var newRole by remember { mutableStateOf("") }
@@ -238,8 +238,8 @@ private fun RolesEditor(
             )
             Spacer(Modifier.width(8.dp))
             IconButton(onClick = {
-                if (newRole.isNotBlank() && !roles.contains(newRole)) {
-                    onRolesChanged(roles + newRole.trim())
+                if (newRole.isNotBlank() && !(roles?.contains(newRole) ?: false)) {
+                    onRolesChanged((roles ?: emptyList()) + newRole.trim())
                     newRole = ""
                 }
             }) {
@@ -252,7 +252,7 @@ private fun RolesEditor(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            roles.forEach { role ->
+            (roles ?: emptyList()).forEach { role ->
                 InputChip(
                     selected = true,
                     onClick = { /* Do nothing or select */ },
@@ -262,7 +262,7 @@ private fun RolesEditor(
                             Icons.Default.Close,
                             contentDescription = "Remove Role",
                             modifier = Modifier.clickable {
-                                onRolesChanged(roles - role)
+                                onRolesChanged((roles ?: emptyList()) - role)
                             }
                         )
                     }

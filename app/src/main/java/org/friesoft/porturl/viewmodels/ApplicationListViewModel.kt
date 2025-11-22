@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationCategory
+import org.friesoft.porturl.data.model.ApplicationCategoryId
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
@@ -169,10 +170,8 @@ class ApplicationListViewModel @Inject constructor(
 
         // Efficiently populate the map of which apps belong to which category.
         applications.forEach { app ->
-            app.applicationCategories?.forEach { appCategory ->
-                appCategory.category?.id?.let { catId ->
-                    appsByCategoryId.getOrPut(catId) { mutableListOf() }.add(app)
-                }
+            app.applicationCategories.forEach { appCategory ->
+                appsByCategoryId.getOrPut(appCategory.category.id) { mutableListOf() }.add(app)
             }
         }
 
@@ -181,7 +180,7 @@ class ApplicationListViewModel @Inject constructor(
             dashboardItems.add(DashboardItem.CategoryItem(category))
             val appsForCategory = appsByCategoryId[category.id]
                 ?.sortedBy { app ->
-                    app.applicationCategories?.find { it.category?.id == category.id }?.sortOrder ?: Int.MAX_VALUE
+                    app.applicationCategories.find { it.category.id == category.id }?.sortOrder ?: Int.MAX_VALUE
                 }
             appsForCategory?.forEach { app ->
                 dashboardItems.add(DashboardItem.ApplicationItem(app, category.id))
@@ -193,8 +192,8 @@ class ApplicationListViewModel @Inject constructor(
     /**
      * Handles moving an application from one category to another with a specific insertion index.
      */
-    fun moveApplication(appId: Long, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) {
-        if (appId == -1L) return
+    fun moveApplication(appId: Long?, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) {
+        if (appId == null || appId == -1L) return
 
         val currentItems = _uiState.value.allItems.toMutableList()
 
@@ -353,7 +352,7 @@ class ApplicationListViewModel @Inject constructor(
 
             // 2a. Check existing links: keep the ones that are still valid and update their sort order.
             originalLinks.forEach { link ->
-                val catId = link.category?.id
+                val catId = link.category.id
                 if (catId in finalCatIdsForApp) {
                     val newSortOrder = finalLayoutForApp[catId]!!
                     if (link.sortOrder != newSortOrder) {
@@ -369,7 +368,7 @@ class ApplicationListViewModel @Inject constructor(
             }
 
             // 2b. Check for new links: add links for categories that were not in the original app data.
-            val originalCatIds = originalLinks.mapNotNull { it.category?.id }.toSet()
+            val originalCatIds = originalLinks.map { it.category.id }.toSet()
             val newCatIds = finalCatIdsForApp - originalCatIds
             if (newCatIds.isNotEmpty()) {
                 needsUpdate = true
@@ -377,7 +376,11 @@ class ApplicationListViewModel @Inject constructor(
                     // Find the category object from the items list to create the new link.
                     val category = (items.find { it is DashboardItem.CategoryItem && it.category.id == catId } as DashboardItem.CategoryItem).category
                     val newSortOrder = finalLayoutForApp[catId]!!
-                    finalLinks.add(ApplicationCategory(category = category, sortOrder = newSortOrder))
+                    finalLinks.add(ApplicationCategory(
+                        id = ApplicationCategoryId(appId, catId), // Note: This might need adjustment based on how your backend handles ID creation
+                        category = category,
+                        sortOrder = newSortOrder
+                    ))
                 }
             }
 
@@ -414,7 +417,7 @@ class ApplicationListViewModel @Inject constructor(
             .mapIndexed { index, item -> item.copy(
                 application = item.application.copy(
                     applicationCategories = item.application.applicationCategories.map { ac ->
-                        if (ac.category?.id == categoryId) ac.copy(sortOrder = index) else ac
+                        if (ac.category.id == categoryId) ac.copy(sortOrder = index) else ac
                     }
                 ))
             }
