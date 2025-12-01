@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.compose.compiler)
-    id("pl.allegro.tech.build.axion-release") version "1.20.1"
+    id("pl.allegro.tech.build.axion-release") version "1.21.1"
 }
 
 scmVersion {
