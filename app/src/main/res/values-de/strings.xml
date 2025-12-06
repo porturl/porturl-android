@@ -103,6 +103,10 @@
     <string name="app_detail_category_selected">Ausgewählt</string>
     <string name="app_detail_icon_description">Anwendungssymbol</string>
     <string name="settings_translucent_background_label">Durchscheinender Anwendungshintergrund</string>
+    <string name="app_detail_roles_title">Rollen</string>
+    <string name="app_detail_new_role_label">Neue Rolle</string>
+    <string name="app_detail_add_role_description">Rolle hinzufügen</string>
+    <string name="app_detail_remove_role_description">Rolle entfernen</string>
 
     <!-- AuthViewModel -->
     <string name="authviewmodel_error_could_not_connect_backend">Verbindung zum Backend nicht möglich. Bitte überprüfen Sie die Backend-Basis-URL in den Einstellungen oder versuchen Sie es später noch einmal.</string>

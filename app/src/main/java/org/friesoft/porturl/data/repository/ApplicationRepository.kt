@@ -3,6 +3,7 @@ package org.friesoft.porturl.data.repository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.data.model.ApplicationUpdateRequest
 import org.friesoft.porturl.data.remote.ApiService
 import retrofit2.Retrofit
 import javax.inject.Inject
@@ -26,7 +27,7 @@ class ApplicationRepository @Inject constructor(
     }
     suspend fun getApplicationById(id: Long): Application = apiService.getApplicationById(id)
     suspend fun createApplication(application: Application): Application = apiService.createApplication(application)
-    suspend fun updateApplication(id: Long, application: Application): Application = apiService.updateApplication(id, application)
+    suspend fun updateApplication(id: Long, application: ApplicationUpdateRequest): Application = apiService.updateApplication(id, application)
     suspend fun deleteApplication(id: Long) = apiService.deleteApplication(id)
 
     /**
@@ -63,5 +64,7 @@ class ApplicationRepository @Inject constructor(
         // Call the API and return the filename from the response
         return apiService.uploadImage(filePart).filename
     }
+
+    suspend fun getApplicationRoles(appId: Long): List<String> = apiService.getApplicationRoles(appId)
 }
 

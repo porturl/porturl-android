@@ -3,6 +3,7 @@ package org.friesoft.porturl.data.remote
 import okhttp3.MultipartBody
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationResponse
+import org.friesoft.porturl.data.model.ApplicationUpdateRequest
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.model.ImageUploadResponse
 import org.friesoft.porturl.data.model.User
@@ -22,7 +23,7 @@ interface ApiService {
     suspend fun createApplication(@Body application: Application): Application
 
     @PUT("api/applications/{id}")
-    suspend fun updateApplication(@Path("id") id: Long, @Body application: Application): Application
+    suspend fun updateApplication(@Path("id") id: Long, @Body application: ApplicationUpdateRequest): Application
 
     @DELETE("api/applications/{id}")
     suspend fun deleteApplication(@Path("id") id: Long)
@@ -85,4 +86,7 @@ interface ApiService {
         @Path("userId") userId: Long,
         @Path("role") role: String
     )
+
+    @GET("api/applications/{id}/roles")
+    suspend fun getApplicationRoles(@Path("id") appId: Long): List<String>
 }

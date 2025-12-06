@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationCategory
 import org.friesoft.porturl.data.model.ApplicationCategoryId
+import org.friesoft.porturl.data.model.ApplicationUpdateRequest
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
@@ -29,7 +30,8 @@ class ApplicationDetailViewModel @Inject constructor(
         val allCategories: List<Category> = emptyList(),
         val selectedImageUri: Uri? = null,
         val isLoading: Boolean = true,
-        val isSaving: Boolean = false // To show a progress indicator on save
+        val isSaving: Boolean = false, // To show a progress indicator on save
+        val roles: List<String> = emptyList()
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -61,10 +63,18 @@ class ApplicationDetailViewModel @Inject constructor(
                 } else {
                     applicationRepository.getApplicationById(id)
                 }
+
+                val roles = if (app.id != null) {
+                    applicationRepository.getApplicationRoles(app.id!!)
+                } else {
+                    emptyList()
+                }
+
                 _uiState.value = UiState(
                     application = app,
                     allCategories = allCategories,
-                    isLoading = false
+                    isLoading = false,
+                    roles = roles
                 )
             } catch (e: Exception) {
                 errorMessage.emit("Failed to load application data.")
@@ -91,18 +101,26 @@ class ApplicationDetailViewModel @Inject constructor(
             try {
                 val iconFilename = handleImageUpload()
 
-                val appToSave = originalApplication.copy(
-                    name = name,
-                    url = url,
-                    applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
-                    iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
-                    availableRoles = availableRoles
-                )
-
-                if (appToSave.id == null) {
+                if (originalApplication.id == null) {
+                    val appToSave = originalApplication.copy(
+                        name = name,
+                        url = url,
+                        applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
+                        iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
+                        availableRoles = availableRoles
+                    )
                     applicationRepository.createApplication(appToSave)
                 } else {
-                    applicationRepository.updateApplication(appToSave.id!!, appToSave)
+                    val appUpdateRequest = ApplicationUpdateRequest(
+                        name = name,
+                        url = url,
+                        applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
+                        iconLarge = iconFilename ?: originalApplication.iconLarge,
+                        iconMedium = iconFilename ?: originalApplication.iconMedium,
+                        iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
+                        availableRoles = availableRoles
+                    )
+                    applicationRepository.updateApplication(originalApplication.id!!, appUpdateRequest)
                 }
                 finishScreen.emit(true)
             } catch (e: Exception) {

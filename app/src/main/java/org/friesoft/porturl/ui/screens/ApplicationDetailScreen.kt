@@ -134,7 +134,7 @@ private fun ApplicationForm(
     val focusManager = LocalFocusManager.current
     var name by remember(application.name) { mutableStateOf(application.name) }
     var url by remember(application.url) { mutableStateOf(application.url) }
-    var availableRoles by remember(application.availableRoles) { mutableStateOf(application.availableRoles) }
+    var rolesInput by remember(state.roles) { mutableStateOf(state.roles) }
     var selectedCategoryIds by remember(application.applicationCategories) {
         mutableStateOf(application.applicationCategories.map { it.category.id }.toSet())
     }
@@ -179,8 +179,8 @@ private fun ApplicationForm(
             )
 
             RolesEditor(
-                roles = availableRoles,
-                onRolesChanged = { availableRoles = it }
+                roles = rolesInput,
+                onRolesChanged = { rolesInput = it }
             )
         }
 
@@ -189,7 +189,7 @@ private fun ApplicationForm(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                onSave(name, url, selectedCategoryIds, availableRoles ?: emptyList())
+                onSave(name, url, selectedCategoryIds, rolesInput)
             },
             enabled = !state.isSaving,
             modifier = Modifier
@@ -220,7 +220,7 @@ private fun RolesEditor(
 
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
         Text(
-            text = "Roles", // TODO: resource
+            text = stringResource(id = R.string.app_detail_roles_title),
             style = MaterialTheme.typography.titleMedium
         )
         Spacer(Modifier.height(8.dp))
@@ -232,7 +232,7 @@ private fun RolesEditor(
             OutlinedTextField(
                 value = newRole,
                 onValueChange = { newRole = it },
-                label = { Text("New Role") }, // TODO: resource
+                label = { Text(stringResource(id = R.string.app_detail_new_role_label)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
@@ -243,7 +243,10 @@ private fun RolesEditor(
                     newRole = ""
                 }
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Role")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(id = R.string.app_detail_add_role_description)
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -260,7 +263,7 @@ private fun RolesEditor(
                     trailingIcon = {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Remove Role",
+                            contentDescription = stringResource(id = R.string.app_detail_remove_role_description),
                             modifier = Modifier.clickable {
                                 onRolesChanged((roles ?: emptyList()) - role)
                             }
