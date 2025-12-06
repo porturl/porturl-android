@@ -19,7 +19,14 @@ class ApplicationRepository @Inject constructor(
     @ApplicationContext private val context: Context // Inject context for file operations
 ) {
 
-    suspend fun getAllApplications(): List<Application> = apiService.getAllApplications()
+    suspend fun getAllApplications(): List<Application> {
+        return apiService.getAllApplications().map { dto ->
+            dto.application.apply {
+                this.roles = dto.availableRoles
+            }
+        }
+    }
+
     suspend fun getApplicationById(id: Long): Application = apiService.getApplicationById(id)
     suspend fun createApplication(application: Application): Application = apiService.createApplication(application)
     suspend fun updateApplication(id: Long, application: Application): Application = apiService.updateApplication(id, application)

@@ -2,6 +2,7 @@ package org.friesoft.porturl.data.remote
 
 import okhttp3.MultipartBody
 import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.data.model.ApplicationWithRolesDto
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.model.ImageUploadResponse
 import org.friesoft.porturl.data.model.User
@@ -12,7 +13,7 @@ import retrofit2.http.*
  */
 interface ApiService {
     @GET("api/applications")
-    suspend fun getAllApplications(): List<Application>
+    suspend fun getAllApplications(): List<ApplicationWithRolesDto>
 
     @GET("api/applications/{id}")
     suspend fun getApplicationById(@Path("id") id: Long): Application
