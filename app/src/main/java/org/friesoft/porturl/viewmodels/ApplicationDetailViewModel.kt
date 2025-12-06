@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationCategory
+import org.friesoft.porturl.data.model.ApplicationCategoryId
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
@@ -54,7 +55,8 @@ class ApplicationDetailViewModel @Inject constructor(
                     Application(
                         id = null, name = "", url = "", applicationCategories = emptyList(),
                         iconLarge = null, iconMedium = null, iconThumbnail = null,
-                        iconUrlLarge = null, iconUrlMedium = null, iconUrlThumbnail = null, description = null
+                        iconUrlLarge = null, iconUrlMedium = null, iconUrlThumbnail = null, description = null,
+                        availableRoles = emptyList()
                     )
                 } else {
                     applicationRepository.getApplicationById(id)
@@ -75,7 +77,7 @@ class ApplicationDetailViewModel @Inject constructor(
      * Orchestrates the save process. If a new image was selected, it uploads it first,
      * then saves the application with the new icon filename.
      */
-    fun saveApplication(name: String, url: String, selectedCategoryIds: Set<Long>) {
+    fun saveApplication(name: String, url: String, selectedCategoryIds: Set<Long>, availableRoles: List<String>) {
         val originalApplication = _uiState.value.application ?: return
         if (_uiState.value.isSaving) return // Prevent duplicate saves
 
@@ -93,7 +95,8 @@ class ApplicationDetailViewModel @Inject constructor(
                     name = name,
                     url = url,
                     applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
-                    iconThumbnail = iconFilename ?: originalApplication.iconThumbnail
+                    iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
+                    availableRoles = availableRoles
                 )
 
                 if (appToSave.id == null) {
@@ -137,8 +140,12 @@ class ApplicationDetailViewModel @Inject constructor(
         // Use mapNotNull to safely find categories and create links, preventing crashes.
         return selectedCategoryIds.mapNotNull { catId ->
             allCategoriesMap[catId]?.let { category ->
-                val existingLink = originalApp.applicationCategories.find { it.category?.id == catId }
-                ApplicationCategory(category, existingLink?.sortOrder ?: 0)
+                val existingLink = originalApp.applicationCategories.find { it.category.id == catId }
+                ApplicationCategory(
+                    id = ApplicationCategoryId(originalApp.id ?: -1, catId),
+                    category = category,
+                    sortOrder = existingLink?.sortOrder ?: 0
+                )
             }
         }
     }

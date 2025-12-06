@@ -93,6 +93,17 @@ fun AppNavigation() {
             val categoryId = backStackEntry.arguments?.getLong(Routes.CATEGORY_ID_KEY) ?: -1L
             CategoryDetailScreen(navController = navController, categoryId = categoryId)
         }
+
+        composable(Routes.USER_LIST) {
+            UserListScreen(navController = navController)
+        }
+
+        composable(
+            route = "${Routes.USER_DETAIL}/{${Routes.USER_ID_KEY}}",
+            arguments = listOf(navArgument(Routes.USER_ID_KEY) { type = NavType.StringType })
+        ) {
+            UserDetailScreen(navController = navController)
+        }
     }
 }
 
