@@ -26,9 +26,11 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -72,6 +74,7 @@ import org.friesoft.porturl.R
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.ui.navigation.Routes
+import org.friesoft.porturl.ui.utils.mouseWheelScroll
 import org.friesoft.porturl.viewmodels.*
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -205,6 +208,10 @@ fun ApplicationListScreen(
     val categoryBounds = remember { mutableStateMapOf<Long, Rect>() }
     val applicationBounds = remember { mutableStateMapOf<String, Rect>() }
     // --- End D&D State ---
+
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyStaggeredGridState()
+    val coroutineScope = rememberCoroutineScope()
 
     val logoutLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -411,7 +418,10 @@ fun ApplicationListScreen(
 
                         if (windowWidthSize == WindowWidthSizeClass.Compact) {
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .mouseWheelScroll(listState, coroutineScope),
+                                state = listState,
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
@@ -449,7 +459,10 @@ fun ApplicationListScreen(
                         } else {
                             LazyVerticalStaggeredGrid(
                                 columns = StaggeredGridCells.Adaptive(minSize = 300.dp),
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .mouseWheelScroll(gridState, coroutineScope),
+                                state = gridState,
                                 contentPadding = PaddingValues(16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalItemSpacing = 16.dp
