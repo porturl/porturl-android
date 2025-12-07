@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.friesoft.porturl.data.auth.AuthService
+import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationCategory
 import org.friesoft.porturl.data.model.ApplicationCategoryId
@@ -106,6 +108,8 @@ data class ApplicationListState(
 class ApplicationListViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
     private val categoryRepository: CategoryRepository,
+    private val authService: AuthService,
+    private val sessionNotifier: SessionExpiredNotifier
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ApplicationListState())
@@ -128,6 +132,13 @@ class ApplicationListViewModel @Inject constructor(
             try {
                 // Ensure any pending save operation completes before refreshing.
                 persistenceJob?.join()
+
+                // Force token refresh
+                if (!authService.forceTokenRefresh()) {
+                    sessionNotifier.notifySessionExpired()
+                    return@launch
+                }
+
                 loadAllItemsFromRepositories()
             } catch (e: Exception) {
                 Log.e("AppListViewModel", "Failed to refresh data", e)

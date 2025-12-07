@@ -119,6 +119,9 @@ dependencies {
     // DataStore for Preferences
     implementation(libs.androidx.datastore.preferences)
 
+    // Encrypted SharedPreferences
+    implementation(libs.androidx.security.crypto)
+
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
 

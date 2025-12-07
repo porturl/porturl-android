@@ -19,7 +19,8 @@ import kotlin.coroutines.suspendCoroutine
 @Singleton
 class AuthService @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
+    private val tokenManager: TokenManager
 ) {
     private val authService = AuthorizationService(context)
 
@@ -76,6 +77,37 @@ class AuthService @Inject constructor(
             }
         }
         return authState
+    }
+
+    /**
+     * Forces a token refresh using the stored refresh token.
+     * @return true if refresh was successful, false otherwise.
+     */
+    suspend fun forceTokenRefresh(): Boolean {
+        val authState = tokenManager.getAuthState()
+        val refreshToken = authState.refreshToken ?: return false
+
+        return try {
+            val config = getAuthServiceConfig()
+            val tokenRequest = TokenRequest.Builder(config, "porturl-android-client")
+                .setGrantType(GrantTypeValues.REFRESH_TOKEN)
+                .setRefreshToken(refreshToken)
+                .build()
+
+            suspendCoroutine { continuation ->
+                authService.performTokenRequest(tokenRequest) { response, ex ->
+                    if (response != null) {
+                        authState.update(response, ex)
+                        tokenManager.saveAuthState(authState)
+                        continuation.resume(true)
+                    } else {
+                        continuation.resume(false)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**

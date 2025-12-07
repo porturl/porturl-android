@@ -1,16 +1,18 @@
 package org.friesoft.porturl.data.auth
 
 import android.content.Context
+import androidx.core.content.edit
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.openid.appauth.AuthState
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.content.edit
 
 /**
  * Manages the secure persistence of the authentication state.
  *
- * This class uses SharedPreferences to store the AuthState object as a JSON string.
+ * This class uses EncryptedSharedPreferences to store the AuthState object as a JSON string.
  * This allows the user's session (including access and refresh tokens) to be
  * maintained even after the app is closed.
  *
@@ -20,7 +22,35 @@ import androidx.core.content.edit
 class TokenManager @Inject constructor(@ApplicationContext context: Context) {
 
     // A private instance of SharedPreferences, specifically for auth data.
-    private val prefs = context.getSharedPreferences("auth_state", Context.MODE_PRIVATE)
+    // migrated to EncryptedSharedPreferences for better security
+    private val prefs by lazy {
+        try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            EncryptedSharedPreferences.create(
+                context,
+                "auth_state_secure",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            // If encryption setup fails (e.g. on some devices or key store issues), we might want to handle it.
+            // For now, we let it crash or use a fallback if critical, but per requirements we want Secure storage.
+            throw RuntimeException("Failed to initialize encrypted storage", e)
+        }
+    }
+
+    init {
+        // Cleanup old insecure preferences if they exist
+        try {
+            context.deleteSharedPreferences("auth_state")
+        } catch (e: Exception) {
+            // Best effort cleanup
+        }
+    }
 
     companion object {
         // The key used to store the AuthState JSON string in SharedPreferences.
