@@ -36,8 +36,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import org.friesoft.porturl.R
+import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.AuthViewModel
 
@@ -52,7 +52,7 @@ import org.friesoft.porturl.viewmodels.AuthViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    navController: NavController,
+    navigator: Navigator,
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
@@ -77,11 +77,7 @@ fun LoginScreen(
     // If the user becomes authorized, it navigates them to the main app screen.
     LaunchedEffect(authState) {
         if (authState.isAuthorized) {
-            navController.navigate(Routes.APP_LIST) {
-                // Clear the back stack up to the login screen to prevent the user
-                // from navigating back to it with the back button.
-                popUpTo(Routes.LOGIN) { inclusive = true }
-            }
+            navigator.navigate(Routes.AppList)
         }
     }
 
@@ -96,7 +92,7 @@ fun LoginScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
+                    IconButton(onClick = { navigator.navigate(Routes.Settings) }) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = stringResource(id = R.string.settings_description)
@@ -164,7 +160,7 @@ fun LoginScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Button(
-                            onClick = { navController.navigate(Routes.SETTINGS) },
+                            onClick = { navigator.navigate(Routes.Settings) },
                             modifier = Modifier.align(Alignment.End)
                         ) {
                             Text(stringResource(id = R.string.login_go_to_settings))

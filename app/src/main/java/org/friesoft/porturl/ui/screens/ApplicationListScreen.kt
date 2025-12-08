@@ -64,13 +64,14 @@ import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
+import androidx.navigation3.runtime.NavKey
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import org.friesoft.porturl.R
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.Category
+import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.*
 import kotlin.math.pow
@@ -103,8 +104,8 @@ private data class DropTarget(val categoryId: Long, val index: Int)
 
 @Composable
 fun ApplicationListRoute(
-    navController: NavController,
-    editModeViewModel: EditModeViewModel,
+    navigator: Navigator,
+    sharedViewModel: AppSharedViewModel,
     viewModel: ApplicationListViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -112,7 +113,8 @@ fun ApplicationListRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
-    val isEditing by editModeViewModel.isEditing.collectAsStateWithLifecycle()
+    val isEditing by sharedViewModel.isEditing.collectAsStateWithLifecycle()
+    val shouldRefresh by sharedViewModel.shouldRefreshAppList.collectAsStateWithLifecycle()
     val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
         initialValue = org.friesoft.porturl.data.model.UserPreferences(
             org.friesoft.porturl.data.model.ThemeMode.SYSTEM,
@@ -123,45 +125,37 @@ fun ApplicationListRoute(
         )
     )
 
-    val shouldRefresh by navController.currentBackStackEntry
-        ?.savedStateHandle
-        ?.getStateFlow("refresh_list", false)
-        ?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
-
     LaunchedEffect(authState.isAuthorized) {
         if (!authState.isAuthorized) {
-            navController.navigate(Routes.LOGIN) {
-                popUpTo(Routes.APP_LIST) { inclusive = true }
-                launchSingleTop = true
-            }
+            navigator.navigate(Routes.Login)
         }
     }
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
             viewModel.refreshData()
-            navController.currentBackStackEntry?.savedStateHandle?.set("refresh_list", false)
+            sharedViewModel.onAppListRefreshed()
         }
     }
 
     ApplicationListScreen(
         uiState = uiState,
         isEditing = isEditing,
-        setIsEditing = { editModeViewModel.setEditMode(it) },
+        setIsEditing = { sharedViewModel.setEditMode(it) },
         onMoveCategory = viewModel::moveCategoryByDirection,
         onMoveApplication = viewModel::moveApplication,
         onSortApps = viewModel::sortAppsAlphabetically,
         onRefresh = viewModel::refreshData,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
-        onApplicationClick = { app -> navController.navigate("${Routes.APP_DETAIL}/${app.id}") },
-        onCategoryClick = { category -> navController.navigate("${Routes.CATEGORY_DETAIL}/${category.id}") },
-        onAddApplication = { navController.navigate("${Routes.APP_DETAIL}/-1") },
-        onAddCategory = { navController.navigate("${Routes.CATEGORY_DETAIL}/-1") },
+        onApplicationClick = { app -> navigator.navigate(Routes.AppDetail(app.id!!)) },
+        onCategoryClick = { category -> navigator.navigate(Routes.CategoryDetail(category.id)) },
+        onAddApplication = { navigator.navigate(Routes.AppDetail(-1)) },
+        onAddCategory = { navigator.navigate(Routes.CategoryDetail(-1)) },
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         authViewModel = authViewModel,
-        onSettingsClick = { navController.navigate(Routes.SETTINGS) },
-        onManageUsers = { navController.navigate(Routes.USER_LIST) },
+        onSettingsClick = { navigator.navigate(Routes.Settings) },
+        onManageUsers = { navigator.navigate(Routes.UserList) },
         isAdmin = isAdmin,
         translucentBackground = userPreferences.translucentBackground
     )

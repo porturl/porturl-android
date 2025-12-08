@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthState
 import org.friesoft.porturl.R
+import org.friesoft.porturl.data.auth.AuthStateManager
 import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.auth.SessionExpiredNotifier
-import org.friesoft.porturl.data.auth.TokenManager
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
 import org.friesoft.porturl.data.repository.UserRepository
@@ -34,7 +34,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authService: AuthService,
-    private val tokenManager: TokenManager,
+    private val authStateManager: AuthStateManager,
     private val sessionNotifier: SessionExpiredNotifier, // Inject the notifier
     private val settingsRepository: SettingsRepository,
     private val configRepository: ConfigRepository,
@@ -48,11 +48,6 @@ class AuthViewModel @Inject constructor(
 
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
-
-    // Private mutable state flow for the initial navigation route.
-    private val _startDestination = MutableStateFlow("")
-    // Publicly exposed, read-only state flow for the AppNavigation composable to observe.
-    val startDestination: StateFlow<String> = _startDestination
 
     // New state to control the visibility of the session expired dialog
     private val _showSessionExpiredDialog = MutableStateFlow(false)
@@ -70,8 +65,7 @@ class AuthViewModel @Inject constructor(
         // When the ViewModel is created, determine the starting screen.
         // If the user's AuthState is authorized, go to the app list. Otherwise, go to login.
         viewModelScope.launch {
-            _authState.value = tokenManager.getAuthState()
-            _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
+            _authState.value = authStateManager.current
             checkBackendUrlValid()
             checkIsAdmin()
         }
@@ -153,7 +147,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             // Process the response to get a new AuthState (with tokens).
             val authState = authService.handleAuthorizationResponse(intent)
-            tokenManager.saveAuthState(authState)
+            authStateManager.replace(authState)
             // Update the in-memory state to trigger UI updates.
             _authState.value = authState
             checkIsAdmin()
@@ -168,13 +162,13 @@ class AuthViewModel @Inject constructor(
      */
     fun logout(launcher: ActivityResultLauncher<Intent>) {
         viewModelScope.launch {
-            val currentState = tokenManager.getAuthState()
+            val currentState = authStateManager.current
             if (currentState.isAuthorized && currentState.idToken != null) {
                 // Perform the remote logout by opening the browser
                 authService.performEndSessionRequest(currentState.idToken!!, launcher)
             }
             // Clear the local tokens regardless
-            tokenManager.clearAuthState()
+            authStateManager.clearAuthState()
             _authState.value = AuthState()
             _isAdmin.value = false
             checkBackendUrlValid()
