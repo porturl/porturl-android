@@ -13,15 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import org.friesoft.porturl.data.model.User
+import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.UserListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserListScreen(
-    navController: NavController,
+    navigator: Navigator,
     viewModel: UserListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -31,7 +31,7 @@ fun UserListScreen(
             TopAppBar(
                 title = { Text("Manage Users") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.goBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -49,7 +49,7 @@ fun UserListScreen(
                 ) {
                     items(uiState.users) { user ->
                         UserItem(user = user, onClick = {
-                            navController.navigate("${Routes.USER_DETAIL}/${user.id}")
+                            navigator.navigate(Routes.UserDetail(user.id.toString()))
                         })
                     }
                 }

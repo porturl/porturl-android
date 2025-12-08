@@ -13,16 +13,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import kotlinx.coroutines.flow.collectLatest
 import org.friesoft.porturl.R
+import org.friesoft.porturl.ui.navigation.Navigator
+import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.CategoryDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryDetailScreen(
-    navController: NavController,
+    navigator: Navigator,
     categoryId: Long,
+    sharedViewModel: AppSharedViewModel,
     viewModel: CategoryDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -35,8 +37,8 @@ fun CategoryDetailScreen(
     LaunchedEffect(Unit) {
         viewModel.finishScreen.collect {
             if (it) {
-                navController.previousBackStackEntry?.savedStateHandle?.set("refresh_list", true)
-                navController.popBackStack()
+                sharedViewModel.triggerRefreshAppList()
+                navigator.goBack()
             }
         }
     }
@@ -59,7 +61,7 @@ fun CategoryDetailScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.goBack() }) {
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = stringResource(id = R.string.back_description)
