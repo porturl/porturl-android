@@ -3,12 +3,9 @@ package org.friesoft.porturl.data.auth
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import net.openid.appauth.AuthState
+import kotlinx.coroutines.runBlocking
 import net.openid.appauth.AuthorizationService
 import okhttp3.Interceptor
-import okhttp3.Request
 import okhttp3.Response
 import java.util.concurrent.CountDownLatch
 import javax.inject.Inject
@@ -27,14 +24,14 @@ import javax.inject.Singleton
  */
 @Singleton
 class AuthInterceptor @Inject constructor(
-    private val tokenManager: TokenManager,
+    private val authStateManager: AuthStateManager,
     private val sessionNotifier: SessionExpiredNotifier,
     @ApplicationContext private val context: Context
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val authState = tokenManager.getAuthState()
-        var request: Request = chain.request()
+        val authState = authStateManager.current
+        var request = chain.request()
 
         // --- DEBUG LOGGING START ---
         Log.d("AuthInterceptor", "Intercepting request for: ${request.url}")
@@ -47,49 +44,33 @@ class AuthInterceptor @Inject constructor(
 
         // Only try to refresh if we are authorized and have a refresh token
         if (authState.isAuthorized && authState.refreshToken != null) {
-            // A CountDownLatch is used to block the interceptor thread until the
-            // asynchronous token refresh operation is complete.
             val latch = CountDownLatch(1)
-            var newRequest: Request? = null
+            var newRequest: okhttp3.Request? = null
 
-            // performActionWithFreshTokens will automatically refresh the token if it's expired.
-            // The `authState` object is updated in-place with the new token information.
             authState.performActionWithFreshTokens(AuthorizationService(context)) { accessToken, _, ex ->
-                if (ex != null) {
-                    // Token refresh failed. This can happen if the refresh token has also expired.
-                    Log.e("AuthInterceptor", "Token refresh failed, session expired.", ex)
-                    GlobalScope.launch {
-                        // Clear the invalid tokens immediately
-                        tokenManager.clearAuthState()
-                        // Notify the rest of the app that the session is gone
-                        sessionNotifier.notifySessionExpired()
+                try {
+                    if (ex != null) {
+                        Log.e("AuthInterceptor", "Token refresh failed, session expired.", ex)
+                        runBlocking {
+                            authStateManager.clearAuthState()
+                            sessionNotifier.notifySessionExpired()
+                        }
+                    } else if (accessToken != null) {
+                        newRequest = chain.request().newBuilder()
+                            .header("Authorization", "Bearer $accessToken")
+                            .build()
                     }
-
-                } else if (accessToken != null) {
-                    // The token is valid or was successfully refreshed.
-                    // Build a new request with the Authorization header.
-                    newRequest = chain.request().newBuilder()
-                        .header("Authorization", "Bearer $accessToken")
-                        .build()
+                    authStateManager.replace(authState)
+                } finally {
+                    latch.countDown()
                 }
-
-                // After the action is performed (and the token is potentially refreshed),
-                // we immediately save the updated state back to storage.
-                tokenManager.saveAuthState(authState)
-
-                latch.countDown()
             }
 
-            // Wait for the token refresh process to complete before proceeding
             latch.await()
 
-            if (newRequest != null) {
-                request = newRequest!!
-            }
+            newRequest?.let { request = it }
         }
 
-        // Proceed with either the original request or the new one with the auth header.
         return chain.proceed(request)
     }
 }
-

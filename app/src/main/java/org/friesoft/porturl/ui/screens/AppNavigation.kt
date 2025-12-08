@@ -27,6 +27,7 @@ import org.friesoft.porturl.ui.navigation.rememberNavigationState
 import org.friesoft.porturl.ui.navigation.toEntries
 import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.AuthViewModel
+import android.util.Log
 
 /**
  * The main navigation component for the application.
@@ -54,13 +55,14 @@ fun AppNavigation() {
     val entryProvider = entryProvider {
         // We no longer need AuthCheck route, logic is handled below
         entry<Routes.Login> {
-            LoginScreen(navigator)
+            LoginScreen(navigator, authViewModel = authViewModel)
         }
         entry<Routes.Settings> {
+            Log.d("AppNavigation", "Composing SettingsScreen")
             SettingsScreen(navigator)
         }
         entry<Routes.AppList> {
-            ApplicationListRoute(navigator = navigator, sharedViewModel = sharedViewModel)
+            ApplicationListRoute(navigator = navigator, sharedViewModel = sharedViewModel, authViewModel = authViewModel)
         }
         entry<Routes.AppDetail> { key ->
             ApplicationDetailRoute(navigator = navigator, applicationId = key.appId, sharedViewModel = sharedViewModel)

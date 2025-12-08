@@ -1,5 +1,3 @@
-// FILE: app/src/main/java/org/friesoft/porturl/di/AppModule.kt
-
 package org.friesoft.porturl.di
 
 import android.content.Context
@@ -8,10 +6,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import net.openid.appauth.AuthState
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.friesoft.porturl.AppLocaleManager
 import org.friesoft.porturl.data.auth.AuthInterceptor
+import org.friesoft.porturl.data.auth.AuthStateManager
 import org.friesoft.porturl.data.remote.ApiService
 import org.friesoft.porturl.data.repository.SettingsRepository
 import retrofit2.Retrofit
@@ -86,7 +86,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideContext(@ApplicationContext context: Context?): Context? {
+    fun provideContext(@ApplicationContext context: Context): Context {
         return context
     }
 
@@ -95,4 +95,15 @@ object AppModule {
     fun provideAppLocaleManager(
         @ApplicationContext context: Context
     ): AppLocaleManager = AppLocaleManager(context)
+
+    @Provides
+    @Singleton
+    fun provideAuthStateManager(context: Context): AuthStateManager {
+        return AuthStateManager.getInstance(context)
+    }
+
+    @Provides
+    fun provideAuthState(authStateManager: AuthStateManager): AuthState {
+        return authStateManager.current
+    }
 }

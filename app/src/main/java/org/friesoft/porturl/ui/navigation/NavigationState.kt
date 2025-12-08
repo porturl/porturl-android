@@ -17,6 +17,8 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.runtime.serialization.NavKeySerializer
 import androidx.savedstate.compose.serialization.serializers.MutableStateSerializer
+import android.util.Log
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 
 /**
  * Create a navigation state that persists config changes and process death.
@@ -75,8 +77,16 @@ fun NavigationState.toEntries(
 ): SnapshotStateList<NavEntry<NavKey>> {
 
     val decoratedEntries = backStacks.mapValues { (_, stack) ->
+        // Force state read to ensure recomposition
+        // We cast to Collection safely to access size, assuming NavBackStack behaves like one
+        // This is required because toEntries needs to recompose when stack contents change
+        // to call rememberDecoratedNavEntries again and update the returned list.
+        val trigger = (stack as? Collection<*>)?.size
+        Log.d("NavigationState", "toEntries: stack size: $trigger")
+
         val decorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+            rememberViewModelStoreNavEntryDecorator<NavKey>(),
         )
         rememberDecoratedNavEntries(
             backStack = stack,
@@ -85,7 +95,10 @@ fun NavigationState.toEntries(
         )
     }
 
-    return stacksInUse
+    val result = stacksInUse
         .flatMap { decoratedEntries[it] ?: emptyList() }
         .toMutableStateList()
+    
+    Log.d("NavigationState", "toEntries: result size: ${result.size}")
+    return result
 }
