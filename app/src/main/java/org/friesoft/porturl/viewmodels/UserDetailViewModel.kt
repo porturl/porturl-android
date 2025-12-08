@@ -1,6 +1,5 @@
 package org.friesoft.porturl.viewmodels
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,15 +15,10 @@ import javax.inject.Inject
 @HiltViewModel
 class UserDetailViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val applicationRepository: ApplicationRepository,
-    savedStateHandle: SavedStateHandle
+    private val applicationRepository: ApplicationRepository
 ) : ViewModel() {
 
-    // Retrieve the userId from the navigation arguments.
-    // Depending on how the route is defined, this might need to be parsed.
-    private val userId: Long = checkNotNull(savedStateHandle.get<String>("userId")?.toLongOrNull()) {
-        "userId argument is missing or invalid"
-    }
+    private var userId: Long = -1
 
     data class UiState(
         val userRoles: List<String> = emptyList(),
@@ -36,11 +30,18 @@ class UserDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    init {
+    fun loadUser(userIdStr: String) {
+        val id = userIdStr.toLongOrNull()
+        if (id == null) {
+            _uiState.value = _uiState.value.copy(error = "Invalid User ID")
+            return
+        }
+        this.userId = id
         loadData()
     }
 
-    fun loadData() {
+    private fun loadData() {
+        if (userId == -1L) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {

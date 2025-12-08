@@ -59,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
@@ -70,13 +69,14 @@ import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
 import org.friesoft.porturl.data.model.UserPreferences
+import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.theme.predefinedThemes
 import org.friesoft.porturl.viewmodels.SettingsViewModel
 import org.friesoft.porturl.viewmodels.ValidationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltViewModel()) {
     val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle(
         initialValue = UserPreferences(
             ThemeMode.SYSTEM,
@@ -94,7 +94,7 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
 
     LaunchedEffect(validationState) {
         if (validationState == ValidationState.SUCCESS) {
-            navController.popBackStack()
+            navigator.goBack()
         }
     }
 
@@ -111,7 +111,7 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel = 
             TopAppBar(
                 title = { Text(stringResource(id = R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.goBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(    id = R.string.back_description)

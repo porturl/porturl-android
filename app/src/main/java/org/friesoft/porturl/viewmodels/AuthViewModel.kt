@@ -49,11 +49,6 @@ class AuthViewModel @Inject constructor(
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
 
-    // Private mutable state flow for the initial navigation route.
-    private val _startDestination = MutableStateFlow("")
-    // Publicly exposed, read-only state flow for the AppNavigation composable to observe.
-    val startDestination: StateFlow<String> = _startDestination
-
     // New state to control the visibility of the session expired dialog
     private val _showSessionExpiredDialog = MutableStateFlow(false)
     val showSessionExpiredDialog = _showSessionExpiredDialog.asStateFlow()
@@ -71,7 +66,6 @@ class AuthViewModel @Inject constructor(
         // If the user's AuthState is authorized, go to the app list. Otherwise, go to login.
         viewModelScope.launch {
             _authState.value = tokenManager.getAuthState()
-            _startDestination.value = if (_authState.value.isAuthorized) Routes.APP_LIST else Routes.LOGIN
             checkBackendUrlValid()
             checkIsAdmin()
         }

@@ -1,14 +1,30 @@
 package org.friesoft.porturl.ui.navigation
 
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+
 object Routes {
-    const val LOGIN = "login"
-    const val SETTINGS = "settings"
-    const val APP_LIST = "appList"
-    const val APP_DETAIL = "appDetail"
-    const val APP_ID_KEY = "appId"
-    const val CATEGORY_DETAIL = "categoryDetail"
-    const val CATEGORY_ID_KEY = "categoryId"
-    const val USER_LIST = "userList"
-    const val USER_DETAIL = "userDetail"
-    const val USER_ID_KEY = "userId"
+    @Serializable
+    data object AuthCheck : NavKey
+
+    @Serializable
+    data object Login : NavKey
+
+    @Serializable
+    data object Settings : NavKey
+
+    @Serializable
+    data object AppList : NavKey
+
+    @Serializable
+    data class AppDetail(val appId: Long) : NavKey
+
+    @Serializable
+    data class CategoryDetail(val categoryId: Long) : NavKey
+
+    @Serializable
+    data object UserList : NavKey
+
+    @Serializable
+    data class UserDetail(val userId: String) : NavKey
 }

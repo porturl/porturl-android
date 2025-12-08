@@ -27,16 +27,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
 import org.friesoft.porturl.R
+import org.friesoft.porturl.ui.navigation.Navigator
+import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.ApplicationDetailViewModel
 
 @Composable
 fun ApplicationDetailRoute(
-    navController: NavController,
+    navigator: Navigator,
     applicationId: Long,
+    sharedViewModel: AppSharedViewModel,
     viewModel: ApplicationDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -48,8 +50,9 @@ fun ApplicationDetailRoute(
 
     LaunchedEffect(Unit) {
         viewModel.finishScreen.collect {
-            navController.previousBackStackEntry?.savedStateHandle?.set("refresh_list", true)
-            navController.popBackStack()
+             // Refresh signal
+            sharedViewModel.triggerRefreshAppList()
+            navigator.goBack()
         }
     }
 
@@ -64,7 +67,7 @@ fun ApplicationDetailRoute(
         snackbarHostState = snackbarHostState,
         onImageSelected = viewModel::onImageSelected,
         onSaveClick = viewModel::saveApplication,
-        onBackClick = { navController.popBackStack() },
+        onBackClick = { navigator.goBack() },
         applicationId = applicationId,
     )
 }

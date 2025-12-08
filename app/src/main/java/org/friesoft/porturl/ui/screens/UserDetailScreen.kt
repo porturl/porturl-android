@@ -16,18 +16,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.viewmodels.UserDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun UserDetailScreen(
-    navController: NavController,
+    navigator: Navigator,
+    userId: String,
     viewModel: UserDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(userId) {
+        viewModel.loadUser(userId)
+    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -41,7 +46,7 @@ fun UserDetailScreen(
             TopAppBar(
                 title = { Text("User Permissions") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.goBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
