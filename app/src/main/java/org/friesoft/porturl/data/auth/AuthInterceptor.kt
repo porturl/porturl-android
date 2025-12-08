@@ -42,31 +42,37 @@ class AuthInterceptor @Inject constructor(
         }
         // --- DEBUG LOGGING END ---
 
-        // Only try to refresh if we are authorized and have a refresh token
-        if (authState.isAuthorized && authState.refreshToken != null) {
+        if (authState.isAuthorized) {
             val latch = CountDownLatch(1)
             var newRequest: okhttp3.Request? = null
+            val authService = AuthorizationService(context)
 
-            authState.performActionWithFreshTokens(AuthorizationService(context)) { accessToken, _, ex ->
-                try {
-                    if (ex != null) {
-                        Log.e("AuthInterceptor", "Token refresh failed, session expired.", ex)
-                        runBlocking {
-                            authStateManager.clearAuthState()
-                            sessionNotifier.notifySessionExpired()
+            try {
+                authState.performActionWithFreshTokens(authService) { accessToken, _, ex ->
+                    try {
+                        if (ex != null) {
+                            Log.e("AuthInterceptor", "Token refresh failed.", ex)
+                            runBlocking {
+                                authStateManager.clearAuthState()
+                                sessionNotifier.notifySessionExpired()
+                            }
+                        } else if (accessToken != null) {
+                            Log.d("AuthInterceptor", "Fresh token obtained: ${accessToken.take(10)}...")
+                            newRequest = chain.request().newBuilder()
+                                .header("Authorization", "Bearer $accessToken")
+                                .build()
+                        } else {
+                            Log.w("AuthInterceptor", "No access token and no exception.")
                         }
-                    } else if (accessToken != null) {
-                        newRequest = chain.request().newBuilder()
-                            .header("Authorization", "Bearer $accessToken")
-                            .build()
+                        authStateManager.replace(authState)
+                    } finally {
+                        latch.countDown()
                     }
-                    authStateManager.replace(authState)
-                } finally {
-                    latch.countDown()
                 }
+                latch.await()
+            } finally {
+                authService.dispose()
             }
-
-            latch.await()
 
             newRequest?.let { request = it }
         }

@@ -69,7 +69,9 @@ class AuthService @Inject constructor(
                 }
                 // If the token exchange was successful, update the state with the new tokens
                 authState.update(tokenResponse, null)
+                android.util.Log.d("AuthService", "Token exchange successful. Access Token: ${tokenResponse.accessToken?.take(10)}..., Refresh Token present: ${tokenResponse.refreshToken != null}")
             } catch (tokenEx: AuthorizationException) {
+                android.util.Log.e("AuthService", "Token exchange failed", tokenEx)
                 // If the token exchange failed, update the state with that specific exception
                 // We explicitly cast null to TokenResponse? to resolve the compiler ambiguity.
                 authState.update(null as TokenResponse?, tokenEx)
@@ -93,5 +95,10 @@ class AuthService @Inject constructor(
         val endSessionIntent = authService.getEndSessionRequestIntent(endSessionRequest)
         launcher.launch(endSessionIntent)
     }
+
+    fun getAuthorizationService(): AuthorizationService {
+        return authService
+    }
+
 }
 
