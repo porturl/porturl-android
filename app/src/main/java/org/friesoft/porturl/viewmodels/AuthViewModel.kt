@@ -135,6 +135,28 @@ class AuthViewModel @Inject constructor(
             tokenManager.saveAuthState(authState)
             // Update the in-memory state to trigger UI updates.
             _authState.value = authState
+
+            // Log the issuer from the ID token
+            authState.idToken?.let { idToken ->
+                try {
+                    val jwtParts = idToken.split(".")
+                    if (jwtParts.size > 1) {
+                        val jwtBody = jwtParts[1]
+                        val decodedBytes = android.util.Base64.decode(jwtBody, android.util.Base64.URL_SAFE)
+                        val decodedString = String(decodedBytes, Charsets.UTF_8)
+                        Log.d("AuthViewModel", "Full JWT body: $decodedString") // Log the entire JWT body
+                        val jsonObject = org.json.JSONObject(decodedString)
+                        val issuer = jsonObject.getString("iss")
+                        Log.d("AuthViewModel", "JWT Issuer (Android): $issuer")
+                    } else {
+                        Log.e("AuthViewModel", "ID Token is not a valid JWT format.")
+                    }
+                } catch (e: Exception) {
+                    Log.e("AuthViewModel", "Error decoding or parsing ID token: ${e.message}")
+                }
+            }
+
+            checkIsAdmin()
         }
     }
 

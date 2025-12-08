@@ -12,6 +12,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * Manages the OAuth 2.0 authorization flow using the AppAuth library.
@@ -83,10 +84,16 @@ class AuthService @Inject constructor(
      * Forces a token refresh using the stored refresh token.
      * @return true if refresh was successful, false otherwise.
      */
+
     suspend fun forceTokenRefresh(): Boolean {
         val authState = tokenManager.getAuthState()
-        val refreshToken = authState.refreshToken ?: return false
+        val refreshToken = authState.refreshToken
+        if (refreshToken == null) {
+            Log.w("AuthService", "forceTokenRefresh: No refresh token available. Cannot refresh.")
+            return false
+        }
 
+        Log.d("AuthService", "forceTokenRefresh: Attempting to refresh token.")
         return try {
             val config = getAuthServiceConfig()
             val tokenRequest = TokenRequest.Builder(config, "porturl-android-client")
@@ -97,15 +104,18 @@ class AuthService @Inject constructor(
             suspendCoroutine { continuation ->
                 authService.performTokenRequest(tokenRequest) { response, ex ->
                     if (response != null) {
+                        Log.d("AuthService", "forceTokenRefresh: Token refresh successful.")
                         authState.update(response, ex)
                         tokenManager.saveAuthState(authState)
                         continuation.resume(true)
                     } else {
+                        Log.e("AuthService", "forceTokenRefresh: Token refresh failed.", ex)
                         continuation.resume(false)
                     }
                 }
             }
         } catch (e: Exception) {
+            Log.e("AuthService", "forceTokenRefresh: Exception during token refresh.", e)
             false
         }
     }

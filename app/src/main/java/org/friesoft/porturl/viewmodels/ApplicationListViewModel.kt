@@ -118,7 +118,7 @@ class ApplicationListViewModel @Inject constructor(
     private val debounceTime = 1000L // 1 second debounce for persistence
 
     init {
-        loadData()
+        refreshData()
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -127,7 +127,7 @@ class ApplicationListViewModel @Inject constructor(
 
     fun refreshData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true) }
+            _uiState.update { it.copy(isRefreshing = true, isLoading = true) }
             try {
                 // Ensure any pending save operation completes before refreshing.
                 persistenceJob?.join()
@@ -143,21 +143,7 @@ class ApplicationListViewModel @Inject constructor(
                 Log.e("AppListViewModel", "Failed to refresh data", e)
                 _uiState.update { it.copy(error = "Failed to refresh data: ${e.localizedMessage}") }
             } finally {
-                _uiState.update { it.copy(isRefreshing = false) }
-            }
-        }
-    }
-
-    private fun loadData() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                loadAllItemsFromRepositories()
-            } catch (e: Exception) {
-                Log.e("AppListViewModel", "Failed to load data", e)
-                _uiState.update { it.copy(error = "Failed to load data: ${e.localizedMessage}") }
-            } finally {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isRefreshing = false, isLoading = false) }
             }
         }
     }
