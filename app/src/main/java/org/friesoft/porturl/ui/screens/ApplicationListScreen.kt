@@ -278,7 +278,7 @@ fun ApplicationListScreen(
                                     Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_mode_description))
                                 }
                                 if (isAdmin) {
-                                    IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, "Manage Users") }
+                                    IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, stringResource(R.string.manage_users_title)) }
                                 }
                                 IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description)) }
                                 IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description)) }
@@ -293,8 +293,8 @@ fun ApplicationListScreen(
                                 }
                                 if (isAdmin) {
                                     TextButton(onClick = onManageUsers) {
-                                        Icon(Icons.Filled.Person, "Manage Users", modifier = Modifier.padding(end = 8.dp))
-                                        Text("Manage Users")
+                                        Icon(Icons.Filled.Person, stringResource(R.string.manage_users_title), modifier = Modifier.padding(end = 8.dp))
+                                        Text(stringResource(R.string.manage_users_title))
                                     }
                                 }
                                 TextButton(onClick = onSettingsClick) {

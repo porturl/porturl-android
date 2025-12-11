@@ -13,9 +13,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.friesoft.porturl.R
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.viewmodels.UserDetailViewModel
@@ -44,7 +46,7 @@ fun UserDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("User Permissions") },
+                title = { Text(stringResource(R.string.user_permissions_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navigator.goBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -88,7 +90,7 @@ fun AppPermissionItem(
             Spacer(Modifier.height(8.dp))
 
             if (app.availableRoles.isEmpty()) {
-                 Text("No roles defined for this app.", style = MaterialTheme.typography.bodySmall)
+                 Text(stringResource(R.string.no_roles_defined), style = MaterialTheme.typography.bodySmall)
             } else {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),

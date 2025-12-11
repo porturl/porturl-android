@@ -114,4 +114,9 @@
     <!-- SettingsViewModel -->
     <string name="settingsviewmodel_error_could_not_connect_url">Could not connect to the provided URL.</string>
 
+    <!-- User Management -->
+    <string name="manage_users_title">Manage Users</string>
+    <string name="user_permissions_title">User Permissions</string>
+    <string name="no_roles_defined">No roles defined for this app.</string>
+
 </resources>

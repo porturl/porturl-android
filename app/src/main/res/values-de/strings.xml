@@ -114,4 +114,9 @@
     <!-- SettingsViewModel -->
     <string name="settingsviewmodel_error_could_not_connect_url">Verbindung zur angegeben URL nicht möglich.</string>
 
+    <!-- User Management -->
+    <string name="manage_users_title">Benutzer verwalten</string>
+    <string name="user_permissions_title">Benutzerberechtigungen</string>
+    <string name="no_roles_defined">Keine Rollen für diese App definiert.</string>
+
 </resources>
