@@ -64,6 +64,12 @@ interface ApiService {
 
     // --- User Management & Roles ---
 
+    @GET("api/users/current")
+    suspend fun getCurrentUser(): User
+
+    @PATCH("api/users/current")
+    suspend fun updateCurrentUser(@Body request: org.friesoft.porturl.data.model.UserUpdateRequest): User
+
     @GET("api/users")
     suspend fun getAllUsers(): List<User>
 

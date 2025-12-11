@@ -1,6 +1,7 @@
 package org.friesoft.porturl.data.repository
 
 import org.friesoft.porturl.data.model.User
+import org.friesoft.porturl.data.model.UserUpdateRequest
 import org.friesoft.porturl.data.remote.ApiService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -9,6 +10,14 @@ import javax.inject.Singleton
 class UserRepository @Inject constructor(
     private val apiService: ApiService
 ) {
+    suspend fun getCurrentUser(): User {
+        return apiService.getCurrentUser()
+    }
+
+    suspend fun updateCurrentUser(image: String?): User {
+        return apiService.updateCurrentUser(UserUpdateRequest(image))
+    }
+
     suspend fun getAllUsers(): List<User> {
         return apiService.getAllUsers()
     }

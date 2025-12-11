@@ -31,6 +31,8 @@ import javax.inject.Inject
  * @property authService The service responsible for handling the AppAuth authorization flow.
  * @property tokenManager The manager for persisting and retrieving the AuthState.
  */
+import org.friesoft.porturl.data.repository.ImageRepository
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authService: AuthService,
@@ -38,13 +40,17 @@ class AuthViewModel @Inject constructor(
     private val sessionNotifier: SessionExpiredNotifier, // Inject the notifier
     private val settingsRepository: SettingsRepository,
     private val configRepository: ConfigRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val imageRepository: ImageRepository
 ) : ViewModel() {
 
     // Private mutable state flow to hold the current authentication state.
     private val _authState = MutableStateFlow(AuthState())
     // Publicly exposed, read-only state flow for the UI to observe.
     val authState: StateFlow<AuthState> = _authState
+
+    private val _currentUser = MutableStateFlow<org.friesoft.porturl.data.model.User?>(null)
+    val currentUser: StateFlow<org.friesoft.porturl.data.model.User?> = _currentUser.asStateFlow()
 
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
@@ -68,6 +74,7 @@ class AuthViewModel @Inject constructor(
             _authState.value = authStateManager.current
             checkBackendUrlValid()
             checkIsAdmin()
+            fetchCurrentUser()
         }
 
         // Listen for session expiration events from the notifier
@@ -77,9 +84,38 @@ class AuthViewModel @Inject constructor(
                 // This ensures the UI will react correctly and navigate away
                 // from authenticated screens.
                 _authState.value = AuthState()
+                _currentUser.value = null
 
                 // Then, show the informational dialog to the user.
                 _showSessionExpiredDialog.value = true
+            }
+        }
+    }
+
+    private fun fetchCurrentUser() {
+        viewModelScope.launch {
+            if (_authState.value.isAuthorized) {
+                try {
+                    _currentUser.value = userRepository.getCurrentUser()
+                } catch (e: Exception) {
+                    Log.e("AuthViewModel", "Failed to fetch current user", e)
+                }
+            } else {
+                _currentUser.value = null
+            }
+        }
+    }
+
+    fun updateUserImage(uri: android.net.Uri) {
+        viewModelScope.launch {
+            try {
+                val filename = imageRepository.uploadImage(uri)
+                if (filename != null) {
+                    val updatedUser = userRepository.updateCurrentUser(filename)
+                    _currentUser.value = updatedUser
+                }
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to update user image", e)
             }
         }
     }

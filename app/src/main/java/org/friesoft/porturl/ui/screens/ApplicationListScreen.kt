@@ -47,6 +47,7 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -116,6 +117,7 @@ fun ApplicationListRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
+    val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
     val isEditing by sharedViewModel.isEditing.collectAsStateWithLifecycle()
     val shouldRefresh by sharedViewModel.shouldRefreshAppList.collectAsStateWithLifecycle()
@@ -158,6 +160,7 @@ fun ApplicationListRoute(
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         authViewModel = authViewModel,
+        currentUser = currentUser,
         onSettingsClick = { navigator.navigate(Routes.Settings) },
         onManageUsers = { navigator.navigate(Routes.UserList) },
         isAdmin = isAdmin,
@@ -183,6 +186,7 @@ fun ApplicationListScreen(
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
     authViewModel: AuthViewModel,
+    currentUser: org.friesoft.porturl.data.model.User?,
     onSettingsClick: () -> Unit,
     onManageUsers: () -> Unit,
     isAdmin: Boolean,
@@ -280,8 +284,12 @@ fun ApplicationListScreen(
                                 if (isAdmin) {
                                     IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, stringResource(R.string.manage_users_title)) }
                                 }
-                                IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description)) }
-                                IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description)) }
+                                UserMenu(
+                                    currentUser = currentUser,
+                                    onLogout = { authViewModel.logout(logoutLauncher) },
+                                    onSettings = onSettingsClick,
+                                    onImageSelected = { uri -> authViewModel.updateUserImage(uri) }
+                                )
                             } else {
                                 TextButton(onClick = { searchBarVisible = true }) {
                                     Icon(Icons.Filled.Search, stringResource(id = R.string.search_description), modifier = Modifier.padding(end = 8.dp))
@@ -297,14 +305,12 @@ fun ApplicationListScreen(
                                         Text(stringResource(R.string.manage_users_title))
                                     }
                                 }
-                                TextButton(onClick = onSettingsClick) {
-                                    Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description), modifier = Modifier.padding(end = 8.dp))
-                                    Text(stringResource(id = R.string.settings_description))
-                                }
-                                TextButton(onClick = { authViewModel.logout(logoutLauncher) }) {
-                                    Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description), modifier = Modifier.padding(end = 8.dp))
-                                    Text(stringResource(id = R.string.logout_description))
-                                }
+                                UserMenu(
+                                    currentUser = currentUser,
+                                    onLogout = { authViewModel.logout(logoutLauncher) },
+                                    onSettings = onSettingsClick,
+                                    onImageSelected = { uri -> authViewModel.updateUserImage(uri) }
+                                )
                             }
                         }
                     )
@@ -879,3 +885,106 @@ private fun DeleteConfirmationDialog(
 
 // Extension for vector magnitude
 private fun Offset.getDistance() = sqrt(x.pow(2) + y.pow(2))
+
+@Composable
+fun UserMenu(
+    currentUser: org.friesoft.porturl.data.model.User?,
+    onLogout: () -> Unit,
+    onSettings: () -> Unit,
+    onImageSelected: (android.net.Uri) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let { onImageSelected(it) }
+    }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            if (currentUser?.imageUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(currentUser.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = stringResource(id = R.string.user_image_description),
+                    modifier = Modifier.clip(androidx.compose.foundation.shape.CircleShape).size(32.dp),
+                    placeholder = rememberVectorPainter(Icons.Default.Person),
+                    error = rememberVectorPainter(Icons.Default.Person)
+                )
+            } else {
+                Icon(Icons.Default.Person, contentDescription = stringResource(id = R.string.user_image_description))
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            // User Header
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .clickable { imagePickerLauncher.launch("image/*") }
+                        .border(1.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (currentUser?.imageUrl != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(currentUser.imageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = stringResource(id = R.string.user_image_description),
+                            modifier = Modifier.fillMaxSize(),
+                            placeholder = rememberVectorPainter(Icons.Default.Person),
+                            error = rememberVectorPainter(Icons.Default.Person)
+                        )
+                    } else {
+                         Icon(
+                             Icons.Default.Person,
+                             contentDescription = null,
+                             modifier = Modifier.size(48.dp),
+                             tint = MaterialTheme.colorScheme.onSurfaceVariant
+                         )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = currentUser?.email ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            HorizontalDivider()
+
+            DropdownMenuItem(
+                text = { Text(stringResource(id = R.string.settings_description)) },
+                onClick = {
+                    expanded = false
+                    onSettings()
+                },
+                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+            )
+
+            DropdownMenuItem(
+                text = { Text(stringResource(id = R.string.logout_description)) },
+                onClick = {
+                    expanded = false
+                    onLogout()
+                },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) }
+            )
+        }
+    }
+}

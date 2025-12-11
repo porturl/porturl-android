@@ -17,12 +17,14 @@ import org.friesoft.porturl.data.model.ApplicationUpdateRequest
 import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
+import org.friesoft.porturl.data.repository.ImageRepository
 import javax.inject.Inject
 
 @HiltViewModel
 class ApplicationDetailViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val imageRepository: ImageRepository
 ) : ViewModel() {
 
     data class UiState(
@@ -138,7 +140,7 @@ class ApplicationDetailViewModel @Inject constructor(
     private suspend fun handleImageUpload(): String? {
         val selectedUri = _uiState.value.selectedImageUri
         if (selectedUri != null) {
-            val newIconFilename = applicationRepository.uploadImage(selectedUri)
+            val newIconFilename = imageRepository.uploadImage(selectedUri)
             if (newIconFilename == null) {
                 throw Exception("Failed to upload image.")
             }

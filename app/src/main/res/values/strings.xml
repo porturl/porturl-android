@@ -119,4 +119,8 @@
     <string name="user_permissions_title">User Permissions</string>
     <string name="no_roles_defined">No roles defined for this app.</string>
 
+    <!-- User Menu -->
+    <string name="user_menu_title">User Profile</string>
+    <string name="user_image_description">User Image</string>
+
 </resources>
