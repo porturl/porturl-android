@@ -292,6 +292,44 @@ class ApplicationListViewModel @Inject constructor(
         debouncedPersist(currentItems)
     }
 
+    fun moveCategory(fromCatId: Long, targetCategoryIndex: Int) {
+        val currentItems = _uiState.value.allItems.toMutableList()
+
+        // 1. Identify the 'from' block
+        val fromStartIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == fromCatId }
+        if (fromStartIndex == -1) return
+        var fromEndIndex = fromStartIndex + 1
+        while (fromEndIndex < currentItems.size && currentItems[fromEndIndex] is DashboardItem.ApplicationItem) {
+            fromEndIndex++
+        }
+        val blockToMove = currentItems.subList(fromStartIndex, fromEndIndex).toList()
+
+        // Remove the block
+        currentItems.subList(fromStartIndex, fromEndIndex).clear()
+
+        // 2. Identify the 'to' insertion point in the modified list
+        // targetCategoryIndex is 0-based index of categories.
+        // We need to find the item index of the (targetCategoryIndex)-th category.
+        var categoryCount = 0
+        var insertAtIndex = currentItems.size // Default to end
+        for (i in currentItems.indices) {
+            if (currentItems[i] is DashboardItem.CategoryItem) {
+                if (categoryCount == targetCategoryIndex) {
+                    insertAtIndex = i
+                    break
+                }
+                categoryCount++
+            }
+        }
+
+        // Insert at the 'to' position.
+        if (insertAtIndex >= 0 && insertAtIndex <= currentItems.size) {
+            currentItems.addAll(insertAtIndex, blockToMove)
+            _uiState.update { it.copy(allItems = currentItems) }
+            debouncedPersist(currentItems)
+        }
+    }
+
     private fun debouncedPersist(items: List<DashboardItem>) {
         persistenceJob?.cancel()
         persistenceJob = viewModelScope.launch {
