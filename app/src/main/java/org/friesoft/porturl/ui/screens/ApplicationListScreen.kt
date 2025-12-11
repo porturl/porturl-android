@@ -28,6 +28,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -104,6 +105,16 @@ private sealed class DraggingItem {
     ) : DraggingItem() {
         override val key: String = dashboardItemKey
     }
+
+    data class CategoryItem(
+        val category: Category,
+        override var dragPosition: Offset,
+        override val itemOffset: Offset,
+        override val itemSize: IntSize,
+        override val composable: @Composable () -> Unit
+    ) : DraggingItem() {
+        override val key: String = "category_${category.id}"
+    }
 }
 
 // Represents a potential drop location: a category and an index within it.
@@ -121,7 +132,6 @@ fun ApplicationListRoute(
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
-    val isEditing by sharedViewModel.isEditing.collectAsStateWithLifecycle()
     val shouldRefresh by sharedViewModel.shouldRefreshAppList.collectAsStateWithLifecycle()
     val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
         initialValue = org.friesoft.porturl.data.model.UserPreferences(
@@ -148,9 +158,7 @@ fun ApplicationListRoute(
 
     ApplicationListScreen(
         uiState = uiState,
-        isEditing = isEditing,
-        setIsEditing = { sharedViewModel.setEditMode(it) },
-        onMoveCategory = viewModel::moveCategoryByDirection,
+        onCategoryDragEnd = viewModel::moveCategory,
         onMoveApplication = viewModel::moveApplication,
         onSortApps = viewModel::sortAppsAlphabetically,
         onRefresh = viewModel::refreshData,
@@ -174,9 +182,7 @@ fun ApplicationListRoute(
 @Composable
 fun ApplicationListScreen(
     uiState: ApplicationListState,
-    isEditing: Boolean,
-    setIsEditing: (Boolean) -> Unit,
-    onMoveCategory: (id: Long, direction: ApplicationListViewModel.MoveDirection) -> Unit,
+    onCategoryDragEnd: (fromCatId: Long, targetCategoryIndex: Int) -> Unit,
     onMoveApplication: (appId: Long, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) -> Unit,
     onSortApps: (categoryId: Long) -> Unit,
     onRefresh: () -> Unit,
@@ -216,7 +222,6 @@ fun ApplicationListScreen(
 
     val showSearchBar = searchBarVisible || uiState.searchQuery.isNotBlank()
 
-    BackHandler(enabled = isEditing) { setIsEditing(false) }
     BackHandler(enabled = showSearchBar) {
         onSearchQueryChanged("")
         searchBarVisible = false
@@ -289,9 +294,6 @@ fun ApplicationListScreen(
                         actions = {
                             if (windowWidthSize == WindowWidthSizeClass.Compact) {
                                 IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, stringResource(id = R.string.search_description)) }
-                                IconButton(onClick = { setIsEditing(!isEditing) }) {
-                                    Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_mode_description))
-                                }
                                 if (isAdmin) {
                                     IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, stringResource(R.string.manage_users_title)) }
                                 }
@@ -308,13 +310,6 @@ fun ApplicationListScreen(
                                 ) {
                                     Icon(Icons.Filled.Search, stringResource(id = R.string.search_description), modifier = Modifier.padding(end = 8.dp))
                                     Text(stringResource(id = R.string.search_description))
-                                }
-                                TextButton(
-                                    onClick = { setIsEditing(!isEditing) },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary)
-                                ) {
-                                    Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                                    Text(if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_button_text))
                                 }
                                 if (isAdmin) {
                                     TextButton(
@@ -339,37 +334,34 @@ fun ApplicationListScreen(
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                AnimatedVisibility(visible = isEditing) {
-                    if (windowWidthSize == WindowWidthSizeClass.Compact) {
-                        FloatingActionButton(
-                            onClick = onAddCategory,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ) { Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_category_description)) }
-                    } else {
-                        ExtendedFloatingActionButton(
-                            text = { Text(stringResource(id = R.string.add_category_description)) },
-                            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                            onClick = onAddCategory,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    }
+                if (windowWidthSize == WindowWidthSizeClass.Compact) {
+                    FloatingActionButton(
+                        onClick = onAddCategory,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) { Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_category_description)) }
+                } else {
+                    ExtendedFloatingActionButton(
+                        text = { Text(stringResource(id = R.string.add_category_description)) },
+                        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                        onClick = onAddCategory,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 }
-                AnimatedVisibility(visible = isEditing) {
-                    if (windowWidthSize == WindowWidthSizeClass.Compact) {
-                        FloatingActionButton(
-                            onClick = onAddApplication,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Icon(Icons.Default.Apps, contentDescription = stringResource(id = R.string.add_application_description))
-                        }
-                    } else {
-                        ExtendedFloatingActionButton(
-                            text = { Text(stringResource(id = R.string.add_application_description)) },
-                            icon = { Icon(Icons.Default.Apps, contentDescription = null) },
-                            onClick = onAddApplication,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
+
+                if (windowWidthSize == WindowWidthSizeClass.Compact) {
+                    FloatingActionButton(
+                        onClick = onAddApplication,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Default.Apps, contentDescription = stringResource(id = R.string.add_application_description))
                     }
+                } else {
+                    ExtendedFloatingActionButton(
+                        text = { Text(stringResource(id = R.string.add_application_description)) },
+                        icon = { Icon(Icons.Default.Apps, contentDescription = null) },
+                        onClick = onAddApplication,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 }
             }
         }
@@ -390,41 +382,66 @@ fun ApplicationListScreen(
                                 draggingItem = DraggingItem.App(app, cat, key, absPos, relPos, size, composable)
                             }
 
+                        val onCategoryDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
+                            { category, absPos, relPos, size, composable ->
+                                draggingItem = DraggingItem.CategoryItem(category, absPos, relPos, size, composable)
+                            }
+
                         val onDrag: (Offset) -> Unit = { dragAmount ->
                             draggingItem?.let { state ->
                                 state.dragPosition += dragAmount
                                 var newDropTarget: DropTarget? = null
 
-                                val targetCatId = categoryBounds.entries.find { (_, rect) ->
-                                    rect.contains(state.dragPosition)
-                                }?.key
+                                if (state is DraggingItem.App) {
+                                    val targetCatId = categoryBounds.entries.find { (_, rect) ->
+                                        rect.contains(state.dragPosition)
+                                    }?.key
 
-                                if (targetCatId != null) {
-                                    val appsInTargetCategory = uiState.allItems
-                                        .filterIsInstance<DashboardItem.ApplicationItem>()
-                                        .filter { it.parentCategoryId == targetCatId }
+                                    if (targetCatId != null) {
+                                        val appsInTargetCategory = uiState.allItems
+                                            .filterIsInstance<DashboardItem.ApplicationItem>()
+                                            .filter { it.parentCategoryId == targetCatId }
 
-                                    val targetIndex = if (appsInTargetCategory.isEmpty()) { 0 }
-                                    else {
-                                        val closestApp = appsInTargetCategory.minByOrNull { item ->
-                                            if (item.key == state.key) return@minByOrNull Float.MAX_VALUE
-                                            val bounds = applicationBounds[item.key] ?: return@minByOrNull Float.MAX_VALUE
-                                            (bounds.center - state.dragPosition).getDistance()
-                                        }
-
-                                        if (closestApp != null) {
-                                            val closestBounds = applicationBounds.getValue(closestApp.key)
-                                            val closestIndex = appsInTargetCategory.indexOf(closestApp)
-                                            if (state.dragPosition.x < closestBounds.center.x) {
-                                                closestIndex
-                                            } else {
-                                                closestIndex + 1
-                                            }
+                                        val targetIndex = if (appsInTargetCategory.isEmpty()) {
+                                            0
                                         } else {
-                                            appsInTargetCategory.size
+                                            val closestApp = appsInTargetCategory.minByOrNull { item ->
+                                                if (item.key == state.key) return@minByOrNull Float.MAX_VALUE
+                                                val bounds = applicationBounds[item.key]
+                                                    ?: return@minByOrNull Float.MAX_VALUE
+                                                (bounds.center - state.dragPosition).getDistance()
+                                            }
+
+                                            if (closestApp != null) {
+                                                val closestBounds = applicationBounds.getValue(closestApp.key)
+                                                val closestIndex = appsInTargetCategory.indexOf(closestApp)
+                                                if (state.dragPosition.x < closestBounds.center.x) {
+                                                    closestIndex
+                                                } else {
+                                                    closestIndex + 1
+                                                }
+                                            } else {
+                                                appsInTargetCategory.size
+                                            }
                                         }
+                                        newDropTarget = DropTarget(targetCatId, targetIndex)
                                     }
-                                    newDropTarget = DropTarget(targetCatId, targetIndex)
+                                } else if (state is DraggingItem.CategoryItem) {
+                                     val targetCatEntry = categoryBounds.entries.find { (_, rect) ->
+                                         rect.contains(state.dragPosition)
+                                     }
+                                     if (targetCatEntry != null) {
+                                          val targetCatId = targetCatEntry.key
+                                          // Find the index of this category in the UI list of categories
+                                          val targetIndex = uiState.allItems.asSequence()
+                                                .filterIsInstance<DashboardItem.CategoryItem>()
+                                                .map { it.category.id }
+                                                .indexOf(targetCatId)
+
+                                          if (targetIndex != -1) {
+                                              newDropTarget = DropTarget(targetCatId, targetIndex)
+                                          }
+                                     }
                                 }
                                 dropTargetInfo = newDropTarget
                             }
@@ -432,11 +449,13 @@ fun ApplicationListScreen(
 
                         val onDragEnd: () -> Unit = {
                             draggingItem?.let { state ->
-                                if (state is DraggingItem.App) {
-                                    dropTargetInfo?.let { target ->
+                                dropTargetInfo?.let { target ->
+                                    if (state is DraggingItem.App) {
                                         state.application.id?.let { appId ->
                                             onMoveApplication(appId, state.fromCategory.id, target.categoryId, target.index)
                                         }
+                                    } else if (state is DraggingItem.CategoryItem) {
+                                        onCategoryDragEnd(state.category.id, target.index)
                                     }
                                 }
                             }
@@ -455,19 +474,15 @@ fun ApplicationListScreen(
                                     CategoryColumn(
                                         category = category,
                                         applications = applications,
-                                        isEditing = isEditing,
                                         dropTargetInfo = dropTargetInfo,
                                         draggingItem = draggingItem,
                                         onSortApps = onSortApps,
                                         onCategoryClick = onCategoryClick,
                                         onDeleteCategory = { itemToDelete = "Category" to category.id },
-                                        onMoveCategory = onMoveCategory,
-                                        canMoveUp = index > 0,
-                                        canMoveDown = index < sortedCategories.lastIndex,
-                                        showMoveControls = true,
                                         onApplicationClick = onApplicationClick,
                                         onDeleteApplication = { app -> itemToDelete = "Application" to app.id!! },
                                         onAppDragStart = onDragStart,
+                                        onCategoryDragStart = onCategoryDragStart,
                                         onDrag = onDrag,
                                         onDragEnd = onDragEnd,
                                         onAppBoundsChanged = { key, rect -> applicationBounds[key] = rect },
@@ -494,19 +509,15 @@ fun ApplicationListScreen(
                                     CategoryColumn(
                                         category = category,
                                         applications = applications,
-                                        isEditing = isEditing,
                                         dropTargetInfo = dropTargetInfo,
                                         draggingItem = draggingItem,
                                         onSortApps = onSortApps,
                                         onCategoryClick = onCategoryClick,
                                         onDeleteCategory = { itemToDelete = "Category" to category.id },
-                                        onMoveCategory = onMoveCategory,
-                                        canMoveUp = index > 0,
-                                        canMoveDown = index < sortedCategories.lastIndex,
-                                        showMoveControls = false,
                                         onApplicationClick = onApplicationClick,
                                         onDeleteApplication = { app -> itemToDelete = "Application" to app.id!! },
                                         onAppDragStart = onDragStart,
+                                        onCategoryDragStart = onCategoryDragStart,
                                         onDrag = onDrag,
                                         onDragEnd = onDragEnd,
                                         onAppBoundsChanged = { key, rect -> applicationBounds[key] = rect },
@@ -524,14 +535,10 @@ fun ApplicationListScreen(
                 }
             }
 
-            if (isEditing) {
-                Box { screenContent() }
-            } else {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = onRefresh
-                ) { screenContent() }
-            }
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = onRefresh
+            ) { screenContent() }
 
             // --- Drag Overlay ---
             draggingItem?.let { state ->
@@ -564,19 +571,15 @@ fun ApplicationListScreen(
 private fun CategoryColumn(
     category: Category,
     applications: List<Application>,
-    isEditing: Boolean,
     dropTargetInfo: DropTarget?,
     draggingItem: DraggingItem?,
     onSortApps: (categoryId: Long) -> Unit,
     onCategoryClick: (Category) -> Unit,
     onDeleteCategory: () -> Unit,
-    onMoveCategory: (id: Long, direction: ApplicationListViewModel.MoveDirection) -> Unit,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    showMoveControls: Boolean,
     onApplicationClick: (Application) -> Unit,
     onDeleteApplication: (Application) -> Unit,
     onAppDragStart: (Application, Category, String, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit,
+    onCategoryDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     onAppBoundsChanged: (key: String, bounds: Rect) -> Unit,
@@ -594,21 +597,15 @@ private fun CategoryColumn(
     ) {
         CategoryHeader(
             category = category,
-            isEditing = isEditing,
             onSortClick = { onSortApps(category.id) },
-            onClick = { if (isEditing) onCategoryClick(category) },
+            onEditClick = { onCategoryClick(category) },
             onDeleteClick = onDeleteCategory,
-            onMoveUp = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.UP) },
-            onMoveDown = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.DOWN) },
-            onMoveLeft = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.LEFT) },
-            onMoveRight = { onMoveCategory(category.id, ApplicationListViewModel.MoveDirection.RIGHT) },
-            canMoveUp = canMoveUp,
-            canMoveDown = canMoveDown,
-            canMoveLeft = canMoveUp,
-            canMoveRight = canMoveDown,
-            showVerticalMoveControls = showMoveControls,
-            showHorizontalMoveControls = !showMoveControls,
-            color = MaterialTheme.colorScheme.tertiaryContainer
+            onDragStart = onCategoryDragStart,
+            onDrag = onDrag,
+            onDragEnd = onDragEnd,
+            color = MaterialTheme.colorScheme.tertiaryContainer,
+            isGhost = draggingItem is DraggingItem.CategoryItem && draggingItem.category.id == category.id,
+            translucentBackground = translucentBackground
         )
 
         FlowRow(
@@ -666,10 +663,8 @@ private fun CategoryColumn(
 
                 ApplicationGridItem(
                     application = application,
-                    isEditing = isEditing,
-                    onClick = {
-                        if (isEditing) onApplicationClick(application) else openUrlInCustomTab(application.url, context)
-                    },
+                    onClick = { openUrlInCustomTab(application.url, context) },
+                    onEditClick = { onApplicationClick(application) },
                     onDeleteClick = { onDeleteApplication(application) },
                     modifier = Modifier
                         .offset(x = offsetX)
@@ -677,51 +672,41 @@ private fun CategoryColumn(
                             itemBounds = it.boundsInRoot().topLeft
                             itemSize = it.size
                             onAppBoundsChanged(appKey, it.boundsInRoot())
-                        }
-                        .then(
-                            if (isEditing) {
-                                Modifier.pointerInput(application, category) {
-                                    detectDragGestures(
-                                        onDragStart = { offset ->
-                                            val composable: @Composable () -> Unit = {
-                                                ApplicationGridItem(
-                                                    application,
-                                                    isEditing = false,
-                                                    {},
-                                                    {},
-                                                    color = color,
-                                                    translucentBackground = translucentBackground)
-                                            }
-                                            val fingerAbsolutePosition = itemBounds + offset
-                                            // To make the drag feel more natural, we center the dragged item
-                                            // on the finger, rather than using the initial touch point.
-                                            val centerAsOffset =
-                                                Offset(itemSize.width / 2f, itemSize.height / 2f)
-                                            onAppDragStart(
-                                                application,
-                                                category,
-                                                appKey,
-                                                fingerAbsolutePosition,
-                                                centerAsOffset,
-                                                itemSize,
-                                                composable
-                                            )
-                                        },
-                                        onDrag = { change, dragAmount ->
-                                            change.consume()
-                                            onDrag(dragAmount)
-                                        },
-                                        onDragEnd = onDragEnd,
-                                        onDragCancel = onDragEnd
+                        },
+                    dragModifier = Modifier
+                        .pointerInput(application, category) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { offset ->
+                                    val composable: @Composable () -> Unit = {
+                                        ApplicationGridItem(
+                                            application = application,
+                                            onClick = {},
+                                            onEditClick = {},
+                                            onDeleteClick = {},
+                                            color = color,
+                                            translucentBackground = translucentBackground)
+                                    }
+                                    val fingerAbsolutePosition = itemBounds + offset
+                                    val centerAsOffset =
+                                        Offset(itemSize.width / 2f, itemSize.height / 2f)
+                                    onAppDragStart(
+                                        application,
+                                        category,
+                                        appKey,
+                                        fingerAbsolutePosition,
+                                        centerAsOffset,
+                                        itemSize,
+                                        composable
                                     )
-                                }
-                            } else Modifier.clickable {
-                                openUrlInCustomTab(
-                                    application.url,
-                                    context
-                                )
-                            }
-                        ),
+                                },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(dragAmount)
+                                },
+                                onDragEnd = onDragEnd,
+                                onDragCancel = onDragEnd
+                            )
+                        },
                     isGhost = draggingItem?.key == appKey,
                     color = color,
                     translucentBackground = translucentBackground
@@ -767,60 +752,89 @@ private fun EmptyState(isSearchActive: Boolean) {
 @Composable
 fun ApplicationGridItem(
     application: Application,
-    isEditing: Boolean,
     onClick: () -> Unit,
+    onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
+    dragModifier: Modifier = Modifier,
     isGhost: Boolean = false,
     color: Color,
     translucentBackground: Boolean
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
         val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
         ElevatedCard(
             onClick = onClick,
             enabled = !isGhost,
-            modifier = Modifier.graphicsLayer { this.alpha = alpha },
+            modifier = Modifier.graphicsLayer { this.alpha = alpha }.then(dragModifier),
             colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
-            Column(
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(120.dp)
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(application.iconUrlThumbnail)
-                        .crossfade(true)
-                        .build(),
-                    placeholder = rememberVectorPainter(Icons.Default.Image),
-                    error = rememberVectorPainter(Icons.Default.BrokenImage),
-                    contentDescription = stringResource(id = R.string.application_icon_description, application.name),
-                    modifier = Modifier.size(40.dp)
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = application.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-        if (isEditing) {
-            IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 12.dp, y = (-12).dp)
-                    .graphicsLayer { this.alpha = alpha }
-            ) {
-                Icon(Icons.Filled.Delete, stringResource(id = R.string.delete_application_description), tint = MaterialTheme.colorScheme.error)
+            Box {
+                Column(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(120.dp)
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(application.iconUrlThumbnail)
+                            .crossfade(true)
+                            .build(),
+                        placeholder = rememberVectorPainter(Icons.Default.Image),
+                        error = rememberVectorPainter(Icons.Default.BrokenImage),
+                        contentDescription = stringResource(id = R.string.application_icon_description, application.name),
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = application.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                Box(
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(id = R.string.edit_mode_description),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(id = R.string.edit_button_text)) },
+                            onClick = {
+                                menuExpanded = false
+                                onEditClick()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(id = R.string.delete_button_text)) },
+                            onClick = {
+                                menuExpanded = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -829,27 +843,60 @@ fun ApplicationGridItem(
 @Composable
 fun CategoryHeader(
     category: Category,
-    isEditing: Boolean,
     onSortClick: () -> Unit,
-    onClick: () -> Unit,
+    onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onMoveLeft: () -> Unit,
-    onMoveRight: () -> Unit,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    canMoveLeft: Boolean,
-    canMoveRight: Boolean,
-    showVerticalMoveControls: Boolean,
-    showHorizontalMoveControls: Boolean,
-    color: Color
+    onDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit,
+    onDrag: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    color: Color,
+    isGhost: Boolean = false,
+    translucentBackground: Boolean
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    var headerSize by remember { mutableStateOf(IntSize.Zero) }
+    var headerPosition by remember { mutableStateOf(Offset.Zero) }
+    val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
+    val surfaceColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick, enabled = isEditing),
-        color = color,
+            .graphicsLayer { this.alpha = alpha }
+            .onGloballyPositioned {
+                headerSize = it.size
+                headerPosition = it.boundsInRoot().topLeft
+            }
+            .pointerInput(category) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val composable: @Composable () -> Unit = {
+                            CategoryHeader(
+                                category = category,
+                                onSortClick = {},
+                                onEditClick = {},
+                                onDeleteClick = {},
+                                onDragStart = { _, _, _, _, _ -> },
+                                onDrag = {},
+                                onDragEnd = {},
+                                color = color,
+                                isGhost = false,
+                                translucentBackground = translucentBackground
+                            )
+                        }
+                        val fingerAbsolutePosition = headerPosition + offset
+                        val centerAsOffset = Offset(headerSize.width / 2f, headerSize.height / 2f)
+                        onDragStart(category, fingerAbsolutePosition, centerAsOffset, headerSize, composable)
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDrag(dragAmount)
+                    },
+                    onDragEnd = onDragEnd,
+                    onDragCancel = onDragEnd
+                )
+            },
+        color = surfaceColor,
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 2.dp
     ) {
@@ -865,18 +912,42 @@ fun CategoryHeader(
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(Modifier.width(8.dp))
-            if (isEditing) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (showVerticalMoveControls) {
-                        IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Filled.ArrowUpward, stringResource(id = R.string.move_up_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-                        IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Filled.ArrowDownward, stringResource(id = R.string.move_down_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-                    }
-                    if (showHorizontalMoveControls) {
-                        IconButton(onClick = onMoveLeft, enabled = canMoveLeft) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(id = R.string.move_left_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-                        IconButton(onClick = onMoveRight, enabled = canMoveRight) { Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(id = R.string.move_right_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-                    }
-                    IconButton(onClick = onSortClick) { Icon(Icons.Filled.SortByAlpha, stringResource(id = R.string.sort_alpha_description), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
-                    IconButton(onClick = onDeleteClick) { Icon(Icons.Default.Delete, stringResource(id = R.string.delete_category_description), tint = MaterialTheme.colorScheme.error) }
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = stringResource(id = R.string.edit_mode_description),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(id = R.string.sort_alpha_description)) },
+                        onClick = {
+                            menuExpanded = false
+                            onSortClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.SortByAlpha, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(id = R.string.edit_button_text)) },
+                        onClick = {
+                            menuExpanded = false
+                            onEditClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(id = R.string.delete_button_text)) },
+                        onClick = {
+                            menuExpanded = false
+                            onDeleteClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                    )
                 }
             }
         }
