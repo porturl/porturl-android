@@ -41,6 +41,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +70,7 @@ import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
 import org.friesoft.porturl.data.model.UserPreferences
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.theme.predefinedThemes
 import org.friesoft.porturl.viewmodels.SettingsViewModel
@@ -107,8 +109,9 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+
         topBar = {
-            TopAppBar(
+            PortUrlTopAppBar(
                 title = { Text(stringResource(id = R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navigator.goBack() }) {

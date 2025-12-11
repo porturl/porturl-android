@@ -1,5 +1,6 @@
 package org.friesoft.porturl.ui.screens
 
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,7 +46,7 @@ fun UserDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            PortUrlTopAppBar(
                 title = { Text(stringResource(R.string.user_permissions_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navigator.goBack() }) {

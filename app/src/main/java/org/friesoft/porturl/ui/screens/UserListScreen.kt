@@ -1,5 +1,6 @@
 package org.friesoft.porturl.ui.screens
 
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +31,7 @@ fun UserListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            PortUrlTopAppBar(
                 title = { Text(stringResource(R.string.manage_users_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navigator.goBack() }) {

@@ -1,5 +1,6 @@
 package org.friesoft.porturl.ui.screens
 
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -84,13 +85,8 @@ fun LoginScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            PortUrlTopAppBar(
                 title = { Text(stringResource(id = R.string.login_title)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
                 actions = {
                     IconButton(onClick = { navigator.navigate(Routes.Settings) }) {
                         Icon(

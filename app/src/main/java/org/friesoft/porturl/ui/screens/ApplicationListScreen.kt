@@ -83,6 +83,7 @@ import org.friesoft.porturl.viewmodels.*
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 
 // A sealed class to represent the item currently being dragged.
 private sealed class DraggingItem {
@@ -248,7 +249,7 @@ fun ApplicationListScreen(
                 label = "TopBarAnimation"
             ) { isSearchOpen ->
                 if (isSearchOpen) {
-                    TopAppBar(
+                    PortUrlTopAppBar(
                         title = {},
                         actions = {
                             OutlinedTextField(
@@ -261,9 +262,18 @@ fun ApplicationListScreen(
                                 placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
                                 trailingIcon = {
                                     IconButton(onClick = { onSearchQueryChanged("") }) {
-                                        Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_search_description))
+                                        Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_search_description), tint = MaterialTheme.colorScheme.onPrimary)
                                     }
-                                }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.onPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                                    cursorColor = MaterialTheme.colorScheme.onPrimary,
+                                    focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                    focusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                                    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                                )
                             )
                             LaunchedEffect(Unit) {
                                 delay(100)
@@ -272,7 +282,7 @@ fun ApplicationListScreen(
                         }
                     )
                 } else {
-                    TopAppBar(
+                    PortUrlTopAppBar(
                         title = {
                             Text(stringResource(id = R.string.app_list_title))
                         },
@@ -292,16 +302,25 @@ fun ApplicationListScreen(
                                     onImageSelected = { uri -> authViewModel.updateUserImage(uri) }
                                 )
                             } else {
-                                TextButton(onClick = { searchBarVisible = true }) {
+                                TextButton(
+                                    onClick = { searchBarVisible = true },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary)
+                                ) {
                                     Icon(Icons.Filled.Search, stringResource(id = R.string.search_description), modifier = Modifier.padding(end = 8.dp))
                                     Text(stringResource(id = R.string.search_description))
                                 }
-                                TextButton(onClick = { setIsEditing(!isEditing) }) {
+                                TextButton(
+                                    onClick = { setIsEditing(!isEditing) },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary)
+                                ) {
                                     Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                                     Text(if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_button_text))
                                 }
                                 if (isAdmin) {
-                                    TextButton(onClick = onManageUsers) {
+                                    TextButton(
+                                        onClick = onManageUsers,
+                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimary)
+                                    ) {
                                         Icon(Icons.Filled.Person, stringResource(R.string.manage_users_title), modifier = Modifier.padding(end = 8.dp))
                                         Text(stringResource(R.string.manage_users_title))
                                     }

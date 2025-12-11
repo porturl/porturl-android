@@ -1,5 +1,6 @@
 package org.friesoft.porturl.ui.screens
 
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -52,7 +53,7 @@ fun CategoryDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            PortUrlTopAppBar(
                 title = {
                     Text(
                         stringResource(

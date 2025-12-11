@@ -1,5 +1,6 @@
 package org.friesoft.porturl.ui.screens
 
+import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -90,7 +91,7 @@ fun ApplicationDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            PortUrlTopAppBar(
                 title = {
                     Text(
                         stringResource(
