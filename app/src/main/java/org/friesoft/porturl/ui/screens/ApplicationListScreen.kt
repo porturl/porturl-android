@@ -14,11 +14,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -231,70 +235,81 @@ fun ApplicationListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    AnimatedVisibility(visible = !showSearchBar, enter = fadeIn(), exit = fadeOut()) {
-                        Text(stringResource(id = R.string.app_list_title))
-                    }
+            AnimatedContent(
+                targetState = showSearchBar,
+                transitionSpec = {
+                    (slideInVertically { -it } + fadeIn()).togetherWith(slideOutVertically { -it } + fadeOut())
                 },
-                actions = {
-                    if (showSearchBar) {
-                        OutlinedTextField(
-                            value = uiState.searchQuery,
-                            onValueChange = onSearchQueryChanged,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp)
-                                .focusRequester(focusRequester),
-                            placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
-                            trailingIcon = {
-                                IconButton(onClick = { onSearchQueryChanged("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_search_description))
+                label = "TopBarAnimation"
+            ) { isSearchOpen ->
+                if (isSearchOpen) {
+                    TopAppBar(
+                        title = {},
+                        actions = {
+                            OutlinedTextField(
+                                value = uiState.searchQuery,
+                                onValueChange = onSearchQueryChanged,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp)
+                                    .focusRequester(focusRequester),
+                                placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
+                                trailingIcon = {
+                                    IconButton(onClick = { onSearchQueryChanged("") }) {
+                                        Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_search_description))
+                                    }
                                 }
-                            }
-                        )
-                        LaunchedEffect(Unit) {
-                            delay(100)
-                            focusRequester.requestFocus()
-                        }
-                    } else {
-                        if (windowWidthSize == WindowWidthSizeClass.Compact) {
-                            IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, stringResource(id = R.string.search_description)) }
-                            IconButton(onClick = { setIsEditing(!isEditing) }) {
-                                Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_mode_description))
-                            }
-                            if (isAdmin) {
-                                IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, "Manage Users") }
-                            }
-                            IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description)) }
-                            IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description)) }
-                        } else {
-                            TextButton(onClick = { searchBarVisible = true }) {
-                                Icon(Icons.Filled.Search, stringResource(id = R.string.search_description), modifier = Modifier.padding(end = 8.dp))
-                                Text(stringResource(id = R.string.search_description))
-                            }
-                            TextButton(onClick = { setIsEditing(!isEditing) }) {
-                                Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                                Text(if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_button_text))
-                            }
-                            if (isAdmin) {
-                                TextButton(onClick = onManageUsers) {
-                                    Icon(Icons.Filled.Person, "Manage Users", modifier = Modifier.padding(end = 8.dp))
-                                    Text("Manage Users")
-                                }
-                            }
-                            TextButton(onClick = onSettingsClick) {
-                                Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description), modifier = Modifier.padding(end = 8.dp))
-                                Text(stringResource(id = R.string.settings_description))
-                            }
-                            TextButton(onClick = { authViewModel.logout(logoutLauncher) }) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description), modifier = Modifier.padding(end = 8.dp))
-                                Text(stringResource(id = R.string.logout_description))
+                            )
+                            LaunchedEffect(Unit) {
+                                delay(100)
+                                focusRequester.requestFocus()
                             }
                         }
-                    }
+                    )
+                } else {
+                    TopAppBar(
+                        title = {
+                            Text(stringResource(id = R.string.app_list_title))
+                        },
+                        actions = {
+                            if (windowWidthSize == WindowWidthSizeClass.Compact) {
+                                IconButton(onClick = { searchBarVisible = true }) { Icon(Icons.Filled.Search, stringResource(id = R.string.search_description)) }
+                                IconButton(onClick = { setIsEditing(!isEditing) }) {
+                                    Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_mode_description))
+                                }
+                                if (isAdmin) {
+                                    IconButton(onClick = onManageUsers) { Icon(Icons.Filled.Person, "Manage Users") }
+                                }
+                                IconButton(onClick = onSettingsClick) { Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description)) }
+                                IconButton(onClick = { authViewModel.logout(logoutLauncher) }) { Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description)) }
+                            } else {
+                                TextButton(onClick = { searchBarVisible = true }) {
+                                    Icon(Icons.Filled.Search, stringResource(id = R.string.search_description), modifier = Modifier.padding(end = 8.dp))
+                                    Text(stringResource(id = R.string.search_description))
+                                }
+                                TextButton(onClick = { setIsEditing(!isEditing) }) {
+                                    Icon(if (isEditing) Icons.Filled.Done else Icons.Filled.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                                    Text(if (isEditing) stringResource(id = R.string.done_description) else stringResource(id = R.string.edit_button_text))
+                                }
+                                if (isAdmin) {
+                                    TextButton(onClick = onManageUsers) {
+                                        Icon(Icons.Filled.Person, "Manage Users", modifier = Modifier.padding(end = 8.dp))
+                                        Text("Manage Users")
+                                    }
+                                }
+                                TextButton(onClick = onSettingsClick) {
+                                    Icon(Icons.Filled.Settings, stringResource(id = R.string.settings_description), modifier = Modifier.padding(end = 8.dp))
+                                    Text(stringResource(id = R.string.settings_description))
+                                }
+                                TextButton(onClick = { authViewModel.logout(logoutLauncher) }) {
+                                    Icon(Icons.AutoMirrored.Filled.Logout, stringResource(id = R.string.logout_description), modifier = Modifier.padding(end = 8.dp))
+                                    Text(stringResource(id = R.string.logout_description))
+                                }
+                            }
+                        }
+                    )
                 }
-            )
+            }
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
