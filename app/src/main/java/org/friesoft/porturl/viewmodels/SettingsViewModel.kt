@@ -1,5 +1,7 @@
 package org.friesoft.porturl.viewmodels
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,7 +39,8 @@ enum class ValidationState {
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val configRepository: ConfigRepository,
-    private val appLocaleManager: AppLocaleManager
+    private val appLocaleManager: AppLocaleManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     /**
@@ -52,7 +55,7 @@ class SettingsViewModel @Inject constructor(
      * message. This is used to inform the user that settings have been saved.
      * Used to send one-off messages to the UI (e.g., for Snackbars)
      */
-    val userMessage = MutableSharedFlow<Int>()
+    val userMessage = MutableSharedFlow<String>()
 
     private val _validationState = MutableStateFlow(ValidationState.IDLE)
     val validationState = _validationState.asStateFlow()
@@ -94,7 +97,7 @@ class SettingsViewModel @Inject constructor(
             } else {
                 // If invalid, report an error and do not save
                 _validationState.value = ValidationState.ERROR
-                userMessage.emit(R.string.settingsviewmodel_error_could_not_connect_url)
+                userMessage.emit(context.getString(R.string.settingsviewmodel_error_could_not_connect_url))
             }
         }
     }

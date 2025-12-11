@@ -98,9 +98,9 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
         }
     }
 
-    LaunchedEffect(context) {
-        viewModel.userMessage.collectLatest { messageResId ->
-            snackbarHostState.showSnackbar(context.getString(messageResId))
+    LaunchedEffect(Unit) {
+        viewModel.userMessage.collectLatest { message ->
+            snackbarHostState.showSnackbar(message)
             viewModel.resetValidationState()
         }
     }
