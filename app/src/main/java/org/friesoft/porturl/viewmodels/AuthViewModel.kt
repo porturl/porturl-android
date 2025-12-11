@@ -187,6 +187,7 @@ class AuthViewModel @Inject constructor(
             // Update the in-memory state to trigger UI updates.
             _authState.value = authState
             checkIsAdmin()
+            fetchCurrentUser()
         }
     }
 
@@ -207,6 +208,7 @@ class AuthViewModel @Inject constructor(
             authStateManager.clearAuthState()
             _authState.value = AuthState()
             _isAdmin.value = false
+            _currentUser.value = null
             checkBackendUrlValid()
         }
     }
