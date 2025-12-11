@@ -7,6 +7,7 @@
 
 package org.friesoft.porturl.ui.screens
 
+import androidx.activity.compose.LocalActivity
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -198,7 +199,7 @@ fun ApplicationListScreen(
     var searchBarVisible by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-    val activity = LocalContext.current as Activity
+    val activity = LocalActivity.current!!
     val windowWidthSize = calculateWindowSizeClass(activity).widthSizeClass
 
     // --- Drag and Drop State ---
