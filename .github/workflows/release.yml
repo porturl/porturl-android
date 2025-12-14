@@ -40,7 +40,7 @@ permissions:
   packages: write
 
 env:
-  JAVA_VERSION: '21'
+  JAVA_VERSION: '25'
   JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
