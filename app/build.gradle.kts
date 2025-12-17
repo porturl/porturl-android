@@ -15,18 +15,24 @@ scmVersion {
         versionSeparator.set("")
     }
 }
-
-android {
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "org.friesoft.porturl"
-    compileSdk = 36
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "org.friesoft.porturl"
         minSdk = 31
-        targetSdk = 36
 
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
-        // the versionName is now set dynamically by the axion-release-plugin which provides the `project.version` property.
         versionName = project.version.toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -50,7 +56,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -64,12 +71,8 @@ android {
     }
 }
 
-kotlin {
-    jvmToolchain(21)
-}
-
 dependencies {
-
+    ksp(libs.kotlin.metadata.jvm)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.materialcomponents)
@@ -129,6 +132,6 @@ dependencies {
 tasks.register("printVersionName") {
     doLast {
         // This accesses the versionName from your android defaultConfig block
-        println(android.defaultConfig.versionName)
+        println(the<com.android.build.api.dsl.ApplicationExtension>().defaultConfig.versionName)
     }
 }
