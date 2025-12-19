@@ -132,6 +132,6 @@ dependencies {
 tasks.register("printVersionName") {
     doLast {
         // This accesses the versionName from your android defaultConfig block
-        println(the<com.android.build.api.dsl.ApplicationExtension>().defaultConfig.versionName)
+        println(project.the<com.android.build.api.dsl.ApplicationExtension>().defaultConfig.versionName)
     }
 }
