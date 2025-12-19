@@ -92,17 +92,18 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun fetchCurrentUser() {
-        viewModelScope.launch {
-            if (_authState.value.isAuthorized) {
-                try {
-                    _currentUser.value = userRepository.getCurrentUser()
-                } catch (e: Exception) {
-                    Log.e("AuthViewModel", "Failed to fetch current user", e)
-                }
-            } else {
+    private suspend fun fetchCurrentUser() {
+        if (_authState.value.isAuthorized) {
+            try {
+                val user = userRepository.getCurrentUser()
+                Log.d("AuthViewModel", "Fetched user: ${user.email}, imageUrl: ${user.imageUrl}")
+                _currentUser.value = user
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to fetch current user", e)
                 _currentUser.value = null
             }
+        } else {
+            _currentUser.value = null
         }
     }
 

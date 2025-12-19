@@ -92,6 +92,8 @@ import org.friesoft.porturl.viewmodels.*
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import androidx.compose.ui.window.PopupProperties
+import coil.request.CachePolicy
 import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 
 // A sealed class to represent the item currently being dragged.
@@ -1155,18 +1157,20 @@ fun UserMenu(
         uri?.let { onImageSelected(it) }
     }
 
-    Box {
+    Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
         IconButton(onClick = { expanded = true }) {
             if (currentUser?.imageUrl != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(currentUser.imageUrl)
                         .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .networkCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = stringResource(id = R.string.user_image_description),
                     modifier = Modifier.clip(androidx.compose.foundation.shape.CircleShape).size(32.dp),
                     placeholder = rememberVectorPainter(Icons.Default.Person),
-                    error = rememberVectorPainter(Icons.Default.Person)
+                    error = rememberVectorPainter(Icons.Default.BrokenImage)
                 )
             } else {
                 Icon(Icons.Default.Person, contentDescription = stringResource(id = R.string.user_image_description))
@@ -1175,7 +1179,8 @@ fun UserMenu(
 
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            properties = PopupProperties(focusable = true)
         ) {
             // User Header
             Column(
@@ -1197,11 +1202,13 @@ fun UserMenu(
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(currentUser.imageUrl)
                                 .crossfade(true)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .networkCachePolicy(CachePolicy.ENABLED)
                                 .build(),
                             contentDescription = stringResource(id = R.string.user_image_description),
                             modifier = Modifier.fillMaxSize(),
                             placeholder = rememberVectorPainter(Icons.Default.Person),
-                            error = rememberVectorPainter(Icons.Default.Person)
+                            error = rememberVectorPainter(Icons.Default.BrokenImage)
                         )
                     } else {
                          Icon(
