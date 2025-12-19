@@ -109,6 +109,7 @@ private sealed class DraggingItem {
         override val itemOffset: Offset,
         override val itemSize: IntSize,
         override val composable: @Composable () -> Unit,
+        val isVisualDragStarted: Boolean = false
     ) : DraggingItem() {
         override val key: String = dashboardItemKey
     }
@@ -224,6 +225,9 @@ fun ApplicationListScreen(
     // --- Drag and Drop State ---
     var draggingItem by remember { mutableStateOf<DraggingItem?>(null) }
     var dropTargetInfo by remember { mutableStateOf<DropTarget?>(null) }
+    // Persistent menu state for apps
+    var menuOpenAppId by remember { mutableStateOf<String?>(null) }
+
     val categoryBounds = remember { mutableStateMapOf<Long, Rect>() }
     val applicationBounds = remember { mutableStateMapOf<String, Rect>() }
     // Snapshot of bounds relative to their category, taken at drag start.
@@ -237,27 +241,36 @@ fun ApplicationListScreen(
     LaunchedEffect(draggingItem) {
         if (draggingItem != null) {
             while (true) {
-                val dragPos = draggingItem?.dragPosition
-                if (dragPos != null && listBounds != null) {
-                    val topEdge = listBounds!!.top + 150f
-                    val bottomEdge = listBounds!!.bottom - 150f
-                    val y = dragPos.y
+                val state = draggingItem
+                val isVisualDrag = when(state) {
+                    is DraggingItem.App -> state.isVisualDragStarted
+                    is DraggingItem.CategoryItem -> true // Categories always drag immediately
+                    else -> false
+                }
 
-                    var scrollDiff = 0f
-                    if (y < topEdge) {
-                        scrollDiff = -10f
-                    } else if (y > bottomEdge) {
-                        scrollDiff = 10f
-                    }
+                if (state != null && isVisualDrag) {
+                    val dragPos = state.dragPosition
+                    if (listBounds != null) {
+                        val topEdge = listBounds!!.top + 150f
+                        val bottomEdge = listBounds!!.bottom - 150f
+                        val y = dragPos.y
 
-                    if (scrollDiff != 0f) {
-                        if (windowWidthSize == WindowWidthSizeClass.Compact) {
-                            if (listState.canScrollForward && scrollDiff > 0 || listState.canScrollBackward && scrollDiff < 0) {
-                                listState.animateScrollBy(scrollDiff)
-                            }
-                        } else {
-                            if (gridState.canScrollForward && scrollDiff > 0 || gridState.canScrollBackward && scrollDiff < 0) {
-                                gridState.animateScrollBy(scrollDiff)
+                        var scrollDiff = 0f
+                        if (y < topEdge) {
+                            scrollDiff = -10f
+                        } else if (y > bottomEdge) {
+                            scrollDiff = 10f
+                        }
+
+                        if (scrollDiff != 0f) {
+                            if (windowWidthSize == WindowWidthSizeClass.Compact) {
+                                if (listState.canScrollForward && scrollDiff > 0 || listState.canScrollBackward && scrollDiff < 0) {
+                                    listState.animateScrollBy(scrollDiff)
+                                }
+                            } else {
+                                if (gridState.canScrollForward && scrollDiff > 0 || gridState.canScrollBackward && scrollDiff < 0) {
+                                    gridState.animateScrollBy(scrollDiff)
+                                }
                             }
                         }
                     }
@@ -434,6 +447,9 @@ fun ApplicationListScreen(
                     else -> {
                         val onDragStart: (Application, Category, String, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
                             { app, cat, key, absPos, relPos, size, composable ->
+                                // Close any open menu
+                                menuOpenAppId = null
+
                                 // Freeze bounds!
                                 frozenAppBounds = applicationBounds.mapNotNull { (appKey, rect) ->
                                     // Parse category ID from key "app_{catId}_{appId}"
@@ -449,7 +465,10 @@ fun ApplicationListScreen(
                                         } else null
                                     } else null
                                 }.toMap()
-                                draggingItem = DraggingItem.App(app, cat, key, absPos, relPos, size, composable)
+                                draggingItem = DraggingItem.App(
+                                    app, cat, key, absPos, relPos, size, composable,
+                                    isVisualDragStarted = false
+                                )
                             }
 
                         val onCategoryDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
@@ -459,94 +478,114 @@ fun ApplicationListScreen(
 
                         val onDrag: (Offset) -> Unit = { dragAmount ->
                             draggingItem?.let { state ->
-                                // println("DEBUG_DRAG: delta=$dragAmount, pos=${state.dragPosition}")
-                                state.dragPosition += dragAmount
-                                // Force recomposition
-                                draggingItem = when (state) {
-                                    is DraggingItem.App -> state.copy()
-                                    is DraggingItem.CategoryItem -> state.copy()
-                                }
-                                var newDropTarget: DropTarget? = null
-
-                                if (state is DraggingItem.App) {
-                                    val targetCatId = categoryBounds.entries.find { (_, rect) ->
-                                        rect.contains(state.dragPosition)
-                                    }?.key
-
-                                    if (targetCatId != null) {
-                                        val appsInTargetCategory = uiState.allItems
-                                            .filterIsInstance<DashboardItem.ApplicationItem>()
-                                            .filter { it.parentCategoryId == targetCatId }
-
-                                        // Use frozen bounds if available, otherwise fallback to live bounds (shouldn't happen during drag)
-                                        val boundsSource = frozenAppBounds ?: applicationBounds
-
-                                        val targetIndex = if (appsInTargetCategory.isEmpty()) {
-                                            0
-                                        } else {
-                                            // Get current category rect for converting global drag pos to relative
-                                            val catRect = categoryBounds[targetCatId]
-                                            val relativeDragPos = if (frozenAppBounds != null && catRect != null) {
-                                                state.dragPosition - catRect.topLeft
-                                            } else {
-                                                state.dragPosition
-                                            }
-
-                                            val closestApp = appsInTargetCategory.minByOrNull { item ->
-                                                if (item.key == state.key) return@minByOrNull Float.MAX_VALUE
-                                                
-                                                val bounds = boundsSource[item.key]
-                                                    ?: return@minByOrNull Float.MAX_VALUE
-                                                
-                                                (bounds.center - relativeDragPos).getDistance()
-                                            }
-
-                                            if (closestApp != null) {
-                                                val closestBounds = boundsSource.getValue(closestApp.key)
-                                                val closestIndex = appsInTargetCategory.indexOf(closestApp)
-                                                
-                                                // Compare relative drag pos to relative center
-                                                if (relativeDragPos.x < closestBounds.center.x) {
-                                                    closestIndex
-                                                } else {
-                                                    closestIndex + 1
-                                                }
-                                            } else {
-                                                appsInTargetCategory.size
-                                            }
-                                        }
-                                        newDropTarget = DropTarget(targetCatId, targetIndex)
+                                // state.dragPosition += dragAmount (Done below with copy)
+                                
+                                val nextState = when (state) {
+                                    is DraggingItem.App -> {
+                                        // Activate visual drag on movement
+                                        state.copy(
+                                            dragPosition = state.dragPosition + dragAmount,
+                                            isVisualDragStarted = true
+                                        )
                                     }
-                                } else if (state is DraggingItem.CategoryItem) {
-                                     val targetCatEntry = categoryBounds.entries.find { (_, rect) ->
-                                         rect.contains(state.dragPosition)
-                                     }
-                                     if (targetCatEntry != null) {
-                                          val targetCatId = targetCatEntry.key
-                                          // Find the index of this category in the UI list of categories
-                                          val targetIndex = uiState.allItems.asSequence()
-                                                .filterIsInstance<DashboardItem.CategoryItem>()
-                                                .map { it.category.id }
-                                                .indexOf(targetCatId)
-
-                                          if (targetIndex != -1) {
-                                              newDropTarget = DropTarget(targetCatId, targetIndex)
-                                          }
-                                     }
+                                    is DraggingItem.CategoryItem -> {
+                                        state.copy(dragPosition = state.dragPosition + dragAmount)
+                                    }
                                 }
-                                dropTargetInfo = newDropTarget
+                                draggingItem = nextState
+
+                                // Only calculate drop target if visual drag is active (or it's a category)
+                                val isVisualDrag = if (nextState is DraggingItem.App) nextState.isVisualDragStarted else true
+
+                                if (isVisualDrag) {
+                                    var newDropTarget: DropTarget? = null
+
+                                    if (nextState is DraggingItem.App) {
+                                        val targetCatId = categoryBounds.entries.find { (_, rect) ->
+                                            rect.contains(nextState.dragPosition)
+                                        }?.key
+
+                                        if (targetCatId != null) {
+                                            val appsInTargetCategory = uiState.allItems
+                                                .filterIsInstance<DashboardItem.ApplicationItem>()
+                                                .filter { it.parentCategoryId == targetCatId }
+
+                                            // Use frozen bounds if available, otherwise fallback to live bounds
+                                            val boundsSource = frozenAppBounds ?: applicationBounds
+
+                                            val targetIndex = if (appsInTargetCategory.isEmpty()) {
+                                                0
+                                            } else {
+                                                // Get current category rect for converting global drag pos to relative
+                                                val catRect = categoryBounds[targetCatId]
+                                                val relativeDragPos = if (frozenAppBounds != null && catRect != null) {
+                                                    nextState.dragPosition - catRect.topLeft
+                                                } else {
+                                                    nextState.dragPosition
+                                                }
+
+                                                val closestApp = appsInTargetCategory.minByOrNull { item ->
+                                                    if (item.key == nextState.key) return@minByOrNull Float.MAX_VALUE
+                                                    
+                                                    val bounds = boundsSource[item.key]
+                                                        ?: return@minByOrNull Float.MAX_VALUE
+                                                    
+                                                    (bounds.center - relativeDragPos).getDistance()
+                                                }
+
+                                                if (closestApp != null) {
+                                                    val closestBounds = boundsSource.getValue(closestApp.key)
+                                                    val closestIndex = appsInTargetCategory.indexOf(closestApp)
+                                                    
+                                                    // Compare relative drag pos to relative center
+                                                    if (relativeDragPos.x < closestBounds.center.x) {
+                                                        closestIndex
+                                                    } else {
+                                                        closestIndex + 1
+                                                    }
+                                                } else {
+                                                    appsInTargetCategory.size
+                                                }
+                                            }
+                                            newDropTarget = DropTarget(targetCatId, targetIndex)
+                                        }
+                                    } else if (nextState is DraggingItem.CategoryItem) {
+                                         val targetCatEntry = categoryBounds.entries.find { (_, rect) ->
+                                             rect.contains(nextState.dragPosition)
+                                         }
+                                         if (targetCatEntry != null) {
+                                              val targetCatId = targetCatEntry.key
+                                              // Find the index of this category in the UI list of categories
+                                              val targetIndex = uiState.allItems.asSequence()
+                                                    .filterIsInstance<DashboardItem.CategoryItem>()
+                                                    .map { it.category.id }
+                                                    .indexOf(targetCatId)
+
+                                              if (targetIndex != -1) {
+                                                  newDropTarget = DropTarget(targetCatId, targetIndex)
+                                              }
+                                         }
+                                    }
+                                    dropTargetInfo = newDropTarget
+                                }
                             }
                         }
 
                         val onDragEnd: () -> Unit = {
                             draggingItem?.let { state ->
-                                dropTargetInfo?.let { target ->
-                                    if (state is DraggingItem.App) {
-                                        state.application.id?.let { appId ->
-                                            onMoveApplication(appId, state.fromCategory.id, target.categoryId, target.index)
+                                if (state is DraggingItem.App && !state.isVisualDragStarted) {
+                                    // User long-pressed but didn't drag -> Open Menu
+                                    menuOpenAppId = state.key
+                                } else {
+                                    // Regular drop logic
+                                    dropTargetInfo?.let { target ->
+                                        if (state is DraggingItem.App) {
+                                            state.application.id?.let { appId ->
+                                                onMoveApplication(appId, state.fromCategory.id, target.categoryId, target.index)
+                                            }
+                                        } else if (state is DraggingItem.CategoryItem) {
+                                            onCategoryDragEnd(state.category.id, target.index)
                                         }
-                                    } else if (state is DraggingItem.CategoryItem) {
-                                        onCategoryDragEnd(state.category.id, target.index)
                                     }
                                 }
                             }
@@ -569,6 +608,8 @@ fun ApplicationListScreen(
                                         applications = applications,
                                         dropTargetInfo = dropTargetInfo,
                                         draggingItem = draggingItem,
+                                        menuOpenAppId = menuOpenAppId,
+                                        onMenuDismiss = { menuOpenAppId = null },
                                         onSortApps = onSortApps,
                                         onCategoryClick = onCategoryClick,
                                         onDeleteCategory = { itemToDelete = "Category" to category.id },
@@ -605,6 +646,8 @@ fun ApplicationListScreen(
                                         applications = applications,
                                         dropTargetInfo = dropTargetInfo,
                                         draggingItem = draggingItem,
+                                        menuOpenAppId = menuOpenAppId,
+                                        onMenuDismiss = { menuOpenAppId = null },
                                         onSortApps = onSortApps,
                                         onCategoryClick = onCategoryClick,
                                         onDeleteCategory = { itemToDelete = "Category" to category.id },
@@ -636,25 +679,30 @@ fun ApplicationListScreen(
 
             // --- Drag Overlay ---
             draggingItem?.let { state ->
-                val scale by animateFloatAsState(targetValue = 1.1f, label = "DragScale")
-                val elevation by animateDpAsState(targetValue = 8.dp, label = "DragElevation")
-                val parentOffset = listBounds?.topLeft ?: Offset.Zero
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (state.dragPosition.x - state.itemOffset.x - parentOffset.x).roundToInt(),
-                                (state.dragPosition.y - state.itemOffset.y - parentOffset.y).roundToInt()
-                            )
+                // Show overlay only if visual drag has started (or it's a category)
+                val isVisualDrag = if (state is DraggingItem.App) state.isVisualDragStarted else true
+                
+                if (isVisualDrag) {
+                    val scale by animateFloatAsState(targetValue = 1.1f, label = "DragScale")
+                    val elevation by animateDpAsState(targetValue = 8.dp, label = "DragElevation")
+                    val parentOffset = listBounds?.topLeft ?: Offset.Zero
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    (state.dragPosition.x - state.itemOffset.x - parentOffset.x).roundToInt(),
+                                    (state.dragPosition.y - state.itemOffset.y - parentOffset.y).roundToInt()
+                                )
+                            }
+                            .zIndex(1f)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                shadowElevation = elevation.toPx()
+                            }
+                        ) {
+                            state.composable()
                         }
-                        .zIndex(1f)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            shadowElevation = elevation.toPx()
-                        }
-                    ) {
-                        state.composable()
                     }
                 }
             }
@@ -668,6 +716,8 @@ private fun CategoryColumn(
     applications: List<Application>,
     dropTargetInfo: DropTarget?,
     draggingItem: DraggingItem?,
+    menuOpenAppId: String?,
+    onMenuDismiss: () -> Unit,
     onSortApps: (categoryId: Long) -> Unit,
     onCategoryClick: (Category) -> Unit,
     onDeleteCategory: () -> Unit,
@@ -742,19 +792,22 @@ private fun CategoryColumn(
                             val appKey = "app_${category.id}_${application.id}"
                             var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
                             var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
-                            val isDraggedItem = draggingItem?.key == appKey
                             
-                            // If this is the dragging item, we effectively "hide" it from the flow
-                            // by setting its size to 0. 
-                            // However, the Node must remain to handle the gesture events.
-                            val layoutModifier = if (isDraggedItem) Modifier.size(0.dp) else Modifier
+                            val isDraggedItem = draggingItem?.key == appKey
+                            val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
+                            
+                            // Ghost if visual drag started. Only use alpha to hide, do not change layout size/constraints to avoid reflow.
+                            val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
+                            
+                            // Menu logic
+                            val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
 
                             Box(
                                 modifier = Modifier
-                                    .then(layoutModifier)
+                                    .then(alphaModifier)
                                     .onGloballyPositioned {
                                         // Update bounds only if it's not collapsed (normal state)
-                                        if (!isDraggedItem) {
+                                        if (!isVisualDrag) {
                                             itemBounds = it.boundsInRoot().topLeft
                                             itemSize = it.size
                                             onAppBoundsChanged(appKey, it.boundsInRoot())
@@ -770,10 +823,12 @@ private fun CategoryColumn(
                                                         onEditClick = {},
                                                         onDeleteClick = {},
                                                         color = color,
-                                                        translucentBackground = translucentBackground
+                                                        translucentBackground = translucentBackground,
+                                                        isMenuOpen = false,
+                                                        onDismissMenu = {}
                                                     )
                                                 }
-                                                // itemBounds was captured before it became 0 size (during last normal render)
+                                                // itemBounds was captured before
                                                 val fingerAbsolutePosition = itemBounds + offset
                                                 val centerAsOffset = offset
                                                 onAppDragStart(
@@ -797,13 +852,17 @@ private fun CategoryColumn(
                             ) {
                                 ApplicationGridItem(
                                     application = application,
+                                    // Pass real onClick to let ElevatedCard handle the tap
                                     onClick = { openUrlInCustomTab(application.url, context) },
                                     onEditClick = { onApplicationClick(application) },
                                     onDeleteClick = { onDeleteApplication(application) },
                                     modifier = Modifier, 
-                                    isGhost = isDraggedItem,
+                                    isGhost = false, // We handle ghosting via parent Box alpha
                                     color = color,
-                                    translucentBackground = translucentBackground
+                                    translucentBackground = translucentBackground,
+                                    isMenuOpen = isMenuOpen,
+                                    onDismissMenu = onMenuDismiss,
+                                    enabled = !isDraggedItem
                                 )
                             }
                         }
@@ -856,15 +915,17 @@ fun ApplicationGridItem(
     modifier: Modifier = Modifier,
     isGhost: Boolean = false,
     color: Color,
-    translucentBackground: Boolean
+    translucentBackground: Boolean,
+    isMenuOpen: Boolean = false,
+    onDismissMenu: () -> Unit = {},
+    enabled: Boolean = true
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
         val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
         ElevatedCard(
             onClick = onClick,
-            enabled = !isGhost,
+            enabled = enabled && !isGhost,
             modifier = Modifier.graphicsLayer { this.alpha = alpha },
             colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
@@ -897,27 +958,18 @@ fun ApplicationGridItem(
                     )
                 }
 
+                // Invisible box to anchor the menu
                 Box(
                     modifier = Modifier.align(Alignment.TopEnd)
                 ) {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = stringResource(id = R.string.edit_mode_description),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
                     DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
+                        expanded = isMenuOpen,
+                        onDismissRequest = onDismissMenu
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(id = R.string.edit_button_text)) },
                             onClick = {
-                                menuExpanded = false
+                                onDismissMenu()
                                 onEditClick()
                             },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
@@ -925,7 +977,7 @@ fun ApplicationGridItem(
                         DropdownMenuItem(
                             text = { Text(stringResource(id = R.string.delete_button_text)) },
                             onClick = {
-                                menuExpanded = false
+                                onDismissMenu()
                                 onDeleteClick()
                             },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
