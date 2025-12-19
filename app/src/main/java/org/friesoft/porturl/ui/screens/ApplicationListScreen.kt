@@ -742,7 +742,7 @@ private fun CategoryColumn(
 
     Column(
         modifier = modifier.border(borderDp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         CategoryHeader(
             category = category,
@@ -757,116 +757,135 @@ private fun CategoryColumn(
             translucentBackground = translucentBackground
         )
 
-        FlowRow(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(16.dp)
         ) {
-            val displayItems = remember(applications, dropTargetInfo, draggingItem) {
-                // We start with the original list of applications.
-                // We do NOT remove the dragging item. It stays in the list to maintain the gesture.
-                // We will hide it visually in the render loop.
-                val items = applications.map { CategoryDisplayItem.App(it) }.toMutableList<CategoryDisplayItem>()
+            val density = LocalDensity.current
+            val spacing = 16.dp
+            val minItemSize = 80.dp
 
-                // Insert Placeholder at Target if valid
-                if (dropTargetInfo != null && dropTargetInfo.categoryId == category.id) {
-                    val insertionIndex = dropTargetInfo.index.coerceIn(0, items.size)
-                    val placeholderSize = draggingItem?.itemSize ?: IntSize(200, 200)
-                    items.add(insertionIndex, CategoryDisplayItem.Placeholder(placeholderSize))
-                }
-                items
-            }
+            val widthPx = with(density) { maxWidth.toPx() }
+            val spacingPx = with(density) { spacing.toPx() }
+            val minItemSizePx = with(density) { minItemSize.toPx() }
 
-            displayItems.forEach { item ->
-                when (item) {
-                    is CategoryDisplayItem.Placeholder -> {
-                        key("placeholder") {
-                            val widthDp = with(density) { item.size.width.toDp() }
-                            val heightDp = with(density) { item.size.height.toDp() }
-                            Box(modifier = Modifier.size(widthDp, heightDp))
-                        }
+            val numColumns = ((widthPx + spacingPx) / (minItemSizePx + spacingPx)).toInt().coerceAtLeast(1)
+            // Subtract small epsilon to avoid sub-pixel rounding causing wrap
+            val itemWidthPx = ((widthPx - (spacingPx * (numColumns - 1))) / numColumns) - 0.5f
+            val itemWidth = with(density) { itemWidthPx.toDp() }
+            
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing),
+                verticalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                val displayItems = remember(applications, dropTargetInfo, draggingItem) {
+                    // We start with the original list of applications.
+                    // We do NOT remove the dragging item. It stays in the list to maintain the gesture.
+                    // We will hide it visually in the render loop.
+                    val items = applications.map { CategoryDisplayItem.App(it) }.toMutableList<CategoryDisplayItem>()
+
+                    // Insert Placeholder at Target if valid
+                    if (dropTargetInfo != null && dropTargetInfo.categoryId == category.id) {
+                        val insertionIndex = dropTargetInfo.index.coerceIn(0, items.size)
+                        // Use a dummy size here, we override it in the loop below using calculated itemWidth
+                        val placeholderSize = IntSize(100, 100) 
+                        items.add(insertionIndex, CategoryDisplayItem.Placeholder(placeholderSize))
                     }
-                    is CategoryDisplayItem.App -> {
-                        val application = item.application
-                        // Stable key is crucial for preserving the Node and Gesture
-                        key(application.id) {
-                            val appKey = "app_${category.id}_${application.id}"
-                            var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
-                            var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
-                            
-                            val isDraggedItem = draggingItem?.key == appKey
-                            val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
-                            
-                            // Ghost if visual drag started. Only use alpha to hide, do not change layout size/constraints to avoid reflow.
-                            val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
-                            
-                            // Menu logic
-                            val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
+                    items
+                }
 
-                            Box(
-                                modifier = Modifier
-                                    .then(alphaModifier)
-                                    .onGloballyPositioned {
-                                        // Update bounds only if it's not collapsed (normal state)
-                                        if (!isVisualDrag) {
-                                            itemBounds = it.boundsInRoot().topLeft
-                                            itemSize = it.size
-                                            onAppBoundsChanged(appKey, it.boundsInRoot())
+                displayItems.forEach { item ->
+                    when (item) {
+                        is CategoryDisplayItem.Placeholder -> {
+                            key("placeholder") {
+                                Box(modifier = Modifier.size(itemWidth))
+                            }
+                        }
+                        is CategoryDisplayItem.App -> {
+                            val application = item.application
+                            // Stable key is crucial for preserving the Node and Gesture
+                            key(application.id) {
+                                val appKey = "app_${category.id}_${application.id}"
+                                var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
+                                var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
+                                
+                                val isDraggedItem = draggingItem?.key == appKey
+                                val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
+                                
+                                // Ghost if visual drag started. Only use alpha to hide, do not change layout size/constraints to avoid reflow.
+                                val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
+                                
+                                // Menu logic
+                                val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
+
+                                Box(
+                                    modifier = Modifier
+                                        .width(itemWidth)
+                                        .aspectRatio(1f)
+                                        .then(alphaModifier)
+                                        .onGloballyPositioned {
+                                            // Update bounds only if it's not collapsed (normal state)
+                                            if (!isVisualDrag) {
+                                                itemBounds = it.boundsInRoot().topLeft
+                                                itemSize = it.size
+                                                onAppBoundsChanged(appKey, it.boundsInRoot())
+                                            }
                                         }
-                                    }
-                                    .pointerInput(application, category) {
-                                        detectDragGesturesAfterLongPress(
-                                            onDragStart = { offset ->
-                                                val composable: @Composable () -> Unit = {
-                                                    ApplicationGridItem(
-                                                        application = application,
-                                                        onClick = {},
-                                                        onEditClick = {},
-                                                        onDeleteClick = {},
-                                                        color = color,
-                                                        translucentBackground = translucentBackground,
-                                                        isMenuOpen = false,
-                                                        onDismissMenu = {}
+                                        .pointerInput(application, category) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { offset ->
+                                                    val composable: @Composable () -> Unit = {
+                                                        ApplicationGridItem(
+                                                            application = application,
+                                                            onClick = {},
+                                                            onEditClick = {},
+                                                            onDeleteClick = {},
+                                                            color = color,
+                                                            translucentBackground = translucentBackground,
+                                                            isMenuOpen = false,
+                                                            onDismissMenu = {},
+                                                            modifier = Modifier.size(with(density) { itemSize.width.toDp() }, with(density) { itemSize.height.toDp() })
+                                                        )
+                                                    }
+                                                    // itemBounds was captured before
+                                                    val fingerAbsolutePosition = itemBounds + offset
+                                                    val centerAsOffset = offset
+                                                    onAppDragStart(
+                                                        application,
+                                                        category,
+                                                        appKey,
+                                                        fingerAbsolutePosition,
+                                                        centerAsOffset,
+                                                        itemSize,
+                                                        composable
                                                     )
-                                                }
-                                                // itemBounds was captured before
-                                                val fingerAbsolutePosition = itemBounds + offset
-                                                val centerAsOffset = offset
-                                                onAppDragStart(
-                                                    application,
-                                                    category,
-                                                    appKey,
-                                                    fingerAbsolutePosition,
-                                                    centerAsOffset,
-                                                    itemSize,
-                                                    composable
-                                                )
-                                            },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                onDrag(dragAmount)
-                                            },
-                                            onDragEnd = onDragEnd,
-                                            onDragCancel = onDragEnd
-                                        )
-                                    }
-                            ) {
-                                ApplicationGridItem(
-                                    application = application,
-                                    // Pass real onClick to let ElevatedCard handle the tap
-                                    onClick = { openUrlInCustomTab(application.url, context) },
-                                    onEditClick = { onApplicationClick(application) },
-                                    onDeleteClick = { onDeleteApplication(application) },
-                                    modifier = Modifier, 
-                                    isGhost = false, // We handle ghosting via parent Box alpha
-                                    color = color,
-                                    translucentBackground = translucentBackground,
-                                    isMenuOpen = isMenuOpen,
-                                    onDismissMenu = onMenuDismiss,
-                                    enabled = !isDraggedItem
-                                )
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    onDrag(dragAmount)
+                                                },
+                                                onDragEnd = onDragEnd,
+                                                onDragCancel = onDragEnd
+                                            )
+                                        }
+                                ) {
+                                    ApplicationGridItem(
+                                        application = application,
+                                        // Pass real onClick to let ElevatedCard handle the tap
+                                        onClick = { openUrlInCustomTab(application.url, context) },
+                                        onEditClick = { onApplicationClick(application) },
+                                        onDeleteClick = { onDeleteApplication(application) },
+                                        modifier = Modifier.fillMaxSize(), 
+                                        isGhost = false, // We handle ghosting via parent Box alpha
+                                        color = color,
+                                        translucentBackground = translucentBackground,
+                                        isMenuOpen = isMenuOpen,
+                                        onDismissMenu = onMenuDismiss,
+                                        enabled = !isDraggedItem
+                                    )
+                                }
                             }
                         }
                     }
@@ -935,14 +954,13 @@ fun ApplicationGridItem(
         ElevatedCard(
             onClick = onClick,
             enabled = enabled && !isGhost,
-            modifier = Modifier.graphicsLayer { this.alpha = alpha },
+            modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
             colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
-            Box {
+            Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(120.dp)
+                        .fillMaxSize()
                         .padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
