@@ -158,6 +158,9 @@ fun ApplicationListRoute(
             translucentBackground = false
         )
     )
+    val backendUrl by settingsViewModel.backendUrl.collectAsStateWithLifecycle(
+        initialValue = org.friesoft.porturl.data.repository.SettingsRepository.DEFAULT_BACKEND_URL
+    )
 
     LaunchedEffect(authState.isAuthorized) {
         if (!authState.isAuthorized) {
@@ -190,7 +193,8 @@ fun ApplicationListRoute(
         onSettingsClick = { navigator.navigate(Routes.Settings) },
         onManageUsers = { navigator.navigate(Routes.UserList) },
         isAdmin = isAdmin,
-        translucentBackground = userPreferences.translucentBackground
+        translucentBackground = userPreferences.translucentBackground,
+        backendUrl = backendUrl
     )
 }
 
@@ -214,7 +218,8 @@ fun ApplicationListScreen(
     onSettingsClick: () -> Unit,
     onManageUsers: () -> Unit,
     isAdmin: Boolean,
-    translucentBackground: Boolean
+    translucentBackground: Boolean,
+    backendUrl: String
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -369,7 +374,8 @@ fun ApplicationListScreen(
                                     currentUser = currentUser,
                                     onLogout = { authViewModel.logout(logoutLauncher) },
                                     onSettings = onSettingsClick,
-                                    onImageSelected = { uri -> authViewModel.updateUserImage(uri) }
+                                    onImageSelected = { uri -> authViewModel.updateUserImage(uri) },
+                                    backendUrl = backendUrl
                                 )
                             } else {
                                 TextButton(
@@ -392,7 +398,8 @@ fun ApplicationListScreen(
                                     currentUser = currentUser,
                                     onLogout = { authViewModel.logout(logoutLauncher) },
                                     onSettings = onSettingsClick,
-                                    onImageSelected = { uri -> authViewModel.updateUserImage(uri) }
+                                    onImageSelected = { uri -> authViewModel.updateUserImage(uri) },
+                                    backendUrl = backendUrl
                                 )
                             }
                         }
@@ -1165,7 +1172,8 @@ fun UserMenu(
     currentUser: org.friesoft.porturl.data.model.User?,
     onLogout: () -> Unit,
     onSettings: () -> Unit,
-    onImageSelected: (android.net.Uri) -> Unit
+    onImageSelected: (android.net.Uri) -> Unit,
+    backendUrl: String
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -1175,12 +1183,20 @@ fun UserMenu(
         uri?.let { onImageSelected(it) }
     }
 
+    val imageUrl = remember(currentUser?.image, backendUrl) {
+        if (!currentUser?.image.isNullOrBlank() && backendUrl.isNotBlank()) {
+            "${backendUrl.trimEnd('/')}/api/images/${currentUser.image}"
+        } else {
+            currentUser?.imageUrl
+        }
+    }
+
     Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
         IconButton(onClick = { expanded = true }) {
-            if (currentUser?.imageUrl != null) {
+            if (imageUrl != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(currentUser.imageUrl)
+                        .data(imageUrl)
                         .crossfade(true)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .networkCachePolicy(CachePolicy.ENABLED)
@@ -1188,7 +1204,7 @@ fun UserMenu(
                     contentDescription = stringResource(id = R.string.user_image_description),
                     modifier = Modifier.clip(androidx.compose.foundation.shape.CircleShape).size(32.dp),
                     placeholder = rememberVectorPainter(Icons.Default.Person),
-                    error = rememberVectorPainter(Icons.Default.BrokenImage)
+                    error = rememberVectorPainter(Icons.Default.Person)
                 )
             } else {
                 Icon(Icons.Default.Person, contentDescription = stringResource(id = R.string.user_image_description))
@@ -1215,10 +1231,10 @@ fun UserMenu(
                         .border(1.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (currentUser?.imageUrl != null) {
+                    if (imageUrl != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data(currentUser.imageUrl)
+                                .data(imageUrl)
                                 .crossfade(true)
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .networkCachePolicy(CachePolicy.ENABLED)
@@ -1226,7 +1242,7 @@ fun UserMenu(
                             contentDescription = stringResource(id = R.string.user_image_description),
                             modifier = Modifier.fillMaxSize(),
                             placeholder = rememberVectorPainter(Icons.Default.Person),
-                            error = rememberVectorPainter(Icons.Default.BrokenImage)
+                            error = rememberVectorPainter(Icons.Default.Person) // Keep consistency with the icon button
                         )
                     } else {
                          Icon(
