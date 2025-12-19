@@ -66,6 +66,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -920,7 +921,13 @@ fun ApplicationGridItem(
     onDismissMenu: () -> Unit = {},
     enabled: Boolean = true
 ) {
-    Box(modifier = modifier) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val density = LocalDensity.current
+    val screenWidthPx = with(density) { screenWidth.toPx() }
+    var itemBounds by remember { mutableStateOf(Rect.Zero) }
+
+    Box(modifier = modifier.onGloballyPositioned { itemBounds = it.boundsInRoot() }) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
         val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
         ElevatedCard(
@@ -958,9 +965,16 @@ fun ApplicationGridItem(
                     )
                 }
 
+                // Determine anchor alignment based on screen position
+                val anchorAlignment = if (itemBounds.center.x > screenWidthPx / 2) {
+                    Alignment.TopStart
+                } else {
+                    Alignment.TopEnd
+                }
+
                 // Invisible box to anchor the menu
                 Box(
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    modifier = Modifier.align(anchorAlignment)
                 ) {
                     DropdownMenu(
                         expanded = isMenuOpen,
