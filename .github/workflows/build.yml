@@ -291,13 +291,13 @@ jobs:
 
     steps:
       - name: Download App Bundle
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: app-bundle-${{ needs.build.outputs.commitSha }}
           path: artifacts/
 
       - name: Download APK
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: app-apk-${{ needs.build.outputs.commitSha }}
           path: artifacts/

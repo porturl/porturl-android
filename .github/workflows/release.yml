@@ -230,7 +230,7 @@ jobs:
 
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: release-artifacts-${{ needs.release.outputs.tag }}
           path: artifacts
