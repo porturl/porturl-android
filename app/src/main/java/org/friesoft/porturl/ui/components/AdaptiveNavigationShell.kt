@@ -44,6 +44,13 @@ import org.friesoft.porturl.data.model.User
 import org.friesoft.porturl.ui.navigation.Routes
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -64,6 +71,7 @@ import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -134,35 +142,75 @@ fun AdaptiveNavigationShell(
         val configuration = LocalConfiguration.current
         // Default expanded if screen is large (Tablet) but not just expanded width (Foldable)
         // Foldables often have width ~800-900dp. Tablets usually > 1000dp.
+        val isLargeScreen = windowSizeClass == WindowWidthSizeClass.Expanded && configuration.screenWidthDp > 1000
         var isExpanded by rememberSaveable { 
-            mutableStateOf(windowSizeClass == WindowWidthSizeClass.Expanded && configuration.screenWidthDp > 1000) 
+            mutableStateOf(isLargeScreen) 
         }
         
-        if (isExpanded) {
-            PermanentNavigationDrawer(
-                drawerContent = {
-                    PermanentDrawerSheet(
-                        modifier = Modifier.width(240.dp),
-                        windowInsets = WindowInsets(0),
-                        drawerShape = RectangleShape,
-                        drawerContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        drawerContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
+        val sidebarWidth by animateDpAsState(
+            targetValue = if (isExpanded) 240.dp else 64.dp,
+            label = "SidebarWidth"
+        )
+        
+        val contentPadding by animateDpAsState(
+            targetValue = if (isLargeScreen && isExpanded) 240.dp else 64.dp,
+            label = "ContentPadding"
+        )
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = contentPadding)
+            ) {
+                content()
+            }
+            
+            if (isExpanded && !isLargeScreen) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { isExpanded = false }
+                        // Optional: Add a semi-transparent background like Scrim
+                        // .background(Color.Black.copy(alpha = 0.32f)) 
+                )
+            }
+
+            Surface(
+                modifier = Modifier
+                    .width(sidebarWidth)
+                    .fillMaxHeight()
+                    .align(Alignment.CenterStart),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ) {
+                AnimatedContent(
+                    targetState = isExpanded,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(220, delayMillis = 90)) togetherWith
+                        fadeOut(animationSpec = tween(90))
+                    },
+                    label = "SidebarContent"
+                ) { expanded ->
+                    if (expanded) {
                         Column(Modifier.fillMaxSize()) {
-                                Column {
-                                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                                    Row(
-                                        modifier = Modifier
-                                            .padding(horizontal = 12.dp)
-                                            .height(64.dp)
-                                            .fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(onClick = { isExpanded = !isExpanded }) {
-                                            Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_description))
-                                        }
+                            Column {
+                                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
+                                Row(
+                                    modifier = Modifier
+                                        .padding(horizontal = 12.dp)
+                                        .height(64.dp)
+                                        .fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(onClick = { isExpanded = !isExpanded }) {
+                                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_description))
                                     }
                                 }
+                            }
 
                             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
                                 destinations.forEach { item ->
@@ -211,25 +259,14 @@ fun AdaptiveNavigationShell(
                                 modifier = Modifier.padding(12.dp)
                             )
                         }
-                    }
-                }
-            ) {
-                content()
-            }
-        } else {
-            Row(modifier = Modifier.fillMaxSize()) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxHeight().width(64.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxHeight(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Column {
-                                 Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                                 Box(
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxHeight(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Column {
+                                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
+                                    Box(
                                     modifier = Modifier
                                         .height(64.dp)
                                         .width(64.dp), // Fixed width to match standard Rail width
@@ -241,58 +278,55 @@ fun AdaptiveNavigationShell(
                                 }
                             }
 
-                        // Top items
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            destinations.forEach { item ->
-                                val selected = isRouteSelected(currentRoute, item.route)
-                                NavigationRailItem(
-                                    selected = selected,
-                                    onClick = { onNavigate(item.route) },
-                                    icon = {
-                                        Icon(
-                                            if (selected) item.selectedIcon else item.unselectedIcon,
-                                            contentDescription = stringResource(item.labelRes)
-                                        )
-                                    },
-                                    alwaysShowLabel = false
-                                )
+                            // Top items
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                destinations.forEach { item ->
+                                    val selected = isRouteSelected(currentRoute, item.route)
+                                    NavigationRailItem(
+                                        selected = selected,
+                                        onClick = { onNavigate(item.route) },
+                                        icon = {
+                                            Icon(
+                                                if (selected) item.selectedIcon else item.unselectedIcon,
+                                                contentDescription = stringResource(item.labelRes)
+                                            )
+                                        },
+                                        alwaysShowLabel = false
+                                    )
+                                }
+                                
+                                if (currentRoute == Routes.AppList) {
+                                    Spacer(Modifier.height(16.dp))
+                                    NavigationRailItem(
+                                        selected = false,
+                                        onClick = onAddApp,
+                                        icon = { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.add_application_description)) },
+                                        alwaysShowLabel = false
+                                    )
+                                    NavigationRailItem(
+                                        selected = false,
+                                        onClick = onAddCategory,
+                                        icon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_category_description)) },
+                                        alwaysShowLabel = false
+                                    )
+                                }
                             }
                             
-                            if (currentRoute == Routes.AppList) {
-                                Spacer(Modifier.height(16.dp))
-                                NavigationRailItem(
-                                    selected = false,
-                                    onClick = onAddApp,
-                                    icon = { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.add_application_description)) },
-                                    alwaysShowLabel = false
-                                )
-                                NavigationRailItem(
-                                    selected = false,
-                                    onClick = onAddCategory,
-                                    icon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_category_description)) },
-                                    alwaysShowLabel = false
-                                )
-                            }
+                            // Footer (Profile)
+                            NavigationRailItem(
+                                selected = false,
+                                onClick = onProfileClick,
+                                icon = {
+                                    UserAvatar(currentUser = currentUser, backendUrl = backendUrl)
+                                },
+                                alwaysShowLabel = false
+                            )
+                            Spacer(Modifier.padding(vertical = 8.dp))
                         }
-                        
-                        // Footer (Profile)
-                        NavigationRailItem(
-                            selected = false,
-                            onClick = onProfileClick,
-                            icon = {
-                                UserAvatar(currentUser = currentUser, backendUrl = backendUrl)
-                            },
-                            alwaysShowLabel = false
-                        )
-                        Spacer(Modifier.padding(vertical = 8.dp))
                     }
-                }
-
-                Box(modifier = Modifier.weight(1f)) {
-                    content()
                 }
             }
         }
