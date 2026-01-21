@@ -1,0 +1,51 @@
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+name: release-please
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Create Tag and Trigger Publish
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+        run: |
+          # Manually create the tag so release-please sees it for the next run
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag $TAG_NAME ${{ github.sha }}
+          git push origin $TAG_NAME
+
+          # Trigger publish workflow
+          gh workflow run publish-release.yml --repo ${{ github.repository }} -f tag=$TAG_NAME -f sha=${{ github.sha }}
+
+          # Cleanup: Close any "Giant PRs" that release-please might have created because it ignored the Draft Release.
+          # Since we just released, there should be no pending release PRs.
+          gh pr list --repo ${{ github.repository }} --label "autorelease: pending" --state open --json number --jq '.[].number' | xargs -r -I {} gh pr close {} --repo ${{ github.repository }} --delete-branch
+          
+          # Add 'autorelease: published' label to the PR that triggered this release
+          # We search for the merged PR associated with the commit
+          PR_NUMBER=$(gh search prs "${{ github.sha }}" --repo ${{ github.repository }} --merged --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ]; then
+            gh label create "autorelease: published" --repo ${{ github.repository }} --color "2cbe4e" --description "Release has been published" || true
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --add-label "autorelease: published"
+          fi

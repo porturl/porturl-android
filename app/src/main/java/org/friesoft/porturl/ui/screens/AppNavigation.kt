@@ -1,17 +1,13 @@
 package org.friesoft.porturl.ui.screens
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,7 +16,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.first
 import org.friesoft.porturl.R
-import org.friesoft.porturl.ui.navigation.NavigationState
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.ui.navigation.rememberNavigationState
@@ -28,10 +23,12 @@ import org.friesoft.porturl.ui.navigation.toEntries
 import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.AuthViewModel
 import android.util.Log
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 
 /**
  * The main navigation component for the application.
  */
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
 fun AppNavigation() {
     val authViewModel: AuthViewModel = hiltViewModel()
@@ -45,12 +42,34 @@ fun AppNavigation() {
 
     val navigationState = rememberNavigationState(
         startRoute = Routes.AppList,
-        topLevelRoutes = setOf(Routes.Login, Routes.AppList)
+        topLevelRoutes = setOf(Routes.Login, Routes.AppList, Routes.Settings, Routes.UserList)
     )
     val navigator = remember(navigationState) { Navigator(navigationState) }
 
     val sharedViewModel: AppSharedViewModel = viewModel() // Shared ViewModel for app-wide state
     val showSessionExpiredDialog by authViewModel.showSessionExpiredDialog.collectAsStateWithLifecycle()
+    val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
+    val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
+    val backendUrl by hiltViewModel<org.friesoft.porturl.viewmodels.SettingsViewModel>().backendUrl.collectAsStateWithLifecycle(
+        initialValue = org.friesoft.porturl.data.repository.SettingsRepository.DEFAULT_BACKEND_URL
+    )
+    
+    val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
+
+    val activity = androidx.activity.compose.LocalActivity.current!!
+    val windowSizeClass = androidx.compose.material3.windowsizeclass.calculateWindowSizeClass(activity).widthSizeClass
+
+    var showProfileDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    val logoutLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {}
+    
+    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let { authViewModel.updateUserImage(it) }
+    }
 
     val entryProvider = entryProvider {
         // We no longer need AuthCheck route, logic is handled below
@@ -109,8 +128,51 @@ fun AppNavigation() {
         )
     }
 
-    NavDisplay(
-        entries = navigationState.toEntries(entryProvider),
-        onBack = { navigator.goBack() }
-    )
+    if (showProfileDialog) {
+        AlertDialog(
+            onDismissRequest = { showProfileDialog = false },
+            title = { Text(stringResource(R.string.user_profile)) }, // Reuse description as title
+            text = {
+                androidx.compose.foundation.layout.Column {
+                     TextButton(onClick = {
+                         showProfileDialog = false
+                         imagePickerLauncher.launch("image/*")
+                     }) {
+                         Text(stringResource(R.string.edit_button_text)) // Reuse edit text
+                     }
+                     TextButton(onClick = {
+                         showProfileDialog = false
+                         authViewModel.logout(logoutLauncher)
+                     }) {
+                         Text(stringResource(R.string.logout_description))
+                     }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showProfileDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    org.friesoft.porturl.ui.components.AdaptiveNavigationShell(
+        windowSizeClass = windowSizeClass,
+        currentRoute = navigationState.topLevelRoute,
+        onNavigate = { route -> navigator.navigate(route) },
+        currentUser = currentUser,
+        isAdmin = isAdmin,
+        backendUrl = backendUrl,
+        searchQuery = searchQuery,
+        onSearchQueryChanged = { sharedViewModel.updateSearchQuery(it) },
+        onProfileClick = { showProfileDialog = true },
+        onAddApp = { navigator.navigate(Routes.AppDetail(-1)) },
+        onAddCategory = { navigator.navigate(Routes.CategoryDetail(-1)) }
+    ) {
+        NavDisplay(
+            entries = navigationState.toEntries(entryProvider),
+            onBack = { navigator.goBack() }
+        )
+    }
 }

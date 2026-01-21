@@ -1,26 +1,17 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
-    id("com.google.dagger.hilt.android")
     alias(libs.plugins.compose.compiler)
-    id("pl.allegro.tech.build.axion-release") version "1.21.1"
 }
 
-scmVersion {
-    tag {
-        // Tell the plugin that your tags start with "v" (e.g., v1.0.0)
-        prefix.set("v")
-        versionSeparator.set("")
-    }
-}
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
 }
-configure<com.android.build.api.dsl.ApplicationExtension> {
+android {
     namespace = "org.friesoft.porturl"
     compileSdk {
         version = release(36) {
@@ -33,7 +24,22 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 31
 
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
-        versionName = project.version.toString()
+        
+        // Dynamic version name logic
+        val isRelease = System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") == true || System.getenv("IS_RELEASE_BUILD") == "true"
+        var version = project.version.toString()
+        
+        if (!isRelease) {
+             val gitCommit = providers.exec {
+                commandLine("git", "rev-parse", "--short", "HEAD")
+            }.standardOutput.asText.get().trim()
+            
+             if (gitCommit.isNotEmpty()) {
+                version = "$version-$gitCommit"
+            }
+        }
+        
+        versionName = version
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,6 +78,7 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
 }
 
 dependencies {
+    implementation(libs.androidx.foundation.layout)
     ksp(libs.kotlin.metadata.jvm)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

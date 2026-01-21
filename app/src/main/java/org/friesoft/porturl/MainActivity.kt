@@ -18,11 +18,14 @@ import org.friesoft.porturl.ui.screens.AppNavigation
 import org.friesoft.porturl.ui.theme.PortUrlTheme
 import org.friesoft.porturl.viewmodels.SettingsViewModel
 
+import androidx.activity.enableEdgeToEdge
+
 // @AndroidEntryPoint enables member injection in this Activity.
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(

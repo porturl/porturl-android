@@ -14,6 +14,9 @@ class AppSharedViewModel : ViewModel() {
     private val _shouldRefreshAppList = MutableStateFlow(false)
     val shouldRefreshAppList = _shouldRefreshAppList.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
     fun setEditMode(isEditing: Boolean) {
         _isEditing.value = isEditing
     }
@@ -24,5 +27,9 @@ class AppSharedViewModel : ViewModel() {
 
     fun onAppListRefreshed() {
         _shouldRefreshAppList.value = false
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 }

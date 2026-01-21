@@ -59,7 +59,7 @@
     <string name="login_go_to_settings">Einstellungen öffnen</string>
 
     <!-- Application List Screen -->
-    <string name="app_list_title">Anwendungsportal</string>
+    <string name="app_list_title">Anwendungen</string>
     <string name="search_placeholder">Suchen…</string>
     <string name="clear_search_description">Suche löschen</string>
     <string name="search_description">Suchen</string>
@@ -121,6 +121,7 @@
 
     <!-- User Menu -->
     <string name="user_menu_title">Benutzerprofil</string>
-    <string name="user_image_description">Benutzerbild</string>
+    <string name="user_profile">Profil</string>
+    <string name="menu_description">Menü</string>
 
 </resources>

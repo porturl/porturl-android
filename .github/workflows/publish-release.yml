@@ -1,0 +1,256 @@
+name: Publish Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag to build (e.g. v1.0.0)'
+        required: true
+      sha:
+        description: 'The commit SHA to build'
+        required: false
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+  issues: write
+  pull-requests: write
+
+env:
+  JAVA_VERSION: '25'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  release:
+    name: 🚀 Build and Publish Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    outputs:
+      tag: ${{ steps.release_info.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.sha || inputs.tag || github.event.release.tag_name }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: on-success
+
+      - name: Get release info
+        id: release_info
+        run: |
+          tag="${{ inputs.tag || github.event.release.tag_name }}"
+          version_name="${tag#v}"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "version_name=$version_name" >> $GITHUB_OUTPUT
+          echo "Release tag: $tag"
+          echo "Version name: $version_name"
+
+      - name: Set build environment variables
+        run: |
+          echo "VERSION_CODE=$(git rev-list --count HEAD)" >> $GITHUB_ENV
+          echo "VERSION_NAME=${{ steps.release_info.outputs.version_name }}" >> $GITHUB_ENV
+          echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+      - name: Cache keystore
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/keystore.jks
+          key: keystore-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Decode and setup keystore
+        id: setup_signing
+        env:
+          SIGNING_KEY_STORE_BASE64: ${{ secrets.SIGNING_KEY_STORE_BASE64 }}
+        run: |
+          KEYSTORE_PATH=${{ runner.temp }}/keystore.jks
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            echo "Decoding keystore..."
+            echo $SIGNING_KEY_STORE_BASE64 | base64 --decode > $KEYSTORE_PATH
+          fi
+          echo "keyStorePath=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Build Release App Bundle and APK
+        env:
+          SIGNING_KEY_STORE_PATH: ${{ steps.setup_signing.outputs.keyStorePath }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          IS_RELEASE_BUILD: "true"
+        run: |
+          echo "Building release with:"
+          echo "  Version Code: $VERSION_CODE"
+          echo "  Version Name: $VERSION_NAME"
+          ./gradlew clean bundleRelease assembleRelease --no-daemon
+
+      - name: Generate checksums
+        run: |
+          find . -name "*.apk" -o -name "*.aab" | while read file; do
+            echo "$(sha256sum "$file" | cut -d' ' -f1)  $(basename "$file")" >> checksums.txt
+          done
+          echo "Generated checksums:"
+          cat checksums.txt
+
+      - name: Verify APK signature
+        run: |
+          APK_PATH=$(find . -name "*-release.apk" | head -1)
+          if [ -n "$APK_PATH" ]; then
+            echo "Verifying APK signature: $APK_PATH"
+            # Use the correct apksigner command syntax
+            if command -v apksigner >/dev/null 2>&1; then
+              apksigner verify --verbose "$APK_PATH"
+            elif [ -f "$ANDROID_HOME/build-tools/*/apksigner" ]; then
+              # Find the apksigner in build-tools and use it correctly
+              APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name "apksigner" | head -1)
+              if [ -n "$APKSIGNER" ]; then
+                "$APKSIGNER" verify --verbose "$APK_PATH"
+              else
+                echo "⚠️ apksigner not found, skipping signature verification"
+              fi
+            else
+              echo "⚠️ apksigner not available, skipping signature verification"
+            fi
+          else
+            echo "⚠️ No release APK found for signature verification"
+          fi
+
+      - name: Rename Artifacts
+        run: |
+           # Rename files with version for clarity (handle nested paths)
+           for file in $(find . -name "*.apk" -o -name "*.aab"); do
+             ext="${file##*.}"
+             base="$(basename "$file" ".$ext")"
+             new_name="${base}-${{ steps.release_info.outputs.tag }}.${ext}"
+             mv "$file" "$new_name"
+             echo "Renamed: $file -> $new_name"
+           done
+
+      - name: Update Release with Artifacts and Verification Info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release_info.outputs.tag }}
+        run: |
+          # Fetch existing body
+          EXISTING_BODY=$(gh release view "$TAG" --json body --template '{{.body}}')
+          
+          # Create new body with verification info appended
+          NEW_BODY=$(cat <<EOF
+          $EXISTING_BODY
+
+          ---
+          ### 🔍 Verification
+          To verify the integrity of downloaded files, use:
+          \`\`\`bash
+          sha256sum -c checksums.txt
+          \`\`\`
+          EOF
+          )
+          
+          # Update release notes
+          gh release edit "$TAG" --notes "$NEW_BODY"
+          
+                    # Upload all artifacts (APK, AAB, checksums)
+          
+                    # We use a loop to handle the multiple files found by the glob
+          
+                    find . -name "*.apk" -o -name "*.aab" -o -name "checksums.txt" | xargs -I {} gh release upload "$TAG" "{}" --clobber
+          
+          
+          
+                      - name: Publish Release (Undraft)
+          
+          
+          
+                        env:
+          
+          
+          
+                          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+          
+          
+                          TAG: ${{ steps.release_info.outputs.tag }}
+          
+          
+          
+                        run: |
+          
+          
+          
+                          gh release edit "$TAG" --draft=false --repo ${{ github.repository }}
+          
+          
+          
+                
+          
+          
+          
+                      - name: Label PR as Published
+          
+          
+          
+                        env:
+          
+          
+          
+                          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+          
+          
+                          COMMIT_SHA: ${{ inputs.sha || github.sha }}
+          
+          
+          
+                        run: |
+          
+          
+          
+                          PR_NUMBER=$(gh search prs "$COMMIT_SHA" --repo ${{ github.repository }} --merged --json number --jq '.[0].number')
+          
+          
+          
+                          if [ -n "$PR_NUMBER" ]; then
+          
+          
+          
+                            gh label create "autorelease: published" --repo ${{ github.repository }} --color "2cbe4e" --description "Release has been published" || true
+          
+          
+          
+                            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --add-label "autorelease: published"
+          
+          
+          
+                          fi
+          
+          
+          
+                
+          
+          
+          
+                  notify:
+    name: 📢 Notify Release
+    runs-on: ubuntu-latest
+    needs: release
+    if: always() && needs.release.result == 'success'
+    timeout-minutes: 5
+
+    steps:
+      - name: Notify success
+        run: |
+          echo "✅ Release ${{ needs.release.outputs.tag }} published successfully!"
