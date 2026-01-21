@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/porturl/porturl-android/compare/v0.2.0...v0.2.1) (2026-01-21)
+
+
+### Bug Fixes
+
+* make sidebar behave similar on foldable open, closed and tablet ([14af025](https://github.com/porturl/porturl-android/commit/14af02579e04a767cd8763c925b18cabb22974bc))
+
 ## [0.2.0](https://github.com/porturl/porturl-android/compare/v0.1.1...v0.2.0) (2026-01-21)
 
 
