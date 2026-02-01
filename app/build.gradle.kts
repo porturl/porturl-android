@@ -51,7 +51,7 @@ android {
     signingConfigs {
         create("release") {
             val storePath = System.getenv("SIGNING_KEY_STORE_PATH")
-            if (storePath != null) {
+            if (!storePath.isNullOrEmpty() && file(storePath).exists()) {
                 storeFile = file(storePath)
                 storePassword = System.getenv("SIGNING_STORE_PASSWORD")
                 keyAlias = System.getenv("SIGNING_KEY_ALIAS")
@@ -68,7 +68,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
         }
     }
     buildFeatures {
