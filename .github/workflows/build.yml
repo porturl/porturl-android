@@ -86,6 +86,7 @@ jobs:
       - name: Run Lint and Unit Tests
         if: steps.changes.outputs.has-changes == 'true'
         run: |
+          chmod +x gradlew
           echo "Running validation checks..."
           ./gradlew lintDebug testDebugUnitTest --continue --build-cache
 
@@ -192,6 +193,7 @@ jobs:
       - name: Get version information
         id: version_info
         run: |
+          chmod +x gradlew
           VERSION_CODE=$(git rev-list --count HEAD)
           VERSION_NAME=$(./gradlew -q printVersionName)
           COMMIT_SHA=$(git rev-parse --short HEAD)
