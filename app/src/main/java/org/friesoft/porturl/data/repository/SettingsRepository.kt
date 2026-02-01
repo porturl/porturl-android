@@ -25,7 +25,7 @@ import javax.inject.Singleton
  * Repository for managing user-configurable settings using Jetpack DataStore.
  */
 @Singleton
-class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
+class SettingsRepository @Inject constructor(@param:ApplicationContext private val context: Context) {
     // Creates a singleton instance of DataStore
     private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 

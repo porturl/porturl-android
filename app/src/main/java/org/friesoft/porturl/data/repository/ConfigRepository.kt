@@ -29,7 +29,7 @@ interface ConfigService {
 @Singleton
 class ConfigRepository @Inject constructor(
     // It's important this Retrofit instance does NOT have the AuthInterceptor
-    @Named("unauthenticated_retrofit") private val retrofit: Retrofit
+    @param:Named("unauthenticated_retrofit") private val retrofit: Retrofit
 ) {
     // Lazy create the service
     private val configService: ConfigService by lazy {

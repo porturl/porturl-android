@@ -26,7 +26,7 @@ import javax.inject.Singleton
 class AuthInterceptor @Inject constructor(
     private val authStateManager: AuthStateManager,
     private val sessionNotifier: SessionExpiredNotifier,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {

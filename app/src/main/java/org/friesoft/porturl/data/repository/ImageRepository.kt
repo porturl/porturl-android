@@ -13,7 +13,7 @@ import javax.inject.Singleton
 @Singleton
 class ImageRepository @Inject constructor(
     private val apiService: ApiService,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     /**
      * Uploads an image from a given URI to the backend.

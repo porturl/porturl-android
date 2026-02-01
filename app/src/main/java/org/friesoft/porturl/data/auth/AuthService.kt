@@ -18,7 +18,7 @@ import kotlin.coroutines.resumeWithException
  */
 @Singleton
 class AuthService @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val configRepository: ConfigRepository
 ) {
     private val authService = AuthorizationService(context)

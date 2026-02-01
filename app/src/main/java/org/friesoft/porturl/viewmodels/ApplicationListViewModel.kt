@@ -66,7 +66,7 @@ data class ApplicationListState(
                 when (item) {
                     is DashboardItem.CategoryItem -> {
                         currentCategory = item.category
-                        groupedMap.getOrPut(currentCategory!!) { mutableListOf() }
+                        groupedMap.getOrPut(currentCategory) { mutableListOf() }
                     }
                     is DashboardItem.ApplicationItem -> {
                         currentCategory?.let {
@@ -153,8 +153,8 @@ class ApplicationListViewModel @Inject constructor(
     }
 
     private suspend fun loadAllItemsFromRepositories() {
-        val applications = applicationRepository.getAllApplications() ?: emptyList()
-        val categories = categoryRepository.getAllCategories() ?: emptyList()
+        val applications = applicationRepository.getAllApplications()
+        val categories = categoryRepository.getAllCategories()
         _uiState.update {
             it.copy(allItems = buildDashboardItems(applications, categories))
         }
