@@ -30,9 +30,9 @@ lifecycleViewmodelKtx = "2.10.0"
 reorderable = "0.9.6"
 window = "1.5.1"
 material3WindowSizeClass = "1.4.0"
-uiText = "1.10.1"
-foundationLayout = "1.10.1"
-foundation = "1.10.1"
+uiText = "1.10.2"
+foundationLayout = "1.10.2"
+foundation = "1.10.2"
 
 [libraries]
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
