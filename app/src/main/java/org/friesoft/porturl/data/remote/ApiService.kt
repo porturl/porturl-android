@@ -42,7 +42,7 @@ interface ApiService {
     suspend fun createCategory(@Body category: Category): Category
 
     @GET("api/categories/{id}")
-    suspend fun getCategoryById(@Path("id") id: Long): Category;
+    suspend fun getCategoryById(@Path("id") id: Long): Category
 
     @PUT("api/categories/{id}")
     suspend fun updateCategory(@Path("id") id: Long, @Body category: Category): Category

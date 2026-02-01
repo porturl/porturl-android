@@ -1,16 +1,5 @@
 <resources>
     <string name="app_name">porturl</string>
-    <string name="navigation_drawer_open">Open navigation drawer</string>
-    <string name="navigation_drawer_close">Close navigation drawer</string>
-    <string name="nav_header_title">Android Studio</string>
-    <string name="nav_header_subtitle">android.studio@android.com</string>
-    <string name="nav_header_desc">Navigation header</string>
-    <string name="action_settings">Settings</string>
-
-    <string name="menu_transform">Transform</string>
-    <string name="menu_reflow">Reflow</string>
-    <string name="menu_slideshow">Slideshow</string>
-    <string name="menu_settings">Settings</string>
 
     <!-- General UI -->
     <string name="cancel">Cancel</string>
@@ -52,7 +41,6 @@
     <!-- Login Screen -->
     <string name="login_title">PortURL Login</string>
     <string name="login_welcome">Welcome to PortURL</string>
-    <string name="login_unknown_error">An unknown error occurred.</string>
     <string name="login_dismiss_error">Dismiss</string>
     <string name="login_sso_button">Login with SSO</string>
     <string name="login_backend_not_valid">Backend URL is not valid/reachable. Please configure it correctly.</string>
@@ -63,7 +51,6 @@
     <string name="search_placeholder">Search…</string>
     <string name="clear_search_description">Clear search</string>
     <string name="search_description">Search</string>
-    <string name="done_description">Done</string>
     <string name="edit_mode_description">Edit Mode</string>
     <string name="edit_button_text">Edit</string>
     <string name="settings_description">Settings</string>
@@ -75,13 +62,7 @@
     <string name="empty_state_no_results">No results found.</string>
     <string name="empty_state_no_items">No applications or categories found.\nTap \'Edit\' then \'+\' to add some!</string>
     <string name="application_icon_description">%s icon</string>
-    <string name="delete_application_description">Delete Application</string>
-    <string name="move_up_description">Move Up</string>
-    <string name="move_down_description">Move Down</string>
-    <string name="move_left_description">Move Left</string>
-    <string name="move_right_description">Move Right</string>
     <string name="sort_alpha_description">Sort alphabetically</string>
-    <string name="delete_category_description">Delete Category</string>
     <string name="delete_dialog_title">Delete %s</string>
     <string name="delete_dialog_text">Are you sure you want to permanently delete this %s?</string>
     <string name="delete_button_text">Delete</string>
@@ -120,7 +101,6 @@
     <string name="no_roles_defined">No roles defined for this app.</string>
 
     <!-- User Menu -->
-    <string name="user_menu_title">User Profile</string>
     <string name="user_profile">Profile</string>
     <string name="menu_description">Menu</string>
 

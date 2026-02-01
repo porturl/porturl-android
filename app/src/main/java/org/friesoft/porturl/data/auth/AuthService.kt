@@ -5,13 +5,13 @@ import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.suspendCancellableCoroutine
 import net.openid.appauth.*
 import org.friesoft.porturl.data.repository.ConfigRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 /**
  * Manages the OAuth 2.0 authorization flow using the AppAuth library.
@@ -25,12 +25,14 @@ class AuthService @Inject constructor(
 
     private suspend fun getAuthServiceConfig(): AuthorizationServiceConfiguration {
         val issuerUri = configRepository.getIssuerUri().toUri()
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
             AuthorizationServiceConfiguration.fetchFromIssuer(issuerUri) { config, ex ->
                 if (config != null) {
                     continuation.resume(config)
                 } else {
-                    continuation.resumeWithException(ex ?: RuntimeException("Failed to fetch OIDC configuration."))
+                    continuation.resumeWithException(
+                        ex ?: RuntimeException("Failed to fetch OIDC configuration.")
+                    )
                 }
             }
         }
@@ -58,7 +60,7 @@ class AuthService @Inject constructor(
         if (resp != null) {
             try {
                 // This suspendCoroutine will now throw an exception on failure
-                val tokenResponse = suspendCoroutine<TokenResponse> { continuation ->
+                val tokenResponse = suspendCancellableCoroutine { continuation ->
                     authService.performTokenRequest(resp.createTokenExchangeRequest()) { response, tokenEx ->
                         when {
                             response != null -> continuation.resume(response)
@@ -94,10 +96,6 @@ class AuthService @Inject constructor(
 
         val endSessionIntent = authService.getEndSessionRequestIntent(endSessionRequest)
         launcher.launch(endSessionIntent)
-    }
-
-    fun getAuthorizationService(): AuthorizationService {
-        return authService
     }
 
 }

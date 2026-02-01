@@ -59,21 +59,6 @@ data class CustomColors(
     val tertiary: Int
 ) {
     companion object {
-        /**
-         * Creates a [CustomColors] object from a set of Compose [Color] objects.
-         *
-         * @param primary The primary color.
-         * @param secondary The secondary color.
-         * @param tertiary The tertiary color.
-         * @return A [CustomColors] object with the specified colors.
-         */
-        fun fromColor(primary: Color, secondary: Color, tertiary: Color): CustomColors {
-            return CustomColors(
-                primary = primary.toArgb(),
-                secondary = secondary.toArgb(),
-                tertiary = tertiary.toArgb()
-            )
-        }
     }
 }
 

@@ -19,7 +19,6 @@ import org.friesoft.porturl.data.auth.SessionExpiredNotifier
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
 import org.friesoft.porturl.data.repository.UserRepository
-import org.friesoft.porturl.ui.navigation.Routes
 import javax.inject.Inject
 
 /**

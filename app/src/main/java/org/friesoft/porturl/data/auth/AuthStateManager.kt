@@ -8,17 +8,12 @@ import org.json.JSONException
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
+import androidx.core.content.edit
 
 class AuthStateManager private constructor(context: Context) {
-    private val prefs: SharedPreferences
-    private val prefsLock: ReentrantLock
-    private val currentAuthState: AtomicReference<AuthState>
-
-    init {
-        prefs = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
-        prefsLock = ReentrantLock()
-        currentAuthState = AtomicReference()
-    }
+    private val prefs: SharedPreferences = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
+    private val prefsLock: ReentrantLock = ReentrantLock()
+    private val currentAuthState: AtomicReference<AuthState> = AtomicReference()
 
     @get:AnyThread
     val current: AuthState
@@ -52,9 +47,9 @@ class AuthStateManager private constructor(context: Context) {
         // perform read and write in critical section to avoid race conditions
         prefsLock.lock()
         try {
-            val editor = prefs.edit()
-            editor.remove(KEY_STATE)
-            editor.apply()
+            prefs.edit {
+                remove(KEY_STATE)
+            }
         } finally {
             prefsLock.unlock()
         }
@@ -90,6 +85,7 @@ class AuthStateManager private constructor(context: Context) {
             } else {
                 editor.putString(KEY_STATE, state.jsonSerializeString())
             }
+
             check(editor.commit()) { "Failed to write state to shared prefs" }
         } finally {
             prefsLock.unlock()

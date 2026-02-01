@@ -1,11 +1,8 @@
 package org.friesoft.porturl.data.repository
 
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.first
 import org.friesoft.porturl.data.model.Application
 import org.friesoft.porturl.data.model.ApplicationUpdateRequest
 import org.friesoft.porturl.data.remote.ApiService
-import retrofit2.Retrofit
 import javax.inject.Inject
 import javax.inject.Singleton
 

@@ -1,16 +1,5 @@
 <resources>
     <string name="app_name">porturl</string>
-    <string name="navigation_drawer_open">Navigationsleiste öffnen</string>
-    <string name="navigation_drawer_close">Navigationsleiste schließen</string>
-    <string name="nav_header_title">Android Studio</string>
-    <string name="nav_header_subtitle">android.studio@android.com</string>
-    <string name="nav_header_desc">Navigationskopfzeile</string>
-    <string name="action_settings">Einstellungen</string>
-
-    <string name="menu_transform">Transformieren</string>
-    <string name="menu_reflow">Neu anordnen</string>
-    <string name="menu_slideshow">Diashow</string>
-    <string name="menu_settings">Einstellungen</string>
 
     <!-- General UI -->
     <string name="cancel">Abbrechen</string>
@@ -52,7 +41,6 @@
     <!-- Login Screen -->
     <string name="login_title">PortURL-Anmeldung</string>
     <string name="login_welcome">Willkommen bei PortURL</string>
-    <string name="login_unknown_error">Ein unbekannter Fehler ist aufgetreten.</string>
     <string name="login_dismiss_error">Verwerfen</string>
     <string name="login_sso_button">Mit SSO anmelden</string>
     <string name="login_backend_not_valid">Die Backend-URL ist nicht gültig/erreichbar. Bitte konfigurieren Sie sie korrekt.</string>
@@ -63,7 +51,6 @@
     <string name="search_placeholder">Suchen…</string>
     <string name="clear_search_description">Suche löschen</string>
     <string name="search_description">Suchen</string>
-    <string name="done_description">Fertig</string>
     <string name="edit_mode_description">Bearbeitungsmodus</string>
     <string name="edit_button_text">Bearbeiten</string>
     <string name="settings_description">Einstellungen</string>
@@ -75,13 +62,7 @@
     <string name="empty_state_no_results">Keine Ergebnisse gefunden.</string>
     <string name="empty_state_no_items">Keine Anwendungen oder Kategorien gefunden.\nTippen Sie auf \'Bearbeiten\' und dann auf \'+\', um welche hinzuzufügen!</string>
     <string name="application_icon_description">%s-Symbol</string>
-    <string name="delete_application_description">Anwendung löschen</string>
-    <string name="move_up_description">Nach oben verschieben</string>
-    <string name="move_down_description">Nach unten verschieben</string>
-    <string name="move_left_description">Nach links verschieben</string>
-    <string name="move_right_description">Nach rechts verschieben</string>
     <string name="sort_alpha_description">Alphabetisch sortieren</string>
-    <string name="delete_category_description">Kategorie löschen</string>
     <string name="delete_dialog_title">%s löschen</string>
     <string name="delete_dialog_text">Sind Sie sicher, dass Sie diese %s dauerhaft löschen möchten?</string>
     <string name="delete_button_text">Löschen</string>
@@ -120,7 +101,6 @@
     <string name="no_roles_defined">Keine Rollen für diese App definiert.</string>
 
     <!-- User Menu -->
-    <string name="user_menu_title">Benutzerprofil</string>
     <string name="user_profile">Profil</string>
     <string name="menu_description">Menü</string>
 

@@ -4,8 +4,6 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 object Routes {
-    @Serializable
-    data object AuthCheck : NavKey
 
     @Serializable
     data object Login : NavKey

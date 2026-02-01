@@ -141,9 +141,7 @@ class ApplicationDetailViewModel @Inject constructor(
         val selectedUri = _uiState.value.selectedImageUri
         if (selectedUri != null) {
             val newIconFilename = imageRepository.uploadImage(selectedUri)
-            if (newIconFilename == null) {
-                throw Exception("Failed to upload image.")
-            }
+                ?: throw Exception("Failed to upload image.")
             return newIconFilename
         }
         return null

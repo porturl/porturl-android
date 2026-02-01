@@ -8,14 +8,10 @@
 package org.friesoft.porturl.ui.screens
 
 import androidx.activity.compose.LocalActivity
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -23,14 +19,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -40,11 +32,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
@@ -54,7 +42,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -64,23 +51,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavKey
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
@@ -90,12 +73,7 @@ import org.friesoft.porturl.data.model.Category
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.*
-import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
-import androidx.compose.ui.window.PopupProperties
-import coil.request.CachePolicy
-import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 
 // A sealed class to represent the item currently being dragged.
 private sealed class DraggingItem {
@@ -147,8 +125,6 @@ fun ApplicationListRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
-    val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
-    val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
     val shouldRefresh by sharedViewModel.shouldRefreshAppList.collectAsStateWithLifecycle()
     val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
         initialValue = org.friesoft.porturl.data.model.UserPreferences(
@@ -159,10 +135,7 @@ fun ApplicationListRoute(
             translucentBackground = false
         )
     )
-    val backendUrl by settingsViewModel.backendUrl.collectAsStateWithLifecycle(
-        initialValue = org.friesoft.porturl.data.repository.SettingsRepository.DEFAULT_BACKEND_URL
-    )
-    
+
     val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
     
     LaunchedEffect(searchQuery) {
@@ -195,13 +168,7 @@ fun ApplicationListRoute(
         onAddCategory = { navigator.navigate(Routes.CategoryDetail(-1)) },
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
-        authViewModel = authViewModel,
-        currentUser = currentUser,
-        onSettingsClick = { navigator.navigate(Routes.Settings) },
-        onManageUsers = { navigator.navigate(Routes.UserList) },
-        isAdmin = isAdmin,
         translucentBackground = userPreferences.translucentBackground,
-        backendUrl = backendUrl
     )
 }
 
@@ -220,16 +187,9 @@ fun ApplicationListScreen(
     onAddCategory: () -> Unit,
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
-    authViewModel: AuthViewModel,
-    currentUser: org.friesoft.porturl.data.model.User?,
-    onSettingsClick: () -> Unit,
-    onManageUsers: () -> Unit,
-    isAdmin: Boolean,
-    translucentBackground: Boolean,
-    backendUrl: String
+    translucentBackground: Boolean
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
     var itemToDelete by remember { mutableStateOf<Pair<String, Long>?>(null) }
     var searchBarVisible by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
@@ -294,7 +254,6 @@ fun ApplicationListScreen(
             }
         }
     }
-    // --- End D&D State ---
 
     val showSearchBar = searchBarVisible || uiState.searchQuery.isNotBlank()
 
@@ -692,7 +651,6 @@ private fun CategoryColumn(
     val borderDp by animateDpAsState(if (isDropTarget) 2.dp else 0.dp, label = "DropTargetBorder")
     val context = LocalContext.current
     val color = MaterialTheme.colorScheme.primaryContainer
-    val density = LocalDensity.current
 
     Column(
         modifier = modifier.border(borderDp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium),
@@ -805,13 +763,12 @@ private fun CategoryColumn(
                                                     }
                                                     // itemBounds was captured before
                                                     val fingerAbsolutePosition = itemBounds + offset
-                                                    val centerAsOffset = offset
                                                     onAppDragStart(
                                                         application,
                                                         category,
                                                         appKey,
                                                         fingerAbsolutePosition,
-                                                        centerAsOffset,
+                                                        offset,
                                                         itemSize,
                                                         composable
                                                     )
@@ -896,10 +853,7 @@ fun ApplicationGridItem(
     onDismissMenu: () -> Unit = {},
     enabled: Boolean = true
 ) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val density = LocalDensity.current
-    val screenWidthPx = with(density) { screenWidth.toPx() }
+    val screenWidth = LocalWindowInfo.current.containerSize.width
     var itemBounds by remember { mutableStateOf(Rect.Zero) }
 
     Box(modifier = modifier.onGloballyPositioned { itemBounds = it.boundsInRoot() }) {
@@ -940,7 +894,7 @@ fun ApplicationGridItem(
                 }
 
                 // Determine anchor alignment based on screen position
-                val anchorAlignment = if (itemBounds.center.x > screenWidthPx / 2) {
+                val anchorAlignment = if (itemBounds.center.x > screenWidth / 2) {
                     Alignment.TopStart
                 } else {
                     Alignment.TopEnd
@@ -1022,8 +976,7 @@ fun CategoryHeader(
                             )
                         }
                         val fingerAbsolutePosition = headerPosition + offset
-                        val centerAsOffset = offset
-                        onDragStart(category, fingerAbsolutePosition, centerAsOffset, headerSize, composable)
+                        onDragStart(category, fingerAbsolutePosition, offset, headerSize, composable)
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
@@ -1110,6 +1063,3 @@ private fun DeleteConfirmationDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(id = R.string.cancel)) } }
     )
 }
-
-// Extension for vector magnitude
-private fun Offset.getDistance() = sqrt(x.pow(2) + y.pow(2))

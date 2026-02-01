@@ -40,8 +40,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,7 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
@@ -186,7 +184,7 @@ private fun ThemeSettings(
 ) {
     Column {
         SectionTitle(stringResource(id = R.string.settings_appearance_title))
-        ThemeMode.values().forEach { themeMode ->
+        ThemeMode.entries.forEach { themeMode ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -270,7 +268,7 @@ private fun ColorSettings(
 
     Column {
         SectionTitle(stringResource(id = R.string.settings_color_title))
-        ColorSource.values().forEach { colorSource ->
+        ColorSource.entries.forEach { colorSource ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier

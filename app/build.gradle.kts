@@ -83,6 +83,8 @@ android {
 dependencies {
     implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.ui.tooling.preview)
+    debugImplementation(libs.androidx.ui.tooling)
     ksp(libs.kotlin.metadata.jvm)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

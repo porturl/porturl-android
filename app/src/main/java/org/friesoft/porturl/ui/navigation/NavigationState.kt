@@ -85,7 +85,7 @@ fun NavigationState.toEntries(
         Log.d("NavigationState", "toEntries: stack size: $trigger")
 
         val decorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+            rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator<NavKey>(),
         )
         rememberDecoratedNavEntries(

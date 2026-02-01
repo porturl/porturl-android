@@ -225,20 +225,6 @@ fun generateBackgroundColor(primary: Color, isDark: Boolean): Color {
 }
 
 /**
- * Generates a surface color that is slightly different from the background color.
- *
- * @param background The background color.
- * @param isDark Whether the theme is dark or not.
- * @return The generated surface color.
- */
-fun generateSurfaceColor(background: Color, isDark: Boolean): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(background.toArgb(), hsv)
-    hsv[2] = if (isDark) hsv[2] * 1.2f else hsv[2] * 0.95f // Adjust brightness
-    return Color(android.graphics.Color.HSVToColor(hsv))
-}
-
-/**
  * Determines whether a color is light or dark.
  *
  * @return The perceived luminance of the color.

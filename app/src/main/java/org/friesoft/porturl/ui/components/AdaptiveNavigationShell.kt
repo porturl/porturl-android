@@ -22,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,7 +29,6 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -66,8 +64,6 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PermanentDrawerSheet
-import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,7 +78,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalDensity
 
 @Composable
 fun AdaptiveNavigationShell(
@@ -139,10 +136,11 @@ fun AdaptiveNavigationShell(
     val useRail = windowSizeClass != WindowWidthSizeClass.Compact
 
     if (useRail) {
-        val configuration = LocalConfiguration.current
         // Default expanded if screen is large (Tablet) but not just expanded width (Foldable)
         // Foldables often have width ~800-900dp. Tablets usually > 1000dp.
-        val isLargeScreen = windowSizeClass == WindowWidthSizeClass.Expanded && configuration.screenWidthDp > 1000
+        val density = LocalDensity.current
+        val isLargeScreen = windowSizeClass == WindowWidthSizeClass.Expanded && 
+            LocalWindowInfo.current.containerSize.width > with(density) { 1000.dp.toPx() }
         var isExpanded by rememberSaveable { 
             mutableStateOf(isLargeScreen) 
         }
