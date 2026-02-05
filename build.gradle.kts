@@ -9,9 +9,5 @@ plugins {
 }
 
 sonar {
-    properties {
-        property("sonar.projectKey", "porturl_porturl-android")
-        property("sonar.organization", "porturl")
-        property("sonar.coverage.jacoco.xmlReportPaths", "${project.projectDir}/app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
-    }
+    isSkipProject = true
 }

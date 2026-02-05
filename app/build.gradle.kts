@@ -4,7 +4,16 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.sonarqube)
     jacoco
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "porturl_porturl-android")
+        property("sonar.organization", "porturl")
+        property("sonar.coverage.jacoco.xmlReportPaths", "${project.layout.buildDirectory.get().asFile}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
+    }
 }
 
 java {
