@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/porturl/porturl-android/compare/v0.2.1...v0.2.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* make sure gradle wrapper is executable ([9f05052](https://github.com/porturl/porturl-android/commit/9f0505208dddee755c86ccfebd6cf4840cd9f14c))
+* prevent broken pullrequest builds due to lack of access to secrets ([18ec350](https://github.com/porturl/porturl-android/commit/18ec350e44e5177e4ce87a7c302c32ecd98956de))
+
 ## [0.2.1](https://github.com/porturl/porturl-android/compare/v0.2.0...v0.2.1) (2026-01-21)
 
 
