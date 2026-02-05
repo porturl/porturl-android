@@ -88,13 +88,7 @@ jobs:
         run: |
           chmod +x gradlew
           echo "Running validation checks..."
-          ./gradlew lintDebug testDebugUnitTest jacocoTestReport --continue --build-cache
-
-      - name: SonarCloud Scan
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar
+          ./gradlew lintDebug testDebugUnitTest --continue --build-cache
 
       - name: Collect test results
         id: test-results

@@ -4,16 +4,6 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.sonarqube)
-    jacoco
-}
-
-sonar {
-    properties {
-        property("sonar.projectKey", "porturl_porturl-android")
-        property("sonar.organization", "porturl")
-        property("sonar.coverage.jacoco.xmlReportPaths", "${project.layout.buildDirectory.get().asFile}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
-    }
 }
 
 java {
@@ -71,10 +61,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            enableUnitTestCoverage = true
-            enableAndroidTestCoverage = true
-        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -161,38 +147,4 @@ tasks.register("printVersionName") {
         // This accesses the versionName from your android defaultConfig block
         println(project.the<com.android.build.api.dsl.ApplicationExtension>().defaultConfig.versionName)
     }
-}
-
-tasks.withType<Test> {
-    configure<JacocoTaskExtension> {
-        isIncludeNoLocationClasses = true
-        excludes = listOf("jdk.internal.*")
-    }
-}
-
-tasks.register<JacocoReport>("jacocoTestReport") {
-    dependsOn("testDebugUnitTest")
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
-
-    val fileFilter = listOf(
-        "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*",
-        "**/*Test*.*", "android/**/*.*", "**/*Hilt*.*", "**/hilt_aggregated_deps/**",
-        "**/*_Factory.*", "**/*_MembersInjector.*", "**/*Module_*Factory.*"
-    )
-    val debugTree = fileTree("${project.layout.buildDirectory.get().asFile}/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
-        exclude(fileFilter)
-    }
-    val kotlinDebugTree = fileTree("${project.layout.buildDirectory.get().asFile}/tmp/kotlin-classes/debug") {
-        exclude(fileFilter)
-    }
-    val mainSrc = "${project.projectDir}/src/main/java"
-
-    sourceDirectories.setFrom(files(mainSrc))
-    classDirectories.setFrom(files(debugTree, kotlinDebugTree))
-    executionData.setFrom(fileTree(project.layout.buildDirectory.get().asFile) {
-        include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
-    })
 }
