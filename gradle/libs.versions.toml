@@ -35,6 +35,7 @@ foundationLayout = "1.10.2"
 foundation = "1.10.2"
 uiToolingPreview = "1.10.2"
 uiTooling = "1.10.2"
+sonarqube = "7.2.2.6593"
 
 [libraries]
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
@@ -82,3 +83,4 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltAndroid" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
