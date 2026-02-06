@@ -75,5 +75,6 @@ data class UserPreferences(
     val colorSource: ColorSource,
     val predefinedColorName: String?,
     val customColors: CustomColors?,
-    val translucentBackground: Boolean = false
+    val translucentBackground: Boolean = false,
+    val telemetryEnabled: Boolean = true
 )

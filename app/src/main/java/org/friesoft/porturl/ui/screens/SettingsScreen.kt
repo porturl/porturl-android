@@ -68,11 +68,13 @@ import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
 import org.friesoft.porturl.data.model.UserPreferences
+import org.friesoft.porturl.data.repository.TelemetryInfo
 import org.friesoft.porturl.ui.components.PortUrlTopAppBar
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.theme.predefinedThemes
 import org.friesoft.porturl.viewmodels.SettingsViewModel
 import org.friesoft.porturl.viewmodels.ValidationState
+import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,13 +85,39 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
             ColorSource.SYSTEM,
             null,
             null,
-            translucentBackground = false
+            translucentBackground = false,
+            telemetryEnabled = true
         )
     )
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
     val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var showRestartDialog by remember { mutableStateOf(false) }
+
+    if (showRestartDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestartDialog = false },
+            title = { Text(stringResource(id = R.string.settings_restart_dialog_title)) },
+            text = { Text(stringResource(id = R.string.settings_restart_dialog_text)) },
+            confirmButton = {
+                Button(onClick = {
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    exitProcess(0)
+                }) {
+                    Text(stringResource(id = R.string.settings_restart_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestartDialog = false }) {
+                    Text(stringResource(id = R.string.cancel))
+                }
+            }
+        )
+    }
 
 
     LaunchedEffect(validationState) {
@@ -154,6 +182,17 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
                     onLanguageSelected = {
                         viewModel.changeLanguage(it)
                         (context as? Activity)?.recreate()
+                    }
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
+                TelemetrySettings(
+                    telemetryEnabled = userPreferences.telemetryEnabled,
+                    telemetryInfo = settingsState.telemetryInfo,
+                    onTelemetryEnabledChange = {
+                        viewModel.saveTelemetryEnabled(it)
+                        showRestartDialog = true
                     }
                 )
                 HorizontalDivider(
@@ -522,6 +561,56 @@ private fun LanguageSelectionDialog(
             }
         }
     )
+}
+
+@Composable
+private fun TelemetrySettings(
+    telemetryEnabled: Boolean,
+    telemetryInfo: TelemetryInfo?,
+    onTelemetryEnabledChange: (Boolean) -> Unit
+) {
+    Column {
+        SectionTitle(stringResource(id = R.string.settings_telemetry_title))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onTelemetryEnabledChange(!telemetryEnabled) }
+                .padding(vertical = 8.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = stringResource(id = R.string.settings_telemetry_label))
+                
+                val statusText = when {
+                    telemetryInfo == null -> stringResource(id = R.string.settings_telemetry_status_not_configured)
+                    telemetryInfo.healthy -> stringResource(id = R.string.settings_telemetry_status_active)
+                    else -> stringResource(id = R.string.settings_telemetry_status_unavailable)
+                }
+                
+                val statusColor = when {
+                    telemetryInfo?.healthy == true -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.error
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.settings_telemetry_status_label),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Switch(
+                checked = telemetryEnabled,
+                onCheckedChange = onTelemetryEnabledChange
+            )
+        }
+    }
 }
 
 @Composable

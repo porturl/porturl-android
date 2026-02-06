@@ -219,7 +219,9 @@ jobs:
           VERSION_CODE: ${{ steps.version_info.outputs.versionCode }}
         run: |
           echo "Building release artifacts..."
-          ./gradlew clean bundleRelease assembleRelease --no-daemon --build-cache
+          ./gradlew clean bundleRelease assembleRelease \
+            -POTLP_AUTH="${{ secrets.OTLP_AUTH }}" \
+            --no-daemon --build-cache
           
           echo "Build completed successfully!"
 

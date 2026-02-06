@@ -13,11 +13,17 @@ import javax.inject.Singleton
 
 // Data class to parse the JSON response from /actuator/info
 data class AppConfig(
-    @SerializedName("auth") val auth: AuthInfo
+    @SerializedName("auth") val auth: AuthInfo,
+    @SerializedName("telemetry") val telemetry: TelemetryInfo?
 )
 
 data class AuthInfo(
     @SerializedName("issuer-uri") val issuerUri: String
+)
+
+data class TelemetryInfo(
+    @SerializedName("enabled") val enabled: Boolean,
+    @SerializedName("healthy") val healthy: Boolean
 )
 
 // A simple interface for the config service
@@ -38,6 +44,14 @@ class ConfigRepository @Inject constructor(
 
     suspend fun getIssuerUri(): String {
         return configService.getAppConfig().auth.issuerUri
+    }
+
+    suspend fun getTelemetryStatus(): TelemetryInfo? {
+        return try {
+            configService.getAppConfig().telemetry
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**

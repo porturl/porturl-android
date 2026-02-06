@@ -24,10 +24,10 @@ import javax.inject.Singleton
 /**
  * Repository for managing user-configurable settings using Jetpack DataStore.
  */
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
 @Singleton
 class SettingsRepository @Inject constructor(@param:ApplicationContext private val context: Context) {
-    // Creates a singleton instance of DataStore
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
     companion object {
         val BACKEND_URL_KEY = stringPreferencesKey("backend_url")
@@ -36,6 +36,7 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
         val PREDEFINED_COLOR_NAME_KEY = stringPreferencesKey("predefined_color_name")
         val CUSTOM_COLORS_KEY = stringPreferencesKey("custom_colors")
         val TRANSLUCENT_BACKGROUND_KEY = booleanPreferencesKey("translucent_background")
+        val TELEMETRY_ENABLED_KEY = booleanPreferencesKey("telemetry_enabled")
 
         // Default URL for a local server accessed from the Android emulator
         const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080" // Default if nothing is set
@@ -66,14 +67,26 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
         preferences[TRANSLUCENT_BACKGROUND_KEY] ?: false
     }
 
+    val telemetryEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[TELEMETRY_ENABLED_KEY] ?: true // Enabled by default
+    }
+
     val userPreferences: Flow<UserPreferences> = combine(
         themeMode,
         colorSource,
         predefinedColorName,
         customColors,
-        translucentBackground
-    ) { themeMode, colorSource, predefinedColorName, customColors, translucentBackground ->
-        UserPreferences(themeMode, colorSource, predefinedColorName, customColors, translucentBackground)
+        translucentBackground,
+        telemetryEnabled
+    ) { args: Array<Any?> ->
+        UserPreferences(
+            themeMode = args[0] as ThemeMode,
+            colorSource = args[1] as ColorSource,
+            predefinedColorName = args[2] as String?,
+            customColors = args[3] as CustomColors?,
+            translucentBackground = args[4] as Boolean,
+            telemetryEnabled = args[5] as Boolean
+        )
     }
 
     /**
@@ -117,6 +130,12 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
         }
     }
 
+    suspend fun saveTelemetryEnabled(enabled: Boolean) {
+        context.dataStore.edit { settings ->
+            settings[TELEMETRY_ENABLED_KEY] = enabled
+        }
+    }
+
     /**
      * A synchronous helper function to get the current backend URL.
      * This is required by the Hilt module to provide the initial Retrofit instance,
@@ -126,6 +145,10 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
      */
     fun getBackendUrlBlocking(): String = runBlocking {
         backendUrl.first()
+    }
+
+    fun isTelemetryEnabledBlocking(): Boolean = runBlocking {
+        telemetryEnabled.first()
     }
 
 }

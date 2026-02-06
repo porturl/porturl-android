@@ -35,8 +35,11 @@ foundationLayout = "1.10.2"
 foundation = "1.10.2"
 uiToolingPreview = "1.10.2"
 uiTooling = "1.10.2"
+opentelemetryAndroid = "1.1.0-alpha"
 
 [libraries]
+opentelemetry-android-agent = { module = "io.opentelemetry.android:android-agent", version.ref = "opentelemetryAndroid" }
+opentelemetry-android-bom = { module = "io.opentelemetry.android:opentelemetry-android-bom", version.ref = "opentelemetryAndroid" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }

@@ -19,6 +19,7 @@ import org.friesoft.porturl.data.model.ColorSource
 import org.friesoft.porturl.data.model.CustomColors
 import org.friesoft.porturl.data.model.ThemeMode
 import org.friesoft.porturl.data.model.UserPreferences
+import org.friesoft.porturl.data.repository.TelemetryInfo
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
 import javax.inject.Inject
@@ -65,14 +66,22 @@ class SettingsViewModel @Inject constructor(
 
     init {
         loadInitialLanguage()
+        loadTelemetryStatus()
     }
 
     private fun loadInitialLanguage() {
         val currentLanguage = appLocaleManager.getLanguageCode()
-        _settingState.value = SettingState(
+        _settingState.value = _settingState.value.copy(
             selectedLanguage = currentLanguage,
             availableLanguages = appLanguages
         )
+    }
+
+    private fun loadTelemetryStatus() {
+        viewModelScope.launch {
+            val status = configRepository.getTelemetryStatus()
+            _settingState.value = _settingState.value.copy(telemetryInfo = status)
+        }
     }
 
     fun changeLanguage(languageCode: String) {
@@ -136,9 +145,16 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.saveTranslucentBackground(translucent)
         }
     }
+
+    fun saveTelemetryEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.saveTelemetryEnabled(enabled)
+        }
+    }
 }
 
 data class SettingState(
     val selectedLanguage: String = "",
-    val availableLanguages: List<Language> = emptyList()
+    val availableLanguages: List<Language> = emptyList(),
+    val telemetryInfo: TelemetryInfo? = null
 )

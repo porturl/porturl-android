@@ -109,27 +109,29 @@ fun LoginScreen(
 
             // A prominent error card is now displayed if the login fails.
             AnimatedVisibility(visible = loginErrorResId != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Column(
+                loginErrorResId?.let { errorId ->
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(bottom = 16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
-                        Text(
-                            text = stringResource(id = loginErrorResId!!),
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = { authViewModel.clearLoginError() },
-                            modifier = Modifier.align(Alignment.End)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
                         ) {
-                            Text(stringResource(id = R.string.login_dismiss_error))
+                            Text(
+                                text = stringResource(id = errorId),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = { authViewModel.clearLoginError() },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text(stringResource(id = R.string.login_dismiss_error))
+                            }
                         }
                     }
                 }

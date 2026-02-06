@@ -84,6 +84,15 @@
     <string name="app_detail_category_selected">Selected</string>
     <string name="app_detail_icon_description">Application Icon</string>
     <string name="settings_translucent_background_label">Translucent Application Background</string>
+    <string name="settings_telemetry_title">Telemetry</string>
+    <string name="settings_telemetry_label">Enable usage data and crash reporting</string>
+    <string name="settings_telemetry_status_label">Status: </string>
+    <string name="settings_telemetry_status_active">Active</string>
+    <string name="settings_telemetry_status_unavailable">Unavailable (Collector not found)</string>
+    <string name="settings_telemetry_status_not_configured">Not Configured</string>
+    <string name="settings_restart_dialog_title">Restart Required</string>
+    <string name="settings_restart_dialog_text">Changes to telemetry settings require an application restart to take effect. Would you like to restart now?</string>
+    <string name="settings_restart_button">Restart</string>
     <string name="app_detail_roles_title">Roles</string>
     <string name="app_detail_new_role_label">New Role</string>
     <string name="app_detail_add_role_description">Add Role</string>

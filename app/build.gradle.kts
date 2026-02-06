@@ -23,6 +23,12 @@ android {
         applicationId = "org.friesoft.porturl"
         minSdk = 31
 
+        val otlpEndpoint = project.findProperty("OTLP_ENDPOINT") ?: "https://otlp-gateway-prod-us-east-0.grafana.net/otlp"
+        val otlpAuth = project.findProperty("OTLP_AUTH") ?: ""
+        
+        buildConfigField("String", "OTLP_ENDPOINT", "\"$otlpEndpoint\"")
+        buildConfigField("String", "OTLP_AUTH", "\"$otlpAuth\"")
+
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
         
         // Dynamic version name logic
@@ -77,6 +83,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 }
 
@@ -131,6 +138,10 @@ dependencies {
     implementation(libs.reorderable)
 
     implementation(libs.androidx.browser)
+
+    // OpenTelemetry
+    implementation(platform(libs.opentelemetry.android.bom))
+    implementation(libs.opentelemetry.android.agent)
 
     // DataStore for Preferences
     implementation(libs.androidx.datastore.preferences)
