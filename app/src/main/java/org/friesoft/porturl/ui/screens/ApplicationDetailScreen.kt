@@ -31,6 +31,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
 import org.friesoft.porturl.R
+import org.friesoft.porturl.client.model.Application
+import org.friesoft.porturl.client.model.Category
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.ApplicationDetailViewModel
@@ -51,7 +53,6 @@ fun ApplicationDetailRoute(
 
     LaunchedEffect(Unit) {
         viewModel.finishScreen.collect {
-             // Refresh signal
             sharedViewModel.triggerRefreshAppList()
             navigator.goBack()
         }
@@ -73,7 +74,7 @@ fun ApplicationDetailRoute(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApplicationDetailScreen(
     uiState: ApplicationDetailViewModel.UiState,
@@ -136,11 +137,11 @@ private fun ApplicationForm(
 ) {
     val application = state.application ?: return
     val focusManager = LocalFocusManager.current
-    var name by remember(application.name) { mutableStateOf(application.name) }
-    var url by remember(application.url) { mutableStateOf(application.url) }
+    var name by remember(application.name) { mutableStateOf(application.name ?: "") }
+    var url by remember(application.url) { mutableStateOf(application.url ?: "") }
     var rolesInput by remember(state.roles) { mutableStateOf(state.roles) }
-    var selectedCategoryIds by remember(application.applicationCategories) {
-        mutableStateOf(application.applicationCategories.map { it.category.id }.toSet())
+    var selectedCategoryIds by remember(application.categories) {
+        mutableStateOf(application.categories?.mapNotNull { it.id }?.toSet() ?: emptySet())
     }
 
     Column(
@@ -262,7 +263,7 @@ private fun RolesEditor(
             (roles ?: emptyList()).forEach { role ->
                 InputChip(
                     selected = true,
-                    onClick = { /* Do nothing or select */ },
+                    onClick = { },
                     label = { Text(role) },
                     trailingIcon = {
                         Icon(
@@ -282,7 +283,7 @@ private fun RolesEditor(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategorySelector(
-    allCategories: List<org.friesoft.porturl.data.model.Category>,
+    allCategories: List<Category>,
     selectedIds: Set<Long>,
     onSelectionChanged: (Set<Long>) -> Unit
 ) {
@@ -298,15 +299,16 @@ private fun CategorySelector(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             allCategories.forEach { category ->
-                val isSelected = selectedIds.contains(category.id)
+                val categoryId = category.id ?: return@forEach
+                val isSelected = selectedIds.contains(categoryId)
                 FilterChip(
                     selected = isSelected,
                     onClick = {
                         val newSelection =
-                            if (isSelected) selectedIds - category.id else selectedIds + category.id
+                            if (isSelected) selectedIds - categoryId else selectedIds + categoryId
                         onSelectionChanged(newSelection)
                     },
-                    label = { Text(category.name) },
+                    label = { Text(category.name ?: "") },
                     leadingIcon = if (isSelected) {
                         {
                             Icon(
@@ -323,12 +325,6 @@ private fun CategorySelector(
     }
 }
 
-/**
- * A reusable composable for displaying and selecting an application icon.
- *
- * @param imageModel The model for Coil to load (can be a URL string or a content URI).
- * @param onClick A lambda to be executed when the user clicks to change the image.
- */
 @Composable
 private fun ImagePicker(imageModel: Any?, onClick: () -> Unit) {
     Box(

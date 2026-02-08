@@ -1,32 +1,32 @@
 package org.friesoft.porturl.data.repository
 
-import org.friesoft.porturl.data.model.Category
-import org.friesoft.porturl.data.remote.ApiService
+import org.friesoft.porturl.client.api.CategoryApi
+import org.friesoft.porturl.client.model.Category
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CategoryRepository @Inject constructor(private val apiService: ApiService) {
+class CategoryRepository @Inject constructor(private val categoryApi: CategoryApi) {
 
     suspend fun getAllCategories(): List<Category> {
-        return apiService.getAllCategories()
+        return categoryApi.findAllCategories().body() ?: emptyList()
     }
 
     suspend fun getCategoryById(id: Long): Category {
-        return apiService.getCategoryById(id)
+        return categoryApi.findCategoryById(id).body() ?: throw Exception("Category not found")
     }
 
-    suspend fun createCategory(category: Category): Category = apiService.createCategory(category)
+    suspend fun createCategory(category: Category): Category = categoryApi.addCategory(category).body() ?: throw Exception("Failed to create category")
 
     suspend fun updateCategory(category: Category): Category {
-        return apiService.updateCategory(category.id, category)
+        return categoryApi.updateCategory(category.id ?: 0L, category).body() ?: throw Exception("Failed to update category")
     }
 
     /**
      * Deletes a category by its ID.
      */
     suspend fun deleteCategory(id: Long) {
-        apiService.deleteCategory(id)
+        categoryApi.deleteCategory(id)
     }
 
     /**
@@ -34,7 +34,7 @@ class CategoryRepository @Inject constructor(private val apiService: ApiService)
      */
     suspend fun reorderCategories(categories: List<Category>) {
         if (categories.isNotEmpty()) {
-            apiService.reorderCategories(categories)
+            categoryApi.reorderCategories(categories)
         }
     }
 }

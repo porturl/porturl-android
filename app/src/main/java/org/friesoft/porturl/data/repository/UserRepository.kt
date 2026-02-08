@@ -1,40 +1,42 @@
 package org.friesoft.porturl.data.repository
 
-import org.friesoft.porturl.data.model.User
-import org.friesoft.porturl.data.model.UserUpdateRequest
-import org.friesoft.porturl.data.remote.ApiService
+import org.friesoft.porturl.client.api.ApplicationApi
+import org.friesoft.porturl.client.api.UserApi
+import org.friesoft.porturl.client.model.User
+import org.friesoft.porturl.client.model.UserUpdateRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class UserRepository @Inject constructor(
-    private val apiService: ApiService
+    private val userApi: UserApi,
+    private val applicationApi: ApplicationApi
 ) {
     suspend fun getCurrentUser(): User {
-        return apiService.getCurrentUser()
+        return userApi.getCurrentUser().body() ?: throw Exception("User not found")
     }
 
     suspend fun updateCurrentUser(image: String?): User {
-        return apiService.updateCurrentUser(UserUpdateRequest(image))
+        return userApi.updateCurrentUser(UserUpdateRequest(image)).body() ?: throw Exception("Failed to update user")
     }
 
     suspend fun getAllUsers(): List<User> {
-        return apiService.getAllUsers()
+        return userApi.getAllUsers().body() ?: emptyList()
     }
 
     suspend fun getCurrentUserRoles(): List<String> {
-        return apiService.getCurrentUserRoles()
+        return userApi.getCurrentUserRoles().body() ?: emptyList()
     }
 
     suspend fun getUserRoles(userId: Long): List<String> {
-        return apiService.getUserRoles(userId)
+        return userApi.getUserRoles(userId).body() ?: emptyList()
     }
 
     suspend fun assignRole(appId: Long, userId: Long, role: String) {
-        apiService.assignRole(appId, userId, role)
+        applicationApi.assignRoleToUser(appId, userId, role)
     }
 
     suspend fun unassignRole(appId: Long, userId: Long, role: String) {
-        apiService.unassignRole(appId, userId, role)
+        applicationApi.removeRoleFromUser(appId, userId, role)
     }
 }

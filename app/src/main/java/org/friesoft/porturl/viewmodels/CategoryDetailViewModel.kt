@@ -8,8 +8,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.friesoft.porturl.data.model.Category
-import org.friesoft.porturl.data.model.SortMode
+import org.friesoft.porturl.client.model.Category
 import org.friesoft.porturl.data.repository.CategoryRepository
 import java.io.IOException
 import javax.inject.Inject
@@ -42,9 +41,7 @@ class CategoryDetailViewModel @Inject constructor(
             _uiState.value = UiState.Loading
             try {
                 val category = if (id == -1L) {
-                    // When creating a new category, provide a blank template
-                    // and immediately move to the Success state.
-                    Category(id = -1L, name = "", sortOrder = 0, applicationSortMode = SortMode.CUSTOM, icon = null, description = null, enabled = true)
+                    Category(id = null, name = "", sortOrder = 0, applicationSortMode = Category.ApplicationSortMode.CUSTOM, icon = null, description = null, enabled = true)
                 } else {
                     categoryRepository.getCategoryById(id)
                 }
@@ -57,14 +54,13 @@ class CategoryDetailViewModel @Inject constructor(
     }
 
     /**
-     * Saves a category. It correctly determines whether to call the create or update
-     * endpoint based on the category's ID and provides specific user feedback on failure.
+     * Saves a category.
      * @param category The category object to save.
      */
     fun saveCategory(category: Category) {
         viewModelScope.launch {
             try {
-                if (category.id == -1L) {
+                if (category.id == null) {
                     categoryRepository.createCategory(category)
                 } else {
                     categoryRepository.updateCategory(category)
@@ -73,7 +69,6 @@ class CategoryDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 when (e) {
                     is HttpException -> {
-                        // A 409 Conflict error from the backend indicates a duplicate name.
                         if (e.code() == 409) {
                             errorMessage.emit("A category with this name already exists. Please choose a different name.")
                         } else {
@@ -91,4 +86,3 @@ class CategoryDetailViewModel @Inject constructor(
         }
     }
 }
-

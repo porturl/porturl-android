@@ -6,13 +6,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.friesoft.porturl.data.remote.ApiService
+import org.friesoft.porturl.client.api.ImageApi
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ImageRepository @Inject constructor(
-    private val apiService: ApiService,
+    private val imageApi: ImageApi,
     @param:ApplicationContext private val context: Context
 ) {
     /**
@@ -38,6 +38,6 @@ class ImageRepository @Inject constructor(
         )
 
         // Call the API and return the filename from the response
-        return apiService.uploadImage(filePart).filename
+        return imageApi.uploadImage(filePart).body()?.filename
     }
 }

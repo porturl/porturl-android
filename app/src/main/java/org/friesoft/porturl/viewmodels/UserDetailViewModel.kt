@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.client.model.Application
+import org.friesoft.porturl.client.model.ApplicationWithRolesDto
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.UserRepository
 import javax.inject.Inject
@@ -22,7 +23,7 @@ class UserDetailViewModel @Inject constructor(
 
     data class UiState(
         val userRoles: List<String> = emptyList(),
-        val allApplications: List<Application> = emptyList(),
+        val allApplications: List<ApplicationWithRolesDto> = emptyList(),
         val isLoading: Boolean = false,
         val error: String? = null
     )
@@ -46,7 +47,7 @@ class UserDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val roles = userRepository.getUserRoles(userId)
-                val apps = applicationRepository.getAllApplications()
+                val apps = applicationRepository.getAllApplicationsWithRoles()
                 _uiState.value = UiState(
                     userRoles = roles,
                     allApplications = apps,
@@ -67,7 +68,6 @@ class UserDetailViewModel @Inject constructor(
              try {
                 val appId = app.id ?: return@launch
                 userRepository.assignRole(appId, userId, role)
-                // Refresh roles
                 val newRoles = userRepository.getUserRoles(userId)
                 _uiState.value = _uiState.value.copy(userRoles = newRoles)
             } catch (e: Exception) {
@@ -81,7 +81,6 @@ class UserDetailViewModel @Inject constructor(
              try {
                 val appId = app.id ?: return@launch
                 userRepository.unassignRole(appId, userId, role)
-                // Refresh roles
                 val newRoles = userRepository.getUserRoles(userId)
                 _uiState.value = _uiState.value.copy(userRoles = newRoles)
             } catch (e: Exception) {
@@ -91,9 +90,7 @@ class UserDetailViewModel @Inject constructor(
     }
 
     fun hasRole(app: Application, role: String): Boolean {
-        // Logic to determine if the user has the role based on the backend convention
-        // Example: app name "Grafana", role "admin" -> "ROLE_GRAFANA_ADMIN"
-        val sanitizedAppName = app.name.uppercase().replace(Regex("[^A-Z0-9]"), "_")
+        val sanitizedAppName = app.name?.uppercase()?.replace(Regex("[^A-Z0-9]"), "_") ?: ""
         val expectedRole = "ROLE_${sanitizedAppName}_${role.uppercase()}"
         return _uiState.value.userRoles.contains(expectedRole)
     }

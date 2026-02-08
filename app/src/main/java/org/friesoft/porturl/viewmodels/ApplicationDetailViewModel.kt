@@ -10,11 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.friesoft.porturl.data.model.Application
-import org.friesoft.porturl.data.model.ApplicationCategory
-import org.friesoft.porturl.data.model.ApplicationCategoryId
-import org.friesoft.porturl.data.model.ApplicationUpdateRequest
-import org.friesoft.porturl.data.model.Category
+import org.friesoft.porturl.client.model.Application
+import org.friesoft.porturl.client.model.ApplicationCreateRequest
+import org.friesoft.porturl.client.model.ApplicationUpdateRequest
+import org.friesoft.porturl.client.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
 import org.friesoft.porturl.data.repository.ImageRepository
@@ -32,7 +31,7 @@ class ApplicationDetailViewModel @Inject constructor(
         val allCategories: List<Category> = emptyList(),
         val selectedImageUri: Uri? = null,
         val isLoading: Boolean = true,
-        val isSaving: Boolean = false, // To show a progress indicator on save
+        val isSaving: Boolean = false,
         val roles: List<String> = emptyList()
     )
 
@@ -42,9 +41,6 @@ class ApplicationDetailViewModel @Inject constructor(
     val finishScreen = MutableSharedFlow<Boolean>()
     val errorMessage = MutableSharedFlow<String>()
 
-    /**
-     * Called by the UI when the user selects an image from their device.
-     */
     fun onImageSelected(uri: Uri?) {
         _uiState.update { it.copy(selectedImageUri = uri) }
     }
@@ -55,12 +51,8 @@ class ApplicationDetailViewModel @Inject constructor(
             try {
                 val allCategories = categoryRepository.getAllCategories()
                 val app = if (id == -1L) {
-                    // Create a blank template for a new application
                     Application(
-                        id = null, name = "", url = "", applicationCategories = emptyList(),
-                        iconLarge = null, iconMedium = null, iconThumbnail = null,
-                        iconUrlLarge = null, iconUrlMedium = null, iconUrlThumbnail = null, description = null,
-                        availableRoles = emptyList()
+                        id = null, name = "", url = "", categories = emptyList()
                     )
                 } else {
                     applicationRepository.getApplicationById(id)
@@ -85,13 +77,9 @@ class ApplicationDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Orchestrates the save process. If a new image was selected, it uploads it first,
-     * then saves the application with the new icon filename.
-     */
     fun saveApplication(name: String, url: String, selectedCategoryIds: Set<Long>, availableRoles: List<String>) {
         val originalApplication = _uiState.value.application ?: return
-        if (_uiState.value.isSaving) return // Prevent duplicate saves
+        if (_uiState.value.isSaving) return
 
         if (name.isBlank() || url.isBlank() || selectedCategoryIds.isEmpty()) {
             viewModelScope.launch { errorMessage.emit("Name, URL, and at least one category are required.") }
@@ -102,24 +90,24 @@ class ApplicationDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true) }
             try {
                 val iconFilename = handleImageUpload()
+                val selectedCategories = _uiState.value.allCategories.filter { it.id in selectedCategoryIds }
 
                 if (originalApplication.id == null) {
-                    val appToSave = originalApplication.copy(
+                    val appToSave = ApplicationCreateRequest(
                         name = name,
                         url = url,
-                        applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
-                        iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
-                        availableRoles = availableRoles
+                        categories = selectedCategories,
+                        roles = availableRoles
                     )
                     applicationRepository.createApplication(appToSave)
                 } else {
                     val appUpdateRequest = ApplicationUpdateRequest(
                         name = name,
                         url = url,
-                        applicationCategories = updateApplicationCategories(originalApplication, selectedCategoryIds),
                         iconLarge = iconFilename ?: originalApplication.iconLarge,
                         iconMedium = iconFilename ?: originalApplication.iconMedium,
                         iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
+                        categories = selectedCategories,
                         availableRoles = availableRoles
                     )
                     applicationRepository.updateApplication(originalApplication.id!!, appUpdateRequest)
@@ -133,10 +121,6 @@ class ApplicationDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Handles the image upload process if a new image URI is present.
-     * @return The new filename if an image was uploaded, otherwise null.
-     */
     private suspend fun handleImageUpload(): String? {
         val selectedUri = _uiState.value.selectedImageUri
         if (selectedUri != null) {
@@ -146,26 +130,4 @@ class ApplicationDetailViewModel @Inject constructor(
         }
         return null
     }
-
-    /**
-     * Constructs the new list of ApplicationCategory objects, preserving existing sort orders.
-     */
-    private fun updateApplicationCategories(
-        originalApp: Application,
-        selectedCategoryIds: Set<Long>
-    ): List<ApplicationCategory> {
-        val allCategoriesMap = _uiState.value.allCategories.associateBy { it.id }
-        // Use mapNotNull to safely find categories and create links, preventing crashes.
-        return selectedCategoryIds.mapNotNull { catId ->
-            allCategoriesMap[catId]?.let { category ->
-                val existingLink = originalApp.applicationCategories.find { it.category.id == catId }
-                ApplicationCategory(
-                    id = ApplicationCategoryId(originalApp.id ?: -1, catId),
-                    category = category,
-                    sortOrder = existingLink?.sortOrder ?: 0
-                )
-            }
-        }
-    }
 }
-

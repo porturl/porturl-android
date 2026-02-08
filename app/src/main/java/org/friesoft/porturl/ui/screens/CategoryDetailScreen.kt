@@ -88,7 +88,7 @@ fun CategoryDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     OutlinedTextField(
-                        value = category.name,
+                        value = category.name ?: "",
                         onValueChange = { category = category.copy(name = it) },
                         label = { Text(stringResource(id = R.string.category_detail_name_label)) },
                         modifier = Modifier.fillMaxWidth()
@@ -107,7 +107,7 @@ fun CategoryDetailScreen(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(
-                            checked = category.enabled,
+                            checked = category.enabled ?: true,
                             onCheckedChange = { category = category.copy(enabled = it) }
                         )
                         Spacer(Modifier.width(8.dp))

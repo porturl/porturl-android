@@ -1,0 +1,583 @@
+openapi: 3.0.3
+info:
+  title: PortUrl API
+  description: API for managing applications and categories in PortUrl
+  version: 1.0.0
+servers:
+  - url: /
+tags:
+  - name: Application
+    description: Operations about applications
+  - name: Category
+    description: Operations about categories
+  - name: User
+    description: Operations about users
+  - name: Image
+    description: Operations about images
+
+paths:
+  /api/applications:
+    get:
+      tags:
+        - Application
+      summary: Get visible applications for the current user
+      operationId: getVisibleApplications
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationWithRolesDto'
+    post:
+      tags:
+        - Application
+      summary: Create a new application
+      operationId: createApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+  /api/applications/{id}:
+    get:
+      tags:
+        - Application
+      summary: Find application by ID
+      operationId: findOneApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+    put:
+      tags:
+        - Application
+      summary: Update an existing application
+      operationId: updateApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+    delete:
+      tags:
+        - Application
+      summary: Delete an application
+      operationId: deleteApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+  /api/applications/reorder:
+    post:
+      tags:
+        - Application
+      summary: Reorder applications within categories
+      operationId: reorderApplications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Category'
+      responses:
+        '200':
+          description: OK
+  /api/applications/{applicationId}/assign/{userId}/{role}:
+    post:
+      tags:
+        - Application
+      summary: Assign a role to a user for an application
+      operationId: assignRoleToUser
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/applications/{applicationId}/unassign/{userId}/{role}:
+    post:
+      tags:
+        - Application
+      summary: Remove a role from a user for an application
+      operationId: removeRoleFromUser
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/applications/{id}/roles:
+    get:
+      tags:
+        - Application
+      summary: Get roles for an application
+      operationId: getApplicationRoles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /api/categories:
+    get:
+      tags:
+        - Category
+      summary: Find all visible categories
+      operationId: findAllCategories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+    post:
+      tags:
+        - Category
+      summary: Add a new category
+      operationId: addCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Category'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '409':
+          description: Conflict
+  /api/categories/{id}:
+    get:
+      tags:
+        - Category
+      summary: Find category by ID
+      operationId: findCategoryById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: Not Found
+    put:
+      tags:
+        - Category
+      summary: Update an existing category
+      operationId: updateCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Category'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: Not Found
+    delete:
+      tags:
+        - Category
+      summary: Delete a category
+      operationId: deleteCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+  /api/categories/reorder:
+    post:
+      tags:
+        - Category
+      summary: Reorder categories
+      operationId: reorderCategories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Category'
+      responses:
+        '200':
+          description: OK
+
+  /api/users/current:
+    get:
+      tags:
+        - User
+      summary: Get current user
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    patch:
+      tags:
+        - User
+      summary: Update current user
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /api/users/roles:
+    get:
+      tags:
+        - User
+      summary: Get current user roles
+      operationId: getCurrentUserRoles
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /api/users:
+    get:
+      tags:
+        - User
+      summary: Get all users
+      operationId: getAllUsers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /api/users/{id}/roles:
+    get:
+      tags:
+        - User
+      summary: Get roles for a user
+      operationId: getUserRoles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /api/images:
+    post:
+      tags:
+        - Image
+      summary: Upload an image
+      operationId: uploadImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+  /api/images/{filename}:
+    get:
+      tags:
+        - Image
+      summary: Serve an image
+      operationId: serveImage
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+
+components:
+  schemas:
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        url:
+          type: string
+        iconLarge:
+          type: string
+        iconMedium:
+          type: string
+        iconThumbnail:
+          type: string
+        iconUrlLarge:
+          type: string
+          readOnly: true
+        iconUrlMedium:
+          type: string
+          readOnly: true
+        iconUrlThumbnail:
+          type: string
+          readOnly: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        applicationSortMode:
+          type: string
+          enum: [CUSTOM, ALPHABETICAL]
+        icon:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        providerUserId:
+          type: string
+        image:
+          type: string
+        imageUrl:
+          type: string
+          readOnly: true
+
+    ApplicationWithRolesDto:
+      type: object
+      properties:
+        application:
+          $ref: '#/components/schemas/Application'
+        availableRoles:
+          type: array
+          items:
+            type: string
+
+    ApplicationCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        roles:
+          type: array
+          items:
+            type: string
+
+    ApplicationUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        iconLarge:
+          type: string
+        iconMedium:
+          type: string
+        iconThumbnail:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        availableRoles:
+          type: array
+          items:
+            type: string
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        image:
+          type: string
+
+    ImageUploadResponse:
+      type: object
+      properties:
+        filename:
+          type: string

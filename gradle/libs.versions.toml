@@ -36,6 +36,7 @@ foundation = "1.10.2"
 uiToolingPreview = "1.10.2"
 uiTooling = "1.10.2"
 opentelemetryAndroid = "1.1.0-alpha"
+openapi-generator = "7.11.0"
 
 [libraries]
 opentelemetry-android-agent = { module = "io.opentelemetry.android:android-agent", version.ref = "opentelemetryAndroid" }
@@ -69,6 +70,8 @@ androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifec
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleViewmodelCompose" }
 reorderable = { module = "org.burnoutcrew.composereorderable:reorderable", version.ref = "reorderable" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "converterGson" }
+retrofit-kotlinx-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "converterGson" }
+retrofit-scalars = { module = "com.squareup.retrofit2:converter-scalars", version.ref = "converterGson" }
 androidx-material3-window-size-class1 = { group = "androidx.compose.material3", name = "material3-window-size-class", version.ref = "material3WindowSizeClass" }
 androidx-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "nav3Core" }
@@ -85,3 +88,4 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltAndroid" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }

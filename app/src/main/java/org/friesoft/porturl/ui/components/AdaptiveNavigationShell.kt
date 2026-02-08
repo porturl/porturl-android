@@ -38,7 +38,7 @@ import androidx.navigation3.runtime.NavKey
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.friesoft.porturl.R
-import org.friesoft.porturl.data.model.User
+import org.friesoft.porturl.client.model.User
 import org.friesoft.porturl.ui.navigation.Routes
 
 import androidx.compose.animation.AnimatedContent
@@ -483,11 +483,7 @@ fun AdaptiveNavigationShell(
 
 @Composable
 private fun UserAvatar(currentUser: User?, backendUrl: String) {
-    val imageUrl = if (!currentUser?.image.isNullOrBlank() && backendUrl.isNotBlank()) {
-        "${backendUrl.trimEnd('/')}/api/images/${currentUser.image}"
-    } else {
-        currentUser?.imageUrl
-    }
+    val imageUrl = currentUser?.imageUrl
 
     if (imageUrl != null) {
         AsyncImage(

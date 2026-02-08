@@ -10,10 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.friesoft.porturl.data.model.Application
-import org.friesoft.porturl.data.model.ApplicationCategory
-import org.friesoft.porturl.data.model.ApplicationCategoryId
-import org.friesoft.porturl.data.model.Category
+import org.friesoft.porturl.client.model.Application
+import org.friesoft.porturl.client.model.Category
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
 import javax.inject.Inject
@@ -36,13 +34,6 @@ sealed class DashboardItem {
 
 /**
  * Represents the complete state of the Application List screen.
- *
- * @param allItems The single source of truth for the dashboard layout. A flat list
- * containing all categories and applications in their correct display order.
- * @param searchQuery The current text entered by the user in the search field.
- * @param isLoading True when performing the initial data load.
- * @param isRefreshing True when performing a pull-to-refresh action.
- * @param error A message describing the last error that occurred, if any.
  */
 data class ApplicationListState(
     val allItems: List<DashboardItem> = emptyList(),
@@ -51,22 +42,16 @@ data class ApplicationListState(
     val isRefreshing: Boolean = false,
     val error: String? = null
 ) {
-    /**
-     * A computed property that transforms the flat `allItems` list into a structured map,
-     * suitable for rendering a multi-column UI where each category is a column.
-     * It also incorporates the search logic.
-     */
     val groupedDashboardItems: Map<Category, List<Application>>
         get() {
             val groupedMap = mutableMapOf<Category, MutableList<Application>>()
             var currentCategory: Category? = null
 
-            // First, populate the map with all items in their original order.
             allItems.forEach { item ->
                 when (item) {
                     is DashboardItem.CategoryItem -> {
                         currentCategory = item.category
-                        groupedMap.getOrPut(currentCategory) { mutableListOf() }
+                        groupedMap.getOrPut(currentCategory!!) { mutableListOf() }
                     }
                     is DashboardItem.ApplicationItem -> {
                         currentCategory?.let {
@@ -76,31 +61,24 @@ data class ApplicationListState(
                 }
             }
 
-            // If there's no search query, return the fully populated map.
-            if (searchQuery.isBlank()) {
-                return groupedMap
-            }
+            if (searchQuery.isBlank()) return groupedMap
 
-            // If there is a search query, filter the map's contents.
             val lowerCaseQuery = searchQuery.lowercase()
             val filteredMap = mutableMapOf<Category, List<Application>>()
 
             groupedMap.forEach { (category, applications) ->
-                val categoryNameMatches = category.name.lowercase().contains(lowerCaseQuery)
+                val categoryNameMatches = category.name?.lowercase()?.contains(lowerCaseQuery) == true
                 val matchingApps = applications.filter { app ->
-                    app.name.lowercase().contains(lowerCaseQuery) || app.url.lowercase().contains(lowerCaseQuery)
+                    app.name?.lowercase()?.contains(lowerCaseQuery) == true || app.url?.lowercase()?.contains(lowerCaseQuery) == true
                 }
 
-                // A category column should be visible if its name matches OR it has apps that match.
                 if (categoryNameMatches || matchingApps.isNotEmpty()) {
-                    // If the category name matches, show all its apps. Otherwise, show only the matching apps.
                     filteredMap[category] = if (categoryNameMatches) applications else matchingApps
                 }
             }
             return filteredMap
         }
 }
-
 
 @HiltViewModel
 class ApplicationListViewModel @Inject constructor(
@@ -112,7 +90,7 @@ class ApplicationListViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var persistenceJob: Job? = null
-    private val debounceTime = 1000L // 1 second debounce for persistence
+    private val debounceTime = 1000L
 
     init {
         loadData()
@@ -126,7 +104,6 @@ class ApplicationListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
-                // Ensure any pending save operation completes before refreshing.
                 persistenceJob?.join()
                 loadAllItemsFromRepositories()
             } catch (e: Exception) {
@@ -153,85 +130,47 @@ class ApplicationListViewModel @Inject constructor(
     }
 
     private suspend fun loadAllItemsFromRepositories() {
-        val applications = applicationRepository.getAllApplications()
         val categories = categoryRepository.getAllCategories()
         _uiState.update {
-            it.copy(allItems = buildDashboardItems(applications, categories))
+            it.copy(allItems = buildDashboardItems(categories))
         }
     }
 
-    /**
-     * Builds the flat list of dashboard items from the raw data sources.
-     * This method correctly handles apps belonging to multiple categories.
-     */
-    private fun buildDashboardItems(applications: List<Application>, categories: List<Category>): List<DashboardItem> {
+    private fun buildDashboardItems(categories: List<Category>): List<DashboardItem> {
         val dashboardItems = mutableListOf<DashboardItem>()
-        val appsByCategoryId = mutableMapOf<Long, MutableList<Application>>()
-
-        // Efficiently populate the map of which apps belong to which category.
-        applications.forEach { app ->
-            app.applicationCategories.forEach { appCategory ->
-                appsByCategoryId.getOrPut(appCategory.category.id) { mutableListOf() }.add(app)
-            }
-        }
-
-        // Build the final flat list, respecting both category and application sort orders.
         categories.sortedBy { it.sortOrder }.forEach { category ->
             dashboardItems.add(DashboardItem.CategoryItem(category))
-            val appsForCategory = appsByCategoryId[category.id]
-                ?.sortedBy { app ->
-                    app.applicationCategories.find { it.category.id == category.id }?.sortOrder ?: Int.MAX_VALUE
-                }
-            appsForCategory?.forEach { app ->
-                dashboardItems.add(DashboardItem.ApplicationItem(app, category.id))
+            category.applications?.forEach { app ->
+                dashboardItems.add(DashboardItem.ApplicationItem(app, category.id ?: -1L))
             }
         }
         return dashboardItems
     }
 
-    /**
-     * Handles moving an application from one category to another with a specific insertion index.
-     */
     fun moveApplication(appId: Long?, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) {
         if (appId == null || appId == -1L) return
-
         val currentItems = _uiState.value.allItems.toMutableList()
 
-        // 1. Find and remove the item being dragged from its original position.
         val itemToMoveIndex = currentItems.indexOfFirst {
             it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == fromCatId
         }
-        if (itemToMoveIndex == -1) {
-            Log.e("ViewModel", "Drag-and-drop failed: Could not find app $appId in category $fromCatId")
-            return
-        }
+        if (itemToMoveIndex == -1) return
         val itemToMove = currentItems.removeAt(itemToMoveIndex) as DashboardItem.ApplicationItem
 
-        // 2. Determine the correct global insertion index in the `allItems` list.
         val targetCategoryIndex = currentItems.indexOfFirst {
             it is DashboardItem.CategoryItem && it.category.id == toCatId
         }
-        if (targetCategoryIndex == -1) {
-            Log.e("ViewModel", "Drag-and-drop failed: Could not find target category $toCatId")
-            return
-        }
-        // The insertion index is the position of the category header plus one, plus the target index within the app list.
+        if (targetCategoryIndex == -1) return
         val insertionIndex = targetCategoryIndex + 1 + targetIndexInCat
 
-        // 3. Create the new item and insert it.
         val newItem = itemToMove.copy(parentCategoryId = toCatId)
         currentItems.add(insertionIndex, newItem)
 
-        // 4. Handle cases where an app can belong to multiple categories.
-        // If an app is moved to a category it's already in (not the one it was dragged from),
-        // we might have a visual duplicate that needs to be removed.
         if (fromCatId != toCatId) {
             val duplicateIndex = currentItems.indexOfFirst {
                 it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == toCatId && it !== newItem
             }
-            if (duplicateIndex != -1) {
-                currentItems.removeAt(duplicateIndex)
-            }
+            if (duplicateIndex != -1) currentItems.removeAt(duplicateIndex)
         }
 
         _uiState.update { it.copy(allItems = currentItems) }
@@ -242,8 +181,6 @@ class ApplicationListViewModel @Inject constructor(
 
     fun moveCategoryByDirection(categoryId: Long, direction: MoveDirection) {
         val currentItems = _uiState.value.allItems.toMutableList()
-
-        // 1. Find the start and end index of the category block to move.
         val moveStartIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == categoryId }
         if (moveStartIndex == -1) return
         var moveEndIndex = moveStartIndex + 1
@@ -252,37 +189,27 @@ class ApplicationListViewModel @Inject constructor(
         }
         val groupToMove = currentItems.subList(moveStartIndex, moveEndIndex).toList()
 
-        // 2. Find the adjacent block to swap with and perform the swap.
         when (direction) {
             MoveDirection.UP, MoveDirection.LEFT -> {
-                if (moveStartIndex == 0) return // Already at the top/start
-
-                // Find the start of the previous category block by searching backwards.
+                if (moveStartIndex == 0) return
                 var prevBlockStartIndex = moveStartIndex - 1
                 while (prevBlockStartIndex >= 0 && currentItems[prevBlockStartIndex] is DashboardItem.ApplicationItem) {
                     prevBlockStartIndex--
                 }
-                if (prevBlockStartIndex < 0) return // Should not happen if moveStartIndex > 0
-
+                if (prevBlockStartIndex < 0) return
                 val prevGroup = currentItems.subList(prevBlockStartIndex, moveStartIndex).toList()
-
-                // Remove both blocks and re-insert them in the swapped order.
                 currentItems.subList(prevBlockStartIndex, moveEndIndex).clear()
                 currentItems.addAll(prevBlockStartIndex, groupToMove)
                 currentItems.addAll(prevBlockStartIndex + groupToMove.size, prevGroup)
             }
             MoveDirection.DOWN, MoveDirection.RIGHT -> {
-                if (moveEndIndex >= currentItems.size) return // Already at the bottom/end
-
-                // Find the end of the next category block by searching forwards.
+                if (moveEndIndex >= currentItems.size) return
                 val nextBlockStartIndex = moveEndIndex
                 var nextBlockEndIndex = nextBlockStartIndex + 1
                 while (nextBlockEndIndex < currentItems.size && currentItems[nextBlockEndIndex] is DashboardItem.ApplicationItem) {
                     nextBlockEndIndex++
                 }
                 val nextGroup = currentItems.subList(nextBlockStartIndex, nextBlockEndIndex).toList()
-
-                // Remove both blocks and re-insert them in the swapped order.
                 currentItems.subList(moveStartIndex, nextBlockEndIndex).clear()
                 currentItems.addAll(moveStartIndex, nextGroup)
                 currentItems.addAll(moveStartIndex + nextGroup.size, groupToMove)
@@ -294,8 +221,6 @@ class ApplicationListViewModel @Inject constructor(
 
     fun moveCategory(fromCatId: Long, targetCategoryIndex: Int) {
         val currentItems = _uiState.value.allItems.toMutableList()
-
-        // 1. Identify the 'from' block
         val fromStartIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == fromCatId }
         if (fromStartIndex == -1) return
         var fromEndIndex = fromStartIndex + 1
@@ -303,15 +228,10 @@ class ApplicationListViewModel @Inject constructor(
             fromEndIndex++
         }
         val blockToMove = currentItems.subList(fromStartIndex, fromEndIndex).toList()
-
-        // Remove the block
         currentItems.subList(fromStartIndex, fromEndIndex).clear()
 
-        // 2. Identify the 'to' insertion point in the modified list
-        // targetCategoryIndex is 0-based index of categories.
-        // We need to find the item index of the (targetCategoryIndex)-th category.
         var categoryCount = 0
-        var insertAtIndex = currentItems.size // Default to end
+        var insertAtIndex = currentItems.size
         for (i in currentItems.indices) {
             if (currentItems[i] is DashboardItem.CategoryItem) {
                 if (categoryCount == targetCategoryIndex) {
@@ -321,8 +241,6 @@ class ApplicationListViewModel @Inject constructor(
                 categoryCount++
             }
         }
-
-        // Insert at the 'to' position.
         if (insertAtIndex >= 0 && insertAtIndex <= currentItems.size) {
             currentItems.addAll(insertAtIndex, blockToMove)
             _uiState.update { it.copy(allItems = currentItems) }
@@ -338,98 +256,35 @@ class ApplicationListViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Persists the new order of categories and applications to the repository.
-     * This implementation syncs the database with the visual state of the dashboard.
-     * It correctly handles moves, reorders, additions, and removals of app-category relationships.
-     */
     private suspend fun persistDashboardOrder(items: List<DashboardItem>) {
         val categoriesToUpdate = mutableListOf<Category>()
-        // A map of the most up-to-date version of an application object seen in the items list.
-        val baseApplications = mutableMapOf<Long, Application>()
-        // The definitive map of which categories each app should belong to, and its sort order.
-        val finalAppLayout = mutableMapOf<Long, MutableMap<Long, Int>>() // AppId -> { CatId -> SortOrder }
-
+        val categoryAppMap = mutableMapOf<Long, MutableList<Application>>()
         var currentCategory: Category? = null
         var categoryOrder = 0
-        var appOrder = 0
 
-        // 1. First pass: Scan the UI state to determine the final, desired layout.
         items.forEach { item ->
             when (item) {
                 is DashboardItem.CategoryItem -> {
                     currentCategory = item.category
-                    appOrder = 0
-                    if (item.category.sortOrder != categoryOrder) {
-                        categoriesToUpdate.add(item.category.copy(sortOrder = categoryOrder))
-                    }
+                    categoryAppMap[currentCategory!!.id ?: -1L] = mutableListOf()
+                    categoriesToUpdate.add(item.category.copy(sortOrder = categoryOrder))
                     categoryOrder++
                 }
                 is DashboardItem.ApplicationItem -> {
-                    val app = item.application
-                    val appId = app.id
-                    if (appId != null) {
-                        baseApplications.putIfAbsent(appId, app)
-                        finalAppLayout.getOrPut(appId) { mutableMapOf() }[currentCategory!!.id] = appOrder
-                        appOrder++
+                    currentCategory?.let { cat ->
+                        categoryAppMap[cat.id ?: -1L]?.add(item.application)
                     }
                 }
             }
         }
 
-        val applicationsToUpdate = mutableListOf<Application>()
-
-        // 2. Second pass: For each app, compare its original state with the final layout and apply changes.
-        for ((appId, baseApp) in baseApplications) {
-            val finalLayoutForApp = finalAppLayout[appId] ?: continue // App is not in the final layout.
-            val finalCatIdsForApp = finalLayoutForApp.keys
-
-            val originalLinks = baseApp.applicationCategories
-            val finalLinks = mutableListOf<ApplicationCategory>()
-            var needsUpdate = false
-
-            // 2a. Check existing links: keep the ones that are still valid and update their sort order.
-            originalLinks.forEach { link ->
-                val catId = link.category.id
-                if (catId in finalCatIdsForApp) {
-                    val newSortOrder = finalLayoutForApp[catId]!!
-                    if (link.sortOrder != newSortOrder) {
-                        finalLinks.add(link.copy(sortOrder = newSortOrder))
-                        needsUpdate = true
-                    } else {
-                        finalLinks.add(link)
-                    }
-                } else {
-                    // This link's category is no longer present for this app in the UI, so it has been removed.
-                    needsUpdate = true
-                }
-            }
-
-            // 2b. Check for new links: add links for categories that were not in the original app data.
-            val originalCatIds = originalLinks.map { it.category.id }.toSet()
-            val newCatIds = finalCatIdsForApp - originalCatIds
-            if (newCatIds.isNotEmpty()) {
-                needsUpdate = true
-                newCatIds.forEach { catId ->
-                    // Find the category object from the items list to create the new link.
-                    val category = (items.find { it is DashboardItem.CategoryItem && it.category.id == catId } as DashboardItem.CategoryItem).category
-                    val newSortOrder = finalLayoutForApp[catId]!!
-                    finalLinks.add(ApplicationCategory(
-                        id = ApplicationCategoryId(appId, catId), // Note: This might need adjustment based on how your backend handles ID creation
-                        category = category,
-                        sortOrder = newSortOrder
-                    ))
-                }
-            }
-
-            if (needsUpdate) {
-                applicationsToUpdate.add(baseApp.copy(applicationCategories = finalLinks))
-            }
+        val categoriesWithApps = categoriesToUpdate.map { cat ->
+            cat.copy(applications = categoryAppMap[cat.id ?: -1L])
         }
 
         try {
-            if (categoriesToUpdate.isNotEmpty()) categoryRepository.reorderCategories(categoriesToUpdate)
-            if (applicationsToUpdate.isNotEmpty()) applicationRepository.reorderApplications(applicationsToUpdate)
+            categoryRepository.reorderCategories(categoriesWithApps)
+            applicationRepository.reorderApplications(categoriesWithApps)
         } catch (e: Exception) {
             Log.e("AppListViewModel", "Failed to persist order", e)
             _uiState.update { it.copy(error = "Failed to save new order.") }
@@ -441,7 +296,6 @@ class ApplicationListViewModel @Inject constructor(
         val categoryIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == categoryId }
         if (categoryIndex == -1) return
 
-        // Isolate the apps for the target category.
         val appsForCategory = currentItems
             .drop(categoryIndex + 1)
             .takeWhile { it is DashboardItem.ApplicationItem }
@@ -449,18 +303,9 @@ class ApplicationListViewModel @Inject constructor(
 
         if (appsForCategory.isEmpty()) return
 
-        // Sort them alphabetically and create updated ApplicationItem models.
         val sortedAppItems = appsForCategory
             .sortedBy { it.application.name }
-            .mapIndexed { index, item -> item.copy(
-                application = item.application.copy(
-                    applicationCategories = item.application.applicationCategories.map { ac ->
-                        if (ac.category.id == categoryId) ac.copy(sortOrder = index) else ac
-                    }
-                ))
-            }
 
-        // Splice the sorted apps back into the main list.
         val newItems = currentItems.take(categoryIndex + 1) + sortedAppItems + currentItems.drop(categoryIndex + 1 + appsForCategory.size)
         _uiState.update { it.copy(allItems = newItems) }
         debouncedPersist(newItems)
@@ -470,7 +315,7 @@ class ApplicationListViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 applicationRepository.deleteApplication(id)
-                refreshData() // Refresh to get the updated list.
+                refreshData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Failed to delete application.") }
             }
@@ -481,7 +326,7 @@ class ApplicationListViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 categoryRepository.deleteCategory(id)
-                refreshData() // Refresh to get the updated list.
+                refreshData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Failed to delete category.") }
             }

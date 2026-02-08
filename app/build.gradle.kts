@@ -4,18 +4,46 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.openapi.generator)
+    id("kotlin-parcelize")
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    dependsOn("openApiGenerate")
 }
+
+afterEvaluate {
+    tasks.findByName("preBuild")?.dependsOn("openApiGenerate")
+}
+
+openApiGenerate {
+    generatorName.set("kotlin")
+    inputSpec.set("$projectDir/src/main/openapi/openapi.yaml")
+    outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.absolutePath)
+    apiPackage.set("org.friesoft.porturl.client.api")
+    modelPackage.set("org.friesoft.porturl.client.model")
+    configOptions.set(mapOf(
+        "library" to "jvm-retrofit2",
+        "serializationLibrary" to "kotlinx_serialization",
+        "useCoroutines" to "true",
+        "enumPropertyNaming" to "UPPERCASE",
+        "packageName" to "org.friesoft.porturl.client",
+        "useResponseWrapper" to "false",
+        "useRetrofit2Response" to "false"
+    ))
+}
+
 android {
     namespace = "org.friesoft.porturl"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            kotlin.directories.add(layout.buildDirectory.dir("generated/openapi/src/main/kotlin").get().asFile.absolutePath)
         }
     }
 
@@ -119,6 +147,8 @@ dependencies {
     // Retrofit for Networking
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.retrofit.scalars)
     implementation(libs.logging.interceptor)
 
     // AppAuth for OAuth2/OIDC
@@ -149,8 +179,14 @@ dependencies {
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    // Color Picker
+    // Kotlin Color Picker
     implementation(libs.compose.colorpicker)
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 tasks.register("printVersionName") {

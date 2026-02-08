@@ -19,7 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.friesoft.porturl.R
-import org.friesoft.porturl.data.model.Application
+import org.friesoft.porturl.client.model.Application
+import org.friesoft.porturl.client.model.ApplicationWithRolesDto
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.viewmodels.UserDetailViewModel
 
@@ -65,12 +66,15 @@ fun UserDetailScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(uiState.allApplications) { app ->
-                        AppPermissionItem(
-                            app = app,
-                            hasRole = { role -> viewModel.hasRole(app, role) },
-                            onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
-                        )
+                    items(uiState.allApplications) { appWithRoles ->
+                        appWithRoles.application?.let { app ->
+                            AppPermissionItem(
+                                app = app,
+                                availableRoles = appWithRoles.availableRoles ?: emptyList(),
+                                hasRole = { role -> viewModel.hasRole(app, role) },
+                                onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
+                            )
+                        }
                     }
                 }
             }
@@ -82,15 +86,16 @@ fun UserDetailScreen(
 @Composable
 fun AppPermissionItem(
     app: Application,
+    availableRoles: List<String>,
     hasRole: (String) -> Boolean,
     onRoleToggle: (String, Boolean) -> Unit
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = app.name, style = MaterialTheme.typography.titleMedium)
+            Text(text = app.name ?: "", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
-            if (app.availableRoles.isEmpty()) {
+            if (availableRoles.isEmpty()) {
                  Text(stringResource(R.string.no_roles_defined), style = MaterialTheme.typography.bodySmall)
             } else {
                 FlowRow(
@@ -98,7 +103,7 @@ fun AppPermissionItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    app.availableRoles.forEach { role ->
+                    availableRoles.forEach { role ->
                         val isChecked = hasRole(role)
                         FilterChip(
                             selected = isChecked,

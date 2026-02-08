@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.friesoft.porturl.R
-import org.friesoft.porturl.data.model.User
+import org.friesoft.porturl.client.model.User
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.viewmodels.UserListViewModel
@@ -68,7 +68,7 @@ fun UserItem(user: User, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = user.email, style = MaterialTheme.typography.titleMedium)
+            Text(text = user.email ?: "", style = MaterialTheme.typography.titleMedium)
             Text(text = "ID: ${user.id}", style = MaterialTheme.typography.bodySmall)
         }
     }

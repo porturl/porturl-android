@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.friesoft.porturl.data.model.User
+import org.friesoft.porturl.client.model.User
 import org.friesoft.porturl.data.repository.UserRepository
 import javax.inject.Inject
 

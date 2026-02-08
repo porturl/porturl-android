@@ -7,21 +7,33 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import net.openid.appauth.AuthState
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.friesoft.porturl.AppLocaleManager
+import org.friesoft.porturl.client.api.ApplicationApi
+import org.friesoft.porturl.client.api.CategoryApi
+import org.friesoft.porturl.client.api.ImageApi
+import org.friesoft.porturl.client.api.UserApi
 import org.friesoft.porturl.data.auth.AuthInterceptor
 import org.friesoft.porturl.data.auth.AuthStateManager
-import org.friesoft.porturl.data.remote.ApiService
 import org.friesoft.porturl.data.repository.SettingsRepository
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideJson(): Json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
 
     // --- CLIENT FOR UNAUTHENTICATED CALLS (e.g., fetching config) ---
     @Singleton
@@ -37,13 +49,15 @@ object AppModule {
     @Named("unauthenticated_retrofit")
     fun provideUnauthenticatedRetrofit(
         @Named("unauthenticated_client") okHttpClient: OkHttpClient,
-        settingsRepository: SettingsRepository
+        settingsRepository: SettingsRepository,
+        json: Json
     ): Retrofit {
-        val backendUrl = settingsRepository.getBackendUrlBlocking() // A helper might be needed here
+        val backendUrl = settingsRepository.getBackendUrlBlocking()
+        val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl(backendUrl)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
@@ -64,25 +78,37 @@ object AppModule {
     @Named("authenticated_retrofit")
     fun provideAuthenticatedRetrofit(
         @Named("authenticated_client") okHttpClient: OkHttpClient,
-        settingsRepository: SettingsRepository
+        settingsRepository: SettingsRepository,
+        json: Json
     ): Retrofit {
         val backendUrl = settingsRepository.getBackendUrlBlocking()
+        val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl(backendUrl)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
-    /**
-     * Provides the final ApiService instance for the rest of the app to use.
-     * This service is guaranteed to be built with the authenticated Retrofit client.
-     */
     @Singleton
     @Provides
-    fun provideApiService(@Named("authenticated_retrofit") retrofit: Retrofit): ApiService {
-        return retrofit.create(ApiService::class.java)
-    }
+    fun provideApplicationApi(@Named("authenticated_retrofit") retrofit: Retrofit): ApplicationApi =
+        retrofit.create(ApplicationApi::class.java)
+
+    @Singleton
+    @Provides
+    fun provideCategoryApi(@Named("authenticated_retrofit") retrofit: Retrofit): CategoryApi =
+        retrofit.create(CategoryApi::class.java)
+
+    @Singleton
+    @Provides
+    fun provideUserApi(@Named("authenticated_retrofit") retrofit: Retrofit): UserApi =
+        retrofit.create(UserApi::class.java)
+
+    @Singleton
+    @Provides
+    fun provideImageApi(@Named("authenticated_retrofit") retrofit: Retrofit): ImageApi =
+        retrofit.create(ImageApi::class.java)
 
     @Provides
     @Singleton
