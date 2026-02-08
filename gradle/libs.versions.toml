@@ -8,9 +8,9 @@ coilCompose = "2.7.0"
 colorpicker = "1.1.3"
 converterGson = "3.0.0"
 datastorePreferences = "1.2.0"
-hiltAndroid = "2.59"
+hiltAndroid = "2.59.1"
 hiltNavigationCompose = "1.3.0"
-kotlin = "2.3.0"
+kotlin = "2.3.10"
 kotlinxSerializationJson = "1.10.0"
 ksp = "2.3.5"
 coreKtx = "1.17.0"
@@ -36,10 +36,11 @@ foundation = "1.10.2"
 uiToolingPreview = "1.10.2"
 uiTooling = "1.10.2"
 opentelemetryAndroid = "1.1.0-alpha"
-openapi-generator = "7.11.0"
+opentelemetryAndroidAgent = "1.1.0"
+openapi-generator = "7.19.0"
 
 [libraries]
-opentelemetry-android-agent = { module = "io.opentelemetry.android:android-agent", version.ref = "opentelemetryAndroid" }
+opentelemetry-android-agent = { module = "io.opentelemetry.android:android-agent", version.ref = "opentelemetryAndroidAgent" }
 opentelemetry-android-bom = { module = "io.opentelemetry.android:opentelemetry-android-bom", version.ref = "opentelemetryAndroid" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
