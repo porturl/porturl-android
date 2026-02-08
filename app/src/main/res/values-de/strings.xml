@@ -84,6 +84,15 @@
     <string name="app_detail_category_selected">Ausgewählt</string>
     <string name="app_detail_icon_description">Anwendungssymbol</string>
     <string name="settings_translucent_background_label">Durchscheinender Anwendungshintergrund</string>
+    <string name="settings_telemetry_title">Telemetrie</string>
+    <string name="settings_telemetry_label">Nutzungsdaten und Fehlerberichte aktivieren</string>
+    <string name="settings_telemetry_status_label">Status: </string>
+    <string name="settings_telemetry_status_active">Aktiv</string>
+    <string name="settings_telemetry_status_unavailable">Nicht verfügbar (Kollektor nicht gefunden)</string>
+    <string name="settings_telemetry_status_not_configured">Nicht konfiguriert</string>
+    <string name="settings_restart_dialog_title">Neustart erforderlich</string>
+    <string name="settings_restart_dialog_text">Änderungen an den Telemetrie-Einstellungen erfordern einen Neustart der Anwendung, um wirksam zu werden. Möchten Sie jetzt neu starten?</string>
+    <string name="settings_restart_button">Neu starten</string>
     <string name="app_detail_roles_title">Rollen</string>
     <string name="app_detail_new_role_label">Neue Rolle</string>
     <string name="app_detail_add_role_description">Rolle hinzufügen</string>

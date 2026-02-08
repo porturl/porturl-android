@@ -51,7 +51,7 @@ data class ApplicationListState(
                 when (item) {
                     is DashboardItem.CategoryItem -> {
                         currentCategory = item.category
-                        groupedMap.getOrPut(currentCategory!!) { mutableListOf() }
+                        groupedMap.getOrPut(currentCategory) { mutableListOf() }
                     }
                     is DashboardItem.ApplicationItem -> {
                         currentCategory?.let {
@@ -266,7 +266,7 @@ class ApplicationListViewModel @Inject constructor(
             when (item) {
                 is DashboardItem.CategoryItem -> {
                     currentCategory = item.category
-                    categoryAppMap[currentCategory!!.id ?: -1L] = mutableListOf()
+                    categoryAppMap[currentCategory.id ?: -1L] = mutableListOf()
                     categoriesToUpdate.add(item.category.copy(sortOrder = categoryOrder))
                     categoryOrder++
                 }

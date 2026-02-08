@@ -59,7 +59,7 @@ class ApplicationDetailViewModel @Inject constructor(
                 }
 
                 val roles = if (app.id != null) {
-                    applicationRepository.getApplicationRoles(app.id!!)
+                    applicationRepository.getApplicationRoles(app.id)
                 } else {
                     emptyList()
                 }
@@ -110,7 +110,7 @@ class ApplicationDetailViewModel @Inject constructor(
                         categories = selectedCategories,
                         availableRoles = availableRoles
                     )
-                    applicationRepository.updateApplication(originalApplication.id!!, appUpdateRequest)
+                    applicationRepository.updateApplication(originalApplication.id, appUpdateRequest)
                 }
                 finishScreen.emit(true)
             } catch (e: Exception) {

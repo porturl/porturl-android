@@ -15,7 +15,7 @@ const val SYSTEM_DEFAULT = "system"
 
 data class Language(
     val code: String,
-    @StringRes val displayLanguage: Int
+    @param:StringRes val displayLanguage: Int
 )
 
 val appLanguages = listOf(
