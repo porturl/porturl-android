@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/porturl/porturl-android/compare/v0.2.1...v0.3.0) (2026-02-08)
+
+
+### Features
+
+* add support for opentelemetry tracing (untested) ([9d9ced4](https://github.com/porturl/porturl-android/commit/9d9ced45b377535ad3e24277abbed22c76274dae))
+
+
+### Bug Fixes
+
+* add missing translations ([60b2ec3](https://github.com/porturl/porturl-android/commit/60b2ec3da34633c745b9e50592a18604887c393d))
+* make sure gradle wrapper is executable ([9f05052](https://github.com/porturl/porturl-android/commit/9f0505208dddee755c86ccfebd6cf4840cd9f14c))
+* prevent broken pullrequest builds due to lack of access to secrets ([18ec350](https://github.com/porturl/porturl-android/commit/18ec350e44e5177e4ce87a7c302c32ecd98956de))
+
 ## [0.2.1](https://github.com/porturl/porturl-android/compare/v0.2.0...v0.2.1) (2026-01-21)
 
 
