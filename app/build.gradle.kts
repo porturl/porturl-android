@@ -35,11 +35,7 @@ openApiGenerate {
 
 android {
     namespace = "org.friesoft.porturl"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdkPreview = "CinnamonBun"
 
     sourceSets {
         getByName("main") {
@@ -50,6 +46,7 @@ android {
     defaultConfig {
         applicationId = "org.friesoft.porturl"
         minSdk = 31
+        targetSdkPreview = "CinnamonBun"
 
         val otlpEndpoint = project.findProperty("OTLP_ENDPOINT") ?: "https://otlp-gateway-prod-us-east-0.grafana.net/otlp"
         val otlpAuth = project.findProperty("OTLP_AUTH") ?: ""

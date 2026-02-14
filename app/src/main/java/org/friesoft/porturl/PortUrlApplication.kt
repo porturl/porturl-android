@@ -43,9 +43,11 @@ class PortUrlApplication : Application() {
                     maxLifetime = 4.days
                 }
                 globalAttributes {
-                    Attributes.of(stringKey("service.name"), "porturl-android")
-                    Attributes.of(stringKey("service.version"), BuildConfig.VERSION_NAME)
-                    Attributes.of(stringKey("deployment.environment"), if (BuildConfig.DEBUG) "development" else "production")
+                    Attributes.builder()
+                        .put(stringKey("service.name"), "porturl-android")
+                        .put(stringKey("service.version"), BuildConfig.VERSION_NAME)
+                        .put(stringKey("deployment.environment"), if (BuildConfig.DEBUG) "development" else "production")
+                        .build()
                 }
             }
         )

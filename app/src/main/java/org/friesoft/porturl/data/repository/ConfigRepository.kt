@@ -1,10 +1,13 @@
 package org.friesoft.porturl.data.repository
 
 import android.util.Log
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.http.GET
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -12,18 +15,21 @@ import javax.inject.Named
 import javax.inject.Singleton
 
 // Data class to parse the JSON response from /actuator/info
+@Serializable
 data class AppConfig(
-    @SerializedName("auth") val auth: AuthInfo,
-    @SerializedName("telemetry") val telemetry: TelemetryInfo?
+    @SerialName("auth") val auth: AuthInfo,
+    @SerialName("telemetry") val telemetry: TelemetryInfo? = null
 )
 
+@Serializable
 data class AuthInfo(
-    @SerializedName("issuer-uri") val issuerUri: String
+    @SerialName("issuer-uri") val issuerUri: String
 )
 
+@Serializable
 data class TelemetryInfo(
-    @SerializedName("enabled") val enabled: Boolean,
-    @SerializedName("healthy") val healthy: Boolean
+    @SerialName("enabled") val enabled: Boolean,
+    @SerialName("healthy") val healthy: Boolean
 )
 
 // A simple interface for the config service
@@ -50,6 +56,7 @@ class ConfigRepository @Inject constructor(
         return try {
             configService.getAppConfig().telemetry
         } catch (e: Exception) {
+            Log.e("ConfigRepository", "Failed to fetch telemetry status", e)
             null
         }
     }
@@ -68,10 +75,12 @@ class ConfigRepository @Inject constructor(
                 .readTimeout(5, TimeUnit.SECONDS)
                 .build()
 
+            val contentType = "application/json".toMediaType()
+            val json = Json { ignoreUnknownKeys = true }
             val tempRetrofit = Retrofit.Builder()
                 .baseUrl(url)
                 .client(tempOkHttpClient)
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(json.asConverterFactory(contentType))
                 .build()
 
             val tempService = tempRetrofit.create(ConfigService::class.java)
