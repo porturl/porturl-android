@@ -46,6 +46,9 @@ class AuthViewModel @Inject constructor(
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
 
+    private val _userRoles = MutableStateFlow<List<String>>(emptyList())
+    val userRoles: StateFlow<List<String>> = _userRoles.asStateFlow()
+
     private val _showSessionExpiredDialog = MutableStateFlow(false)
     val showSessionExpiredDialog = _showSessionExpiredDialog.asStateFlow()
 
@@ -121,11 +124,14 @@ class AuthViewModel @Inject constructor(
             if (_authState.value.isAuthorized) {
                 try {
                     val roles = userRepository.getCurrentUserRoles()
+                    _userRoles.value = roles
                     _isAdmin.value = roles.contains("ROLE_ADMIN")
                 } catch (e: Exception) {
+                    _userRoles.value = emptyList()
                     _isAdmin.value = false
                 }
             } else {
+                _userRoles.value = emptyList()
                 _isAdmin.value = false
             }
         }
@@ -162,6 +168,7 @@ class AuthViewModel @Inject constructor(
             authStateManager.clearAuthState()
             _authState.value = AuthState()
             _isAdmin.value = false
+            _userRoles.value = emptyList()
             _currentUser.value = null
             checkBackendUrlValid()
         }

@@ -61,11 +61,29 @@ class NavigationState(
 ) {
     var topLevelRoute: NavKey by topLevelRoute
     val stacksInUse: List<NavKey>
-        get() = if (topLevelRoute == startRoute) {
-            listOf(startRoute)
-        } else {
-            listOf(startRoute, topLevelRoute)
+        get() = when (topLevelRoute) {
+            startRoute -> listOf(startRoute)
+            Routes.Login -> listOf(Routes.Login)
+            else -> listOf(startRoute, topLevelRoute)
         }
+
+    fun clearAllBackStacks() {
+        backStacks.forEach { (key, stack) ->
+            // NavBackStack in navigation3 is a SnapshotStateList/MutableList of NavKey
+            // We want to remove all items.
+            try {
+                // Try to clear it. If it's a SnapshotStateList it has clear()
+                val list = stack as? MutableList<NavKey>
+                list?.clear()
+                // Navigation3 might expect at least one item (the base) in the stack
+                // so we add the key itself back.
+                list?.add(key)
+                Log.d("NavigationState", "Cleared and reset stack for $key")
+            } catch (e: Exception) {
+                Log.e("NavigationState", "Failed to clear stack for $key", e)
+            }
+        }
+    }
 }
 
 /**

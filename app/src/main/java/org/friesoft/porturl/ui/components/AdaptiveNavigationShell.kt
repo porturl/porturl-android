@@ -41,6 +41,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import org.friesoft.porturl.R
 import org.friesoft.porturl.client.model.User
+import org.friesoft.porturl.ui.components.UserAvatar
 import org.friesoft.porturl.ui.navigation.Routes
 
 import androidx.compose.animation.AnimatedContent
@@ -252,7 +253,7 @@ fun AdaptiveNavigationShell(
                             
                             // Footer (Profile)
                             NavigationDrawerItem(
-                                selected = false,
+                                selected = currentRoute == Routes.Profile,
                                 onClick = onProfileClick,
                                 icon = {
                                     UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 40.dp)
@@ -319,7 +320,7 @@ fun AdaptiveNavigationShell(
                             
                             // Footer (Profile)
                             NavigationRailItem(
-                                selected = false,
+                                selected = currentRoute == Routes.Profile,
                                 onClick = onProfileClick,
                                 icon = {
                                     UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 40.dp)
@@ -374,7 +375,7 @@ fun AdaptiveNavigationShell(
                         
                         // Footer (Profile)
                         NavigationDrawerItem(
-                            selected = false,
+                            selected = currentRoute == Routes.Profile,
                             onClick = {
                                 scope.launch { drawerState.close() }
                                 onProfileClick()
@@ -458,7 +459,7 @@ fun AdaptiveNavigationShell(
                                 }
                                 // Profile Item
                                 NavigationBarItem(
-                                    selected = false,
+                                    selected = currentRoute == Routes.Profile,
                                     onClick = onProfileClick,
                                     icon = {
                                         UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 32.dp)
@@ -482,63 +483,6 @@ fun AdaptiveNavigationShell(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun UserAvatar(currentUser: User?, backendUrl: String, size: androidx.compose.ui.unit.Dp = 32.dp) {
-    val imageUrl = currentUser?.imageUrl
-    val fullImageUrl = when {
-        imageUrl.isNullOrBlank() -> null
-        imageUrl.startsWith("http") -> imageUrl
-        else -> "${backendUrl.trimEnd('/')}/${imageUrl.trimStart('/')}"
-    }
-    
-    val initials = currentUser?.email?.take(1)?.uppercase() ?: ""
-    val borderThickness = 1.5.dp
-
-    val fallback = @Composable {
-        Box(
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .border(borderThickness, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (initials.isNotEmpty()) {
-                Text(
-                    text = initials,
-                    style = if (size >= 40.dp) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            } else {
-                Icon(
-                    Icons.Filled.Person,
-                    contentDescription = stringResource(R.string.user_profile),
-                    modifier = Modifier.size(if (size >= 40.dp) 24.dp else 20.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-    }
-
-    if (fullImageUrl != null) {
-        SubcomposeAsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(fullImageUrl)
-                .crossfade(true)
-                .build(),
-            contentDescription = stringResource(R.string.user_profile),
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape)
-                .border(borderThickness, MaterialTheme.colorScheme.outline, CircleShape),
-            loading = { fallback() },
-            error = { fallback() }
-        )
-    } else {
-        fallback()
     }
 }
 

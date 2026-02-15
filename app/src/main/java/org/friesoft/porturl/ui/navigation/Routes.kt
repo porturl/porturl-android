@@ -25,4 +25,7 @@ object Routes {
 
     @Serializable
     data class UserDetail(val userId: String) : NavKey
+
+    @Serializable
+    data object Profile : NavKey
 }

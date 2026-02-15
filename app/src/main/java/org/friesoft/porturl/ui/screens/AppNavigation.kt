@@ -42,7 +42,7 @@ fun AppNavigation() {
 
     val navigationState = rememberNavigationState(
         startRoute = Routes.AppList,
-        topLevelRoutes = setOf(Routes.Login, Routes.AppList, Routes.Settings, Routes.UserList)
+        topLevelRoutes = setOf(Routes.Login, Routes.AppList, Routes.Settings, Routes.UserList, Routes.Profile)
     )
     val navigator = remember(navigationState) { Navigator(navigationState) }
 
@@ -58,18 +58,6 @@ fun AppNavigation() {
 
     val activity = androidx.activity.compose.LocalActivity.current!!
     val windowSizeClass = androidx.compose.material3.windowsizeclass.calculateWindowSizeClass(activity).widthSizeClass
-
-    var showProfileDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
-
-    val logoutLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) {}
-    
-    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri: android.net.Uri? ->
-        uri?.let { authViewModel.updateUserImage(it) }
-    }
 
     val entryProvider = entryProvider {
         // We no longer need AuthCheck route, logic is handled below
@@ -95,6 +83,9 @@ fun AppNavigation() {
         entry<Routes.UserDetail> { key ->
             UserDetailScreen(navigator = navigator, userId = key.userId)
         }
+        entry<Routes.Profile> {
+            ProfileScreen(navigator = navigator, authViewModel = authViewModel)
+        }
     }
 
     // Initial Auth Check and Redirection
@@ -107,9 +98,13 @@ fun AppNavigation() {
 
     // Continuous Auth Check
     LaunchedEffect(authState.isAuthorized) {
+        Log.d("AppNavigation", "Auth state changed: isAuthorized=${authState.isAuthorized}")
         if (!authState.isAuthorized) {
              val currentRoute = navigationState.topLevelRoute
+             Log.d("AppNavigation", "User not authorized, currentRoute=$currentRoute")
              if (currentRoute != Routes.Login) {
+                 Log.d("AppNavigation", "Navigating to Login")
+                 navigationState.clearAllBackStacks()
                  navigator.navigate(Routes.Login)
              }
         }
@@ -128,35 +123,6 @@ fun AppNavigation() {
         )
     }
 
-    if (showProfileDialog) {
-        AlertDialog(
-            onDismissRequest = { showProfileDialog = false },
-            title = { Text(stringResource(R.string.user_profile)) }, // Reuse description as title
-            text = {
-                androidx.compose.foundation.layout.Column {
-                     TextButton(onClick = {
-                         showProfileDialog = false
-                         imagePickerLauncher.launch("image/*")
-                     }) {
-                         Text(stringResource(R.string.edit_button_text)) // Reuse edit text
-                     }
-                     TextButton(onClick = {
-                         showProfileDialog = false
-                         authViewModel.logout(logoutLauncher)
-                     }) {
-                         Text(stringResource(R.string.logout_description))
-                     }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showProfileDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-
     org.friesoft.porturl.ui.components.AdaptiveNavigationShell(
         windowSizeClass = windowSizeClass,
         currentRoute = navigationState.topLevelRoute,
@@ -166,7 +132,7 @@ fun AppNavigation() {
         backendUrl = backendUrl,
         searchQuery = searchQuery,
         onSearchQueryChanged = { sharedViewModel.updateSearchQuery(it) },
-        onProfileClick = { showProfileDialog = true },
+        onProfileClick = { navigator.navigate(Routes.Profile) },
         onAddApp = { navigator.navigate(Routes.AppDetail(-1)) },
         onAddCategory = { navigator.navigate(Routes.CategoryDetail(-1)) }
     ) {
