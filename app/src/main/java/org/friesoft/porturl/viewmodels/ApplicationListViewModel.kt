@@ -102,13 +102,23 @@ class ApplicationListViewModel @Inject constructor(
         _uiState.update { it.copy(searchQuery = query) }
     }
 
+    fun clearData() {
+        Log.d("AppListViewModel", "Clearing data")
+        _uiState.update { it.copy(allItems = emptyList(), error = null) }
+    }
+
     fun refreshData() {
+        if (_uiState.value.isRefreshing) return
         viewModelScope.launch {
+            Log.d("AppListViewModel", "refreshData() called")
             _uiState.update { it.copy(isRefreshing = true) }
             try {
+                Log.d("AppListViewModel", "Attempting forceTokenRefresh()")
                 authService.forceTokenRefresh()
+                Log.d("AppListViewModel", "forceTokenRefresh() successful, loading items")
                 persistenceJob?.join()
                 loadAllItemsFromRepositories()
+                Log.d("AppListViewModel", "Data refreshed successfully")
             } catch (e: Exception) {
                 Log.e("AppListViewModel", "Failed to refresh data", e)
                 _uiState.update { it.copy(error = "Failed to refresh data: ${e.localizedMessage}") }
@@ -120,9 +130,11 @@ class ApplicationListViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
+            Log.d("AppListViewModel", "loadData() called")
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 loadAllItemsFromRepositories()
+                Log.d("AppListViewModel", "Data loaded successfully")
             } catch (e: Exception) {
                 Log.e("AppListViewModel", "Failed to load data", e)
                 _uiState.update { it.copy(error = "Failed to load data: ${e.localizedMessage}") }

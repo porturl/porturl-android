@@ -143,7 +143,10 @@ fun ApplicationListRoute(
     }
 
     LaunchedEffect(authState.isAuthorized) {
-        if (!authState.isAuthorized) {
+        if (authState.isAuthorized) {
+            viewModel.refreshData()
+        } else {
+            viewModel.clearData()
             navigator.navigate(Routes.Login)
         }
     }
