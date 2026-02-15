@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://github.com/porturl/porturl-android/compare/v0.2.1...v0.3.0) (2026-02-15)
+
+
+### Features
+
+* add support for opentelemetry tracing (untested) ([9d9ced4](https://github.com/porturl/porturl-android/commit/9d9ced45b377535ad3e24277abbed22c76274dae))
+* separate user profile screen ([f5665b4](https://github.com/porturl/porturl-android/commit/f5665b46ccae62a97694377d58cb68dbd317e3f8))
+
+
+### Bug Fixes
+
+* actually reload permissions on user change ([40b5b6f](https://github.com/porturl/porturl-android/commit/40b5b6f2a86d9a8afebc23d0a7538294523b3866))
+* actually seperate user sessions and not share state ([62fa4d1](https://github.com/porturl/porturl-android/commit/62fa4d12caad96c235764a25a04845b4461c6480))
+* add missing translations ([60b2ec3](https://github.com/porturl/porturl-android/commit/60b2ec3da34633c745b9e50592a18604887c393d))
+* default avatar based on mail as profile picture as well as added a border to actually make the place for the profile image visible ([322a10a](https://github.com/porturl/porturl-android/commit/322a10a48ad04d2b169b938099ce234dd21402cf))
+* improve secure storage, use api 36 as target to allow installing on old android versions ([32fc038](https://github.com/porturl/porturl-android/commit/32fc038dcbef444ce4f36ed99467f702db79ed96))
+* make sure gradle wrapper is executable ([9f05052](https://github.com/porturl/porturl-android/commit/9f0505208dddee755c86ccfebd6cf4840cd9f14c))
+* move seach bar on big screen to bottom for consistency with small screen ([b8a9f62](https://github.com/porturl/porturl-android/commit/b8a9f629a104890a87f6918e2b6ca66ff79dec38))
+* prevent broken pullrequest builds due to lack of access to secrets ([18ec350](https://github.com/porturl/porturl-android/commit/18ec350e44e5177e4ce87a7c302c32ecd98956de))
+
 ## [0.2.1](https://github.com/porturl/porturl-android/compare/v0.2.0...v0.2.1) (2026-01-21)
 
 
