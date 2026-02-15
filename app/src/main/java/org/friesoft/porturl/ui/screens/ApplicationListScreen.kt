@@ -283,6 +283,60 @@ fun ApplicationListScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            if (windowWidthSize != WindowWidthSizeClass.Compact) {
+                AnimatedVisibility(
+                    visible = showSearchBar,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut()
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .zIndex(1f),
+                        tonalElevation = 3.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.searchQuery,
+                                onValueChange = onSearchQueryChanged,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(focusRequester),
+                                placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
+                                trailingIcon = {
+                                    if (uiState.searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { onSearchQueryChanged("") }) {
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                contentDescription = stringResource(id = R.string.clear_search_description)
+                                            )
+                                        }
+                                    }
+                                },
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(onClick = {
+                                searchBarVisible = false
+                                onSearchQueryChanged("")
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(id = R.string.cancel))
+                            }
+                        }
+                        LaunchedEffect(Unit) {
+                            delay(100)
+                            focusRequester.requestFocus()
+                        }
+                    }
+                }
+            }
+        },
         floatingActionButton = {
             if (windowWidthSize != WindowWidthSizeClass.Compact) {
                  FloatingActionButton(
@@ -316,41 +370,6 @@ fun ApplicationListScreen(
             .onGloballyPositioned { listBounds = it.boundsInRoot() }
         ) {
             Column(Modifier.fillMaxSize()) {
-                if (windowWidthSize != WindowWidthSizeClass.Compact) {
-                     AnimatedVisibility(
-                        visible = showSearchBar,
-                        enter = slideInVertically { -it } + fadeIn(),
-                        exit = slideOutVertically { -it } + fadeOut()
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().zIndex(1f),
-                            tonalElevation = 2.dp
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.searchQuery,
-                                onValueChange = onSearchQueryChanged,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                                    .focusRequester(focusRequester),
-                                placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
-                                trailingIcon = {
-                                    if (uiState.searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { onSearchQueryChanged("") }) {
-                                            Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_search_description))
-                                        }
-                                    }
-                                },
-                                singleLine = true
-                            )
-                            LaunchedEffect(Unit) {
-                                delay(100)
-                                focusRequester.requestFocus()
-                            }
-                        }
-                    }
-                }
-
                 val screenContent = @Composable {
                     val groupedItems = uiState.groupedDashboardItems
                     val sortedCategories = uiState.allItems.mapNotNull {
