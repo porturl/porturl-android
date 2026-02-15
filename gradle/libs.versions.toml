@@ -35,13 +35,12 @@ foundationLayout = "1.10.3"
 foundation = "1.10.3"
 uiToolingPreview = "1.10.3"
 uiTooling = "1.10.3"
-opentelemetryAndroid = "1.1.0-alpha"
 opentelemetryAndroidAgent = "1.1.0"
 openapi-generator = "7.19.0"
+security-crypto = "1.1.0"
 
 [libraries]
 opentelemetry-android-agent = { module = "io.opentelemetry.android:android-agent", version.ref = "opentelemetryAndroidAgent" }
-opentelemetry-android-bom = { module = "io.opentelemetry.android:opentelemetry-android-bom", version.ref = "opentelemetryAndroid" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
@@ -49,6 +48,7 @@ androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-com
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 androidx-material-icons-extended-android = { module = "androidx.compose.material:material-icons-extended-android", version.ref = "materialIconsExtendedAndroid" }
 androidx-material3 = { module = "androidx.compose.material3:material3", version.ref = "material" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "security-crypto" }
 androidx-window = { module = "androidx.window:window", version.ref = "window" }
 appauth = { module = "net.openid:appauth", version.ref = "appauth" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }

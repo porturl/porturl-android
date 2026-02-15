@@ -19,7 +19,9 @@ import kotlin.coroutines.resumeWithException
 @Singleton
 class AuthService @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
+    private val sessionExpiredNotifier: SessionExpiredNotifier,
+    private val authStateManager: AuthStateManager
 ) {
     private val authService = AuthorizationService(context)
 
@@ -96,6 +98,40 @@ class AuthService @Inject constructor(
 
         val endSessionIntent = authService.getEndSessionRequestIntent(endSessionRequest)
         launcher.launch(endSessionIntent)
+    }
+
+    /**
+     * Explicitly requests a new access token using the refresh token,
+     * bypassing AppAuth's automatic expiration check.
+     */
+    suspend fun forceTokenRefresh() {
+        val state = authStateManager.current
+        val refreshToken = state.refreshToken
+
+        if (refreshToken == null) {
+            android.util.Log.w("AuthService", "No refresh token available for forced refresh")
+            sessionExpiredNotifier.notifySessionExpired()
+            return
+        }
+
+        try {
+            val tokenResponse = suspendCancellableCoroutine { continuation ->
+                val request = state.createTokenRefreshRequest()
+                authService.performTokenRequest(request) { response, ex ->
+                    when {
+                        response != null -> continuation.resume(response)
+                        ex != null -> continuation.resumeWithException(ex)
+                        else -> continuation.resumeWithException(RuntimeException("Unknown refresh error"))
+                    }
+                }
+            }
+            state.update(tokenResponse, null)
+            authStateManager.replace(state)
+            android.util.Log.d("AuthService", "Forced token refresh successful")
+        } catch (ex: Exception) {
+            android.util.Log.e("AuthService", "Forced token refresh failed", ex)
+            sessionExpiredNotifier.notifySessionExpired()
+        }
     }
 
 }

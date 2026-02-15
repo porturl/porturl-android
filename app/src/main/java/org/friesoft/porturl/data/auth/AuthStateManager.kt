@@ -3,15 +3,40 @@ package org.friesoft.porturl.data.auth
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.annotation.AnyThread
+import androidx.core.content.edit
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import net.openid.appauth.AuthState
 import org.json.JSONException
+import java.io.File
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
-import androidx.core.content.edit
 
 class AuthStateManager private constructor(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences
+
+    init {
+        // Delete old insecure preferences if they exist
+        val oldPrefsFile = File(context.filesDir.parent, "shared_prefs/$STORE_NAME.xml")
+        if (oldPrefsFile.exists()) {
+            context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+            oldPrefsFile.delete()
+        }
+
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+
+        prefs = EncryptedSharedPreferences.create(
+            context,
+            SECURE_STORE_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
     private val prefsLock: ReentrantLock = ReentrantLock()
     private val currentAuthState: AtomicReference<AuthState> = AtomicReference()
 
@@ -106,6 +131,7 @@ class AuthStateManager private constructor(context: Context) {
         }
 
         private const val STORE_NAME = "AuthState"
+        private const val SECURE_STORE_NAME = "AuthStateSecure"
         private const val KEY_STATE = "state"
     }
 }

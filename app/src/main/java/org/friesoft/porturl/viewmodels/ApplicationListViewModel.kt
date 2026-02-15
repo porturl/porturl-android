@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.Category
+import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
 import javax.inject.Inject
@@ -84,6 +85,7 @@ data class ApplicationListState(
 class ApplicationListViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
     private val categoryRepository: CategoryRepository,
+    private val authService: AuthService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ApplicationListState())
@@ -104,6 +106,7 @@ class ApplicationListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
+                authService.forceTokenRefresh()
                 persistenceJob?.join()
                 loadAllItemsFromRepositories()
             } catch (e: Exception) {

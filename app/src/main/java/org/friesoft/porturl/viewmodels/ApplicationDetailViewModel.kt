@@ -14,6 +14,7 @@ import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.ApplicationCreateRequest
 import org.friesoft.porturl.client.model.ApplicationUpdateRequest
 import org.friesoft.porturl.client.model.Category
+import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
 import org.friesoft.porturl.data.repository.ImageRepository
@@ -23,7 +24,8 @@ import javax.inject.Inject
 class ApplicationDetailViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
     private val categoryRepository: CategoryRepository,
-    private val imageRepository: ImageRepository
+    private val imageRepository: ImageRepository,
+    private val authService: AuthService
 ) : ViewModel() {
 
     data class UiState(
@@ -112,6 +114,7 @@ class ApplicationDetailViewModel @Inject constructor(
                     )
                     applicationRepository.updateApplication(originalApplication.id, appUpdateRequest)
                 }
+                authService.forceTokenRefresh()
                 finishScreen.emit(true)
             } catch (e: Exception) {
                 errorMessage.emit("Failed to save application: ${e.message}")

@@ -46,7 +46,7 @@ android {
     defaultConfig {
         applicationId = "org.friesoft.porturl"
         minSdk = 31
-        targetSdkPreview = "CinnamonBun"
+        targetSdk = 36
 
         val otlpEndpoint = project.findProperty("OTLP_ENDPOINT") ?: "https://otlp-gateway-prod-us-east-0.grafana.net/otlp"
         val otlpAuth = project.findProperty("OTLP_AUTH") ?: ""
@@ -166,8 +166,9 @@ dependencies {
 
     implementation(libs.androidx.browser)
 
+    implementation(libs.androidx.security.crypto)
+
     // OpenTelemetry
-    implementation(platform(libs.opentelemetry.android.bom))
     implementation(libs.opentelemetry.android.agent)
 
     // DataStore for Preferences
