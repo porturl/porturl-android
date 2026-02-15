@@ -70,6 +70,8 @@ class AuthViewModel @Inject constructor(
             sessionNotifier.sessionExpiredEvents.collect {
                 _authState.value = AuthState()
                 _currentUser.value = null
+                _isAdmin.value = false
+                _userRoles.value = emptyList()
                 _showSessionExpiredDialog.value = true
             }
         }

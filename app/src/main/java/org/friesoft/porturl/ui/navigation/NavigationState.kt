@@ -3,6 +3,7 @@ package org.friesoft.porturl.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSerializable
@@ -61,10 +62,12 @@ class NavigationState(
 ) {
     var topLevelRoute: NavKey by topLevelRoute
     val stacksInUse: List<NavKey>
-        get() = when (topLevelRoute) {
-            startRoute -> listOf(startRoute)
-            Routes.Login -> listOf(Routes.Login)
-            else -> listOf(startRoute, topLevelRoute)
+        get() = if (topLevelRoute == Routes.Login) {
+            listOf(Routes.Login)
+        } else if (topLevelRoute == startRoute) {
+            listOf(startRoute)
+        } else {
+            listOf(startRoute, topLevelRoute)
         }
 
     fun clearAllBackStacks() {
@@ -94,29 +97,29 @@ fun NavigationState.toEntries(
     entryProvider: (NavKey) -> NavEntry<NavKey>
 ): SnapshotStateList<NavEntry<NavKey>> {
 
-    val decoratedEntries = backStacks.mapValues { (_, stack) ->
-        // Force state read to ensure recomposition
-        // We cast to Collection safely to access size, assuming NavBackStack behaves like one
-        // This is required because toEntries needs to recompose when stack contents change
-        // to call rememberDecoratedNavEntries again and update the returned list.
-        val trigger = (stack as? Collection<*>)?.size
-        Log.d("NavigationState", "toEntries: stack size: $trigger")
+    val result = stacksInUse.flatMap { stackKey ->
+        val stack = backStacks[stackKey] ?: return@flatMap emptyList()
+        // Use key(stackKey) to ensure that the decorated entries are uniquely identified
+        // and correctly disposed when the stack is no longer in stacksInUse.
+        key(stackKey) {
+            val decorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator<NavKey>(),
+            )
 
-        val decorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator<NavKey>(),
-        )
-        rememberDecoratedNavEntries(
-            backStack = stack,
-            entryDecorators = decorators,
-            entryProvider = entryProvider
-        )
+            // Force state read to ensure recomposition when stack contents change
+            val trigger = (stack as? Collection<*>)?.size
+            Log.d("NavigationState", "toEntries: stack $stackKey size: $trigger")
+
+            rememberDecoratedNavEntries(
+                backStack = stack,
+                entryDecorators = decorators,
+                entryProvider = entryProvider
+            )
+        }
     }
 
-    val result = stacksInUse
-        .flatMap { decoratedEntries[it] ?: emptyList() }
-        .toMutableStateList()
-    
-    Log.d("NavigationState", "toEntries: result size: ${result.size}")
-    return result
+    val finalResult = result.toMutableStateList()
+    Log.d("NavigationState", "toEntries: result size: ${finalResult.size}")
+    return finalResult
 }
