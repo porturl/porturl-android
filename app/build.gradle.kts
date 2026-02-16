@@ -35,7 +35,7 @@ openApiGenerate {
 
 android {
     namespace = "org.friesoft.porturl"
-    compileSdkPreview = "CinnamonBun"
+    compileSdk = 36
 
     sourceSets {
         getByName("main") {
