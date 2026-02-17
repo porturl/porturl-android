@@ -14,8 +14,38 @@ tags:
     description: Operations about users
   - name: Image
     description: Operations about images
+  - name: Admin
+    description: Administrative operations
 
 paths:
+  /api/admin/export:
+    get:
+      tags:
+        - Admin
+      summary: Export all apps and categories to YAML
+      operationId: exportData
+      responses:
+        '200':
+          description: OK
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/ExportData'
+  /api/admin/import:
+    post:
+      tags:
+        - Admin
+      summary: Import apps and categories from YAML
+      operationId: importData
+      requestBody:
+        required: true
+        content:
+          application/x-yaml:
+            schema:
+              $ref: '#/components/schemas/ExportData'
+      responses:
+        '204':
+          description: No Content
   /api/applications:
     get:
       tags:
@@ -581,3 +611,53 @@ components:
       properties:
         filename:
           type: string
+
+    ExportData:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryExport'
+        applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationExport'
+
+    CategoryExport:
+      type: object
+      properties:
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        applicationSortMode:
+          type: string
+          enum: [CUSTOM, ALPHABETICAL]
+        icon:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+
+    ApplicationExport:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        roles:
+          type: array
+          items:
+            type: string
+        images:
+          type: object
+          additionalProperties:
+            type: string
+            description: Base64 encoded image content. Keys are 'large', 'medium', 'thumbnail'.

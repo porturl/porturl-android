@@ -8,15 +8,27 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import net.openid.appauth.AuthState
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import retrofit2.converter.scalars.ScalarsConverterFactory
+import retrofit2.converter.jackson.JacksonConverterFactory
+import com.fasterxml.jackson.databind.JavaType
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
 import org.friesoft.porturl.AppLocaleManager
+import retrofit2.Converter
+import java.lang.reflect.Type
 import org.friesoft.porturl.client.api.ApplicationApi
 import org.friesoft.porturl.client.api.CategoryApi
 import org.friesoft.porturl.client.api.ImageApi
 import org.friesoft.porturl.client.api.UserApi
+import org.friesoft.porturl.client.api.AdminApi
 import org.friesoft.porturl.data.auth.AuthInterceptor
 import org.friesoft.porturl.data.auth.AuthStateManager
 import org.friesoft.porturl.data.repository.SettingsRepository
@@ -57,6 +69,7 @@ object AppModule {
         return Retrofit.Builder()
             .baseUrl(backendUrl)
             .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
@@ -66,6 +79,17 @@ object AppModule {
     @Provides
     @Named("authenticated_client")
     fun provideAuthenticatedOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
+        val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
+        return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .addInterceptor(logging)
+            .build()
+    }
+
+    @Singleton
+    @Provides
+    @Named("admin_client")
+    fun provideAdminOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
@@ -86,8 +110,63 @@ object AppModule {
         return Retrofit.Builder()
             .baseUrl(backendUrl)
             .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
+    }
+
+    @Singleton
+    @Provides
+    @Named("yaml_mapper")
+    fun provideYamlObjectMapper(): ObjectMapper = ObjectMapper(YAMLFactory())
+        .registerKotlinModule()
+        .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+
+    @Singleton
+    @Provides
+    @Named("admin_retrofit")
+    fun provideAdminRetrofit(
+        @Named("admin_client") okHttpClient: OkHttpClient,
+        settingsRepository: SettingsRepository,
+        @Named("yaml_mapper") yamlMapper: ObjectMapper
+    ): Retrofit {
+        val backendUrl = settingsRepository.getBackendUrlBlocking()
+        return Retrofit.Builder()
+            .baseUrl(backendUrl)
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .addConverterFactory(YamlConverterFactory(yamlMapper))
+            .build()
+    }
+
+    private class YamlConverterFactory(private val mapper: ObjectMapper) : Converter.Factory() {
+        private val mediaType = "application/x-yaml".toMediaType()
+
+        override fun requestBodyConverter(
+            type: Type,
+            parameterAnnotations: Array<out Annotation>,
+            methodAnnotations: Array<out Annotation>,
+            retrofit: Retrofit
+        ): Converter<*, RequestBody> {
+            val javaType = mapper.typeFactory.constructType(type)
+            val writer = mapper.writerFor(javaType)
+            return Converter<Any, RequestBody> { value ->
+                val bytes = writer.writeValueAsBytes(value)
+                bytes.toRequestBody(mediaType)
+            }
+        }
+
+        override fun responseBodyConverter(
+            type: Type,
+            annotations: Array<out Annotation>,
+            retrofit: Retrofit
+        ): Converter<ResponseBody, *> {
+            val javaType: JavaType = mapper.typeFactory.constructType(type)
+            val reader = mapper.readerFor(javaType)
+            return Converter<ResponseBody, Any> { value ->
+                value.use { reader.readValue<Any>(it.byteStream()) }
+            }
+        }
     }
 
     @Singleton
@@ -109,6 +188,11 @@ object AppModule {
     @Provides
     fun provideImageApi(@Named("authenticated_retrofit") retrofit: Retrofit): ImageApi =
         retrofit.create(ImageApi::class.java)
+
+    @Singleton
+    @Provides
+    fun provideAdminApi(@Named("admin_retrofit") retrofit: Retrofit): AdminApi =
+        retrofit.create(AdminApi::class.java)
 
     @Provides
     @Singleton

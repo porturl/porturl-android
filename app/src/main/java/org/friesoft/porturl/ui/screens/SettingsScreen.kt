@@ -1,6 +1,8 @@
 package org.friesoft.porturl.ui.screens
 
 import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -92,8 +95,43 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
     val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
+    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showRestartDialog by remember { mutableStateOf(false) }
+    var showImportWarning by remember { mutableStateOf(false) }
+
+    // File picker for import
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            android.util.Log.d("SettingsScreen", "Import result URI: $uri")
+            uri?.let {
+                try {
+                    context.contentResolver.openInputStream(it)?.use { stream ->
+                        val yaml = stream.bufferedReader().readText()
+                        android.util.Log.d("SettingsScreen", "File read successfully, length: ${yaml.length}")
+                        viewModel.importData(yaml)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("SettingsScreen", "Error reading file", e)
+                }
+            }
+        }
+    )
+
+    // File saver for export
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/x-yaml"),
+        onResult = { uri ->
+            uri?.let {
+                viewModel.exportData { yaml ->
+                    context.contentResolver.openOutputStream(it)?.use { stream ->
+                        stream.write(yaml.toByteArray())
+                    }
+                }
+            }
+        }
+    )
 
     if (showRestartDialog) {
         AlertDialog(
@@ -113,6 +151,30 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
             },
             dismissButton = {
                 TextButton(onClick = { showRestartDialog = false }) {
+                    Text(stringResource(id = R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showImportWarning) {
+        AlertDialog(
+            onDismissRequest = { showImportWarning = false },
+            title = { Text(stringResource(id = R.string.settings_admin_import_warning_title)) },
+            text = { Text(stringResource(id = R.string.settings_admin_import_warning_text)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showImportWarning = false
+                        importLauncher.launch(arrayOf("application/x-yaml", "application/yaml", "text/yaml", "*/*"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(id = R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportWarning = false }) {
                     Text(stringResource(id = R.string.cancel))
                 }
             }
@@ -199,6 +261,17 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
                 ServerSettings(viewModel = viewModel)
+                
+                if (isAdmin) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                    AdminOperations(
+                        onExportClick = { exportLauncher.launch("porturl_export.yaml") },
+                        onImportClick = { showImportWarning = true }
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -650,6 +723,30 @@ private fun ServerSettings(viewModel: SettingsViewModel) {
             } else {
                 Text(stringResource(id = R.string.settings_server_save_and_validate_button))
             }
+        }
+    }
+}
+
+@Composable
+private fun AdminOperations(
+    onExportClick: () -> Unit,
+    onImportClick: () -> Unit
+) {
+    Column {
+        SectionTitle(stringResource(id = R.string.settings_admin_title))
+        Button(
+            onClick = onExportClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(id = R.string.settings_admin_export_button))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onImportClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text(stringResource(id = R.string.settings_admin_import_button), color = MaterialTheme.colorScheme.onError)
         }
     }
 }

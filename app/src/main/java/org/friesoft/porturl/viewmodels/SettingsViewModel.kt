@@ -22,6 +22,9 @@ import org.friesoft.porturl.data.model.UserPreferences
 import org.friesoft.porturl.data.repository.TelemetryInfo
 import org.friesoft.porturl.data.repository.ConfigRepository
 import org.friesoft.porturl.data.repository.SettingsRepository
+import org.friesoft.porturl.data.repository.UserRepository
+import org.friesoft.porturl.data.repository.AdminRepository
+import com.fasterxml.jackson.module.kotlin.readValue
 import javax.inject.Inject
 
 // Represents the different states of the URL validation process
@@ -40,7 +43,10 @@ enum class ValidationState {
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val configRepository: ConfigRepository,
+    private val userRepository: UserRepository,
+    private val adminRepository: AdminRepository,
     private val appLocaleManager: AppLocaleManager,
+    @javax.inject.Named("yaml_mapper") private val yamlMapper: com.fasterxml.jackson.databind.ObjectMapper,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -50,6 +56,9 @@ class SettingsViewModel @Inject constructor(
      */
     val backendUrl: Flow<String> = settingsRepository.backendUrl
     val userPreferences: Flow<UserPreferences> = settingsRepository.userPreferences
+
+    private val _isAdmin = MutableStateFlow(false)
+    val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
 
     /**
      * A SharedFlow to emit one-time events to the UI, such as showing a Snackbar
@@ -67,6 +76,47 @@ class SettingsViewModel @Inject constructor(
     init {
         loadInitialLanguage()
         loadTelemetryStatus()
+        checkAdminStatus()
+    }
+
+    private fun checkAdminStatus() {
+        viewModelScope.launch {
+            try {
+                val roles = userRepository.getCurrentUserRoles()
+                _isAdmin.value = roles.contains("ROLE_ADMIN")
+            } catch (e: Exception) {
+                _isAdmin.value = false
+            }
+        }
+    }
+
+    fun exportData(onYamlReady: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val data = adminRepository.exportData()
+                val yaml = yamlMapper.writeValueAsString(data)
+                onYamlReady(yaml)
+                userMessage.emit(context.getString(R.string.settings_admin_export_success))
+            } catch (e: Exception) {
+                userMessage.emit(context.getString(R.string.settings_admin_error_export))
+            }
+        }
+    }
+
+    fun importData(yaml: String) {
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("SettingsViewModel", "Starting import. YAML length: ${yaml.length}")
+                val data: org.friesoft.porturl.client.model.ExportData = yamlMapper.readValue(yaml)
+                android.util.Log.d("SettingsViewModel", "YAML parsed successfully. Apps: ${data.applications?.size}, Categories: ${data.categories?.size}")
+                adminRepository.importData(data)
+                android.util.Log.d("SettingsViewModel", "Import finished successfully")
+                userMessage.emit(context.getString(R.string.settings_admin_import_success))
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsViewModel", "Error importing data", e)
+                userMessage.emit(context.getString(R.string.settings_admin_error_import))
+            }
+        }
     }
 
     private fun loadInitialLanguage() {

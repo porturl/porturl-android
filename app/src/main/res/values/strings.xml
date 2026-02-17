@@ -113,4 +113,15 @@
     <string name="user_profile">Profile</string>
     <string name="menu_description">Menu</string>
 
+    <!-- Admin Operations -->
+    <string name="settings_admin_title">Admin Operations</string>
+    <string name="settings_admin_export_button">Export Data (YAML)</string>
+    <string name="settings_admin_import_button">Import Data (YAML)</string>
+    <string name="settings_admin_import_warning_title">Dangerous Operation</string>
+    <string name="settings_admin_import_warning_text">This will purge ALL existing apps and categories in the database and replace them with the data from the YAML file. Images will be restored and Keycloak roles will be created. Keycloak data will NOT be purged. This cannot be undone. Are you sure you want to continue?</string>
+    <string name="settings_admin_import_success">Data imported successfully.</string>
+    <string name="settings_admin_export_success">Data exported successfully.</string>
+    <string name="settings_admin_error_import">Error importing data.</string>
+    <string name="settings_admin_error_export">Error exporting data.</string>
+
 </resources>

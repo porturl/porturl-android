@@ -12,6 +12,10 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     dependsOn("openApiGenerate")
 }
 
+tasks.matching { it.name.startsWith("ksp") }.configureEach {
+    dependsOn("openApiGenerate")
+}
+
 afterEvaluate {
     tasks.findByName("preBuild")?.dependsOn("openApiGenerate")
 }
@@ -147,6 +151,10 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.retrofit.scalars)
     implementation(libs.logging.interceptor)
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.dataformat.yaml)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.converter.jackson)
 
     // AppAuth for OAuth2/OIDC
     implementation(libs.appauth)
