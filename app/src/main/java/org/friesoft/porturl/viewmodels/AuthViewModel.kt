@@ -60,10 +60,15 @@ class AuthViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _authState.value = authStateManager.current
+            val currentAuthState = authStateManager.current
+            _authState.value = currentAuthState
             checkBackendUrlValid()
-            checkIsAdmin()
-            fetchCurrentUser()
+            if (currentAuthState.isAuthorized) {
+                // Fetch user first to ensure they exist on the backend
+                fetchCurrentUser()
+                // Then check roles
+                checkIsAdminInternal()
+            }
         }
 
         viewModelScope.launch {
@@ -123,19 +128,24 @@ class AuthViewModel @Inject constructor(
 
     fun checkIsAdmin() {
         viewModelScope.launch {
-            if (_authState.value.isAuthorized) {
-                try {
-                    val roles = userRepository.getCurrentUserRoles()
-                    _userRoles.value = roles
-                    _isAdmin.value = roles.contains("ROLE_ADMIN")
-                } catch (e: Exception) {
-                    _userRoles.value = emptyList()
-                    _isAdmin.value = false
-                }
-            } else {
+            checkIsAdminInternal()
+        }
+    }
+
+    private suspend fun checkIsAdminInternal() {
+        if (_authState.value.isAuthorized) {
+            try {
+                val roles = userRepository.getCurrentUserRoles()
+                _userRoles.value = roles
+                _isAdmin.value = roles.contains("ROLE_ADMIN")
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to check admin status", e)
                 _userRoles.value = emptyList()
                 _isAdmin.value = false
             }
+        } else {
+            _userRoles.value = emptyList()
+            _isAdmin.value = false
         }
     }
 
@@ -156,8 +166,9 @@ class AuthViewModel @Inject constructor(
             val authState = authService.handleAuthorizationResponse(intent)
             authStateManager.replace(authState)
             _authState.value = authState
-            checkIsAdmin()
+            // Sequentially fetch user then roles to avoid backend race conditions and ensure user creation
             fetchCurrentUser()
+            checkIsAdminInternal()
         }
     }
 

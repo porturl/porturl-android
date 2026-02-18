@@ -137,14 +137,17 @@ fun ApplicationListRoute(
     )
 
     val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
+    val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     
     LaunchedEffect(searchQuery) {
         viewModel.onSearchQueryChanged(searchQuery)
     }
 
-    LaunchedEffect(authState.isAuthorized) {
+    LaunchedEffect(authState.isAuthorized, currentUser) {
         if (authState.isAuthorized) {
-            viewModel.refreshData()
+            if (currentUser != null) {
+                viewModel.refreshData()
+            }
         } else {
             viewModel.clearData()
             navigator.navigate(Routes.Login)
