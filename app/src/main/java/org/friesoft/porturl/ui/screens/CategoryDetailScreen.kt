@@ -39,7 +39,7 @@ fun CategoryDetailScreen(
         viewModel.finishScreen.collect {
             if (it) {
                 sharedViewModel.triggerRefreshAppList()
-                navigator.goBack()
+                sharedViewModel.closeCategoryDetail()
             }
         }
     }
@@ -50,77 +50,67 @@ fun CategoryDetailScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            PortUrlTopAppBar(
-                title = {
-                    Text(
-                        stringResource(
-                            if (categoryId == -1L) R.string.category_detail_add_title else R.string.category_detail_edit_title
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.goBack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.back_description)
-                        )
-                    }
+    Surface(
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            when (val state = uiState) {
+                is CategoryDetailViewModel.UiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-            )
-        }
-    ) { paddingValues ->
-        when (val state = uiState) {
-            is CategoryDetailViewModel.UiState.Loading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            }
-            is CategoryDetailViewModel.UiState.Success -> {
-                var category by remember(state.category) { mutableStateOf(state.category) }
+                is CategoryDetailViewModel.UiState.Success -> {
+                    var category by remember(state.category) { mutableStateOf(state.category) }
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedTextField(
-                        value = category.name ?: "",
-                        onValueChange = { category = category.copy(name = it) },
-                        label = { Text(stringResource(id = R.string.category_detail_name_label)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = category.icon ?: "",
-                        onValueChange = { category = category.copy(icon = it) },
-                        label = { Text(stringResource(id = R.string.category_detail_icon_label)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = category.description ?: "",
-                        onValueChange = { category = category.copy(description = it) },
-                        label = { Text(stringResource(id = R.string.category_detail_description_label)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(
-                            checked = category.enabled ?: true,
-                            onCheckedChange = { category = category.copy(enabled = it) }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(id = R.string.category_detail_enabled_label))
-                    }
-                    Button(
-                        onClick = { viewModel.saveCategory(category) },
-                        modifier = Modifier.fillMaxWidth()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(stringResource(id = R.string.save))
+                        OutlinedTextField(
+                            value = category.name ?: "",
+                            onValueChange = { category = category.copy(name = it) },
+                            label = { Text(stringResource(id = R.string.category_detail_name_label)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = category.icon ?: "",
+                            onValueChange = { category = category.copy(icon = it) },
+                            label = { Text(stringResource(id = R.string.category_detail_icon_label)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = category.description ?: "",
+                            onValueChange = { category = category.copy(description = it) },
+                            label = { Text(stringResource(id = R.string.category_detail_description_label)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = category.enabled ?: true,
+                                onCheckedChange = { category = category.copy(enabled = it) }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(id = R.string.category_detail_enabled_label))
+                        }
+                        Button(
+                            onClick = { viewModel.saveCategory(category) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(id = R.string.save))
+                        }
                     }
                 }
             }
+            
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }

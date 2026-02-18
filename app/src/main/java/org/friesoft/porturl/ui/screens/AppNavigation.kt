@@ -69,6 +69,8 @@ fun AppNavigation() {
 
         val sharedViewModel: AppSharedViewModel = viewModel() // Shared ViewModel for app-wide state
         val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
+        val activeAppDetailId by sharedViewModel.activeAppDetailId.collectAsStateWithLifecycle()
+        val activeCategoryDetailId by sharedViewModel.activeCategoryDetailId.collectAsStateWithLifecycle()
 
         val entryProvider = entryProvider {
             entry<Routes.Login> {
@@ -125,13 +127,34 @@ fun AppNavigation() {
             searchQuery = searchQuery,
             onSearchQueryChanged = { sharedViewModel.updateSearchQuery(it) },
             onProfileClick = { navigator.navigate(Routes.Profile) },
-            onAddApp = { navigator.navigate(Routes.AppDetail(-1)) },
-            onAddCategory = { navigator.navigate(Routes.CategoryDetail(-1)) }
+            onAddApp = { sharedViewModel.openAppDetail(-1) },
+            onAddCategory = { sharedViewModel.openCategoryDetail(-1) },
+            isModalOpen = activeAppDetailId != null || activeCategoryDetailId != null
         ) {
             NavDisplay(
                 entries = navigationState.toEntries(entryProvider),
                 onBack = { navigator.goBack() }
             )
+
+            activeAppDetailId?.let { id ->
+                org.friesoft.porturl.ui.components.ModalWindow(
+                    title = stringResource(if (id == -1L) R.string.app_detail_add_title else R.string.app_detail_edit_title),
+                    onClose = { sharedViewModel.closeAppDetail() },
+                    windowSizeClass = windowSizeClass
+                ) {
+                    ApplicationDetailRoute(navigator = navigator, applicationId = id, sharedViewModel = sharedViewModel)
+                }
+            }
+
+            activeCategoryDetailId?.let { id ->
+                org.friesoft.porturl.ui.components.ModalWindow(
+                    title = stringResource(if (id == -1L) R.string.category_detail_add_title else R.string.category_detail_edit_title),
+                    onClose = { sharedViewModel.closeCategoryDetail() },
+                    windowSizeClass = windowSizeClass
+                ) {
+                    CategoryDetailScreen(navigator = navigator, categoryId = id, sharedViewModel = sharedViewModel)
+                }
+            }
         }
     }
 }

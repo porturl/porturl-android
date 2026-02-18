@@ -168,10 +168,10 @@ fun ApplicationListRoute(
         onSortApps = viewModel::sortAppsAlphabetically,
         onRefresh = viewModel::refreshData,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
-        onApplicationClick = { app -> app.id?.let { navigator.navigate(Routes.AppDetail(it)) } },
-        onCategoryClick = { category -> category.id?.let { navigator.navigate(Routes.CategoryDetail(it)) } },
-        onAddApplication = { navigator.navigate(Routes.AppDetail(-1)) },
-        onAddCategory = { navigator.navigate(Routes.CategoryDetail(-1)) },
+        onApplicationClick = { app -> app.id?.let { sharedViewModel.openAppDetail(it) } },
+        onCategoryClick = { category -> category.id?.let { sharedViewModel.openCategoryDetail(it) } },
+        onAddApplication = { sharedViewModel.openAppDetail(-1) },
+        onAddCategory = { sharedViewModel.openCategoryDetail(-1) },
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         translucentBackground = userPreferences.translucentBackground,
@@ -197,8 +197,6 @@ fun ApplicationListScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var itemToDelete by remember { mutableStateOf<Pair<String, Long?>?>(null) }
-    var searchBarVisible by remember { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
 
     val activity = LocalActivity.current!!
     val windowWidthSize = calculateWindowSizeClass(activity).widthSizeClass
@@ -258,13 +256,6 @@ fun ApplicationListScreen(
         }
     }
 
-    val showSearchBar = searchBarVisible || uiState.searchQuery.isNotBlank()
-
-    BackHandler(enabled = showSearchBar) {
-        onSearchQueryChanged("")
-        searchBarVisible = false
-    }
-
     uiState.error?.let { LaunchedEffect(it) { snackbarHostState.showSnackbar(message = it) } }
 
     if (itemToDelete != null) {
@@ -285,88 +276,7 @@ fun ApplicationListScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            if (windowWidthSize != WindowWidthSizeClass.Compact) {
-                AnimatedVisibility(
-                    visible = showSearchBar,
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + fadeOut()
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .zIndex(1f),
-                        tonalElevation = 3.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.searchQuery,
-                                onValueChange = onSearchQueryChanged,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(focusRequester),
-                                placeholder = { Text(stringResource(id = R.string.search_placeholder)) },
-                                trailingIcon = {
-                                    if (uiState.searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { onSearchQueryChanged("") }) {
-                                            Icon(
-                                                Icons.Default.Clear,
-                                                contentDescription = stringResource(id = R.string.clear_search_description)
-                                            )
-                                        }
-                                    }
-                                },
-                                singleLine = true
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            IconButton(onClick = {
-                                searchBarVisible = false
-                                onSearchQueryChanged("")
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(id = R.string.cancel))
-                            }
-                        }
-                        LaunchedEffect(Unit) {
-                            delay(100)
-                            focusRequester.requestFocus()
-                        }
-                    }
-                }
-            }
-        },
-        floatingActionButton = {
-            if (windowWidthSize != WindowWidthSizeClass.Compact) {
-                 FloatingActionButton(
-                    onClick = { searchBarVisible = !searchBarVisible },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Icon(
-                        if (searchBarVisible) Icons.Default.Close else Icons.Default.Search,
-                        contentDescription = stringResource(id = R.string.search_description)
-                    )
-                }
-            } else {
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    FloatingActionButton(
-                        onClick = onAddCategory,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ) { Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_category_description)) }
-
-                    FloatingActionButton(
-                        onClick = onAddApplication,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Icon(Icons.Default.Apps, contentDescription = stringResource(id = R.string.add_application_description))
-                    }
-                }
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier
             .padding(padding)
@@ -381,7 +291,7 @@ fun ApplicationListScreen(
 
                     when {
                         uiState.isLoading -> FullScreenLoader()
-                        groupedItems.isEmpty() && !uiState.isRefreshing -> EmptyState(showSearchBar)
+                        groupedItems.isEmpty() && !uiState.isRefreshing -> EmptyState(uiState.searchQuery.isNotBlank())
                         else -> {
                             val onDragStart: (Application, Category, String, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
                                 { app, cat, key, absPos, relPos, size, composable ->

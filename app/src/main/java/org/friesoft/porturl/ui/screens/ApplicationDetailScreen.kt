@@ -54,7 +54,7 @@ fun ApplicationDetailRoute(
     LaunchedEffect(Unit) {
         viewModel.finishScreen.collect {
             sharedViewModel.triggerRefreshAppList()
-            navigator.goBack()
+            sharedViewModel.closeAppDetail()
         }
     }
 
@@ -69,7 +69,7 @@ fun ApplicationDetailRoute(
         snackbarHostState = snackbarHostState,
         onImageSelected = viewModel::onImageSelected,
         onSaveClick = viewModel::saveApplication,
-        onBackClick = { navigator.goBack() },
+        onBackClick = { sharedViewModel.closeAppDetail() },
         applicationId = applicationId,
     )
 }
@@ -89,32 +89,12 @@ fun ApplicationDetailScreen(
         onResult = { uri -> onImageSelected(uri) }
     )
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            PortUrlTopAppBar(
-                title = {
-                    Text(
-                        stringResource(
-                            if (applicationId == -1L) R.string.app_detail_add_title else R.string.app_detail_edit_title
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.back_description)
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
+    Surface(
+        color = MaterialTheme.colorScheme.surface
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
         ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -125,6 +105,11 @@ fun ApplicationDetailScreen(
                     onSave = onSaveClick
                 )
             }
+            
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }

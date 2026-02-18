@@ -131,6 +131,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val status = configRepository.getTelemetryStatus()
             _settingState.value = _settingState.value.copy(telemetryInfo = status)
+            // Sync with local settings if we got a valid status
+            status?.let {
+                settingsRepository.saveTelemetryEnabled(it.enabled)
+            }
         }
     }
 

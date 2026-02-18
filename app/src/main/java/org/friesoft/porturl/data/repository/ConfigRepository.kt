@@ -28,8 +28,8 @@ data class AuthInfo(
 
 @Serializable
 data class TelemetryInfo(
-    @SerialName("enabled") val enabled: Boolean,
-    @SerialName("healthy") val healthy: Boolean
+    @SerialName("enabled") val enabled: Boolean = false,
+    @SerialName("healthy") val healthy: Boolean = false
 )
 
 // A simple interface for the config service

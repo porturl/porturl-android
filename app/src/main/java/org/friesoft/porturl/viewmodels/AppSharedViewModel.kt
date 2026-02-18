@@ -17,6 +17,12 @@ class AppSharedViewModel : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
+    private val _activeAppDetailId = MutableStateFlow<Long?>(null)
+    val activeAppDetailId = _activeAppDetailId.asStateFlow()
+
+    private val _activeCategoryDetailId = MutableStateFlow<Long?>(null)
+    val activeCategoryDetailId = _activeCategoryDetailId.asStateFlow()
+
     fun setEditMode(isEditing: Boolean) {
         _isEditing.value = isEditing
     }
@@ -31,5 +37,21 @@ class AppSharedViewModel : ViewModel() {
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun openAppDetail(id: Long) {
+        _activeAppDetailId.value = id
+    }
+
+    fun closeAppDetail() {
+        _activeAppDetailId.value = null
+    }
+
+    fun openCategoryDetail(id: Long) {
+        _activeCategoryDetailId.value = id
+    }
+
+    fun closeCategoryDetail() {
+        _activeCategoryDetailId.value = null
     }
 }

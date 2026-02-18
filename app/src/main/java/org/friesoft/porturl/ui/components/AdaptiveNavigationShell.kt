@@ -18,42 +18,29 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
-import coil.compose.AsyncImage
-import coil.compose.SubcomposeAsyncImage
-import coil.request.ImageRequest
 import org.friesoft.porturl.R
 import org.friesoft.porturl.client.model.User
-import org.friesoft.porturl.ui.components.UserAvatar
 import org.friesoft.porturl.ui.navigation.Routes
+import androidx.activity.compose.BackHandler
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -62,7 +49,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
@@ -73,19 +59,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsTopHeight
-
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.LocalDensity
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdaptiveNavigationShell(
     windowSizeClass: WindowWidthSizeClass,
@@ -99,6 +77,7 @@ fun AdaptiveNavigationShell(
     onProfileClick: () -> Unit, // Opens menu or profile screen
     onAddApp: () -> Unit,
     onAddCategory: () -> Unit,
+    isModalOpen: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val showNavigation = currentRoute != Routes.Login
@@ -106,6 +85,10 @@ fun AdaptiveNavigationShell(
     if (!showNavigation) {
         content()
         return
+    }
+
+    BackHandler(enabled = searchQuery.isNotEmpty() && currentRoute == Routes.AppList) {
+        onSearchQueryChanged("")
     }
 
     val destinations = mutableListOf(
@@ -137,350 +120,164 @@ fun AdaptiveNavigationShell(
         )
     )
 
-    // Check if we should use Rail or BottomBar
-    val useRail = windowSizeClass != WindowWidthSizeClass.Compact
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    if (useRail) {
-        // Default expanded if screen is large (Tablet) but not just expanded width (Foldable)
-        // Foldables often have width ~800-900dp. Tablets usually > 1000dp.
-        val density = LocalDensity.current
-        val isLargeScreen = windowSizeClass == WindowWidthSizeClass.Expanded && 
-            LocalWindowInfo.current.containerSize.width > with(density) { 1000.dp.toPx() }
-        var isExpanded by rememberSaveable { 
-            mutableStateOf(isLargeScreen) 
-        }
-        
-        val sidebarWidth by animateDpAsState(
-            targetValue = if (isExpanded) 240.dp else 64.dp,
-            label = "SidebarWidth"
-        )
-        
-        val contentPadding by animateDpAsState(
-            targetValue = if (isLargeScreen && isExpanded) 240.dp else 64.dp,
-            label = "ContentPadding"
-        )
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = contentPadding)
-            ) {
-                content()
-            }
-            
-            if (isExpanded && !isLargeScreen) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) { isExpanded = false }
-                        // Optional: Add a semi-transparent background like Scrim
-                        // .background(Color.Black.copy(alpha = 0.32f)) 
-                )
-            }
-
-            Surface(
-                modifier = Modifier
-                    .width(sidebarWidth)
-                    .fillMaxHeight()
-                    .align(Alignment.CenterStart),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            ) {
-                AnimatedContent(
-                    targetState = isExpanded,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(220, delayMillis = 90)) togetherWith
-                        fadeOut(animationSpec = tween(90))
-                    },
-                    label = "SidebarContent"
-                ) { expanded ->
-                    if (expanded) {
-                        Column(Modifier.fillMaxSize()) {
-                            Column {
-                                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                                Row(
-                                    modifier = Modifier
-                                        .padding(horizontal = 12.dp)
-                                        .height(64.dp)
-                                        .fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    IconButton(onClick = { isExpanded = !isExpanded }) {
-                                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_description))
-                                    }
-                                }
-                            }
-
-                            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                                destinations.forEach { item ->
-                                    val selected = isRouteSelected(currentRoute, item.route)
-                                    NavigationDrawerItem(
-                                        selected = selected,
-                                        onClick = { onNavigate(item.route) },
-                                        icon = {
-                                            Icon(
-                                                if (selected) item.selectedIcon else item.unselectedIcon,
-                                                contentDescription = stringResource(item.labelRes)
-                                            )
-                                        },
-                                        label = { Text(stringResource(item.labelRes)) },
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
-                                }
-                                
-                                if (currentRoute == Routes.AppList) {
-                                    androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                                    NavigationDrawerItem(
-                                        selected = false,
-                                        onClick = onAddApp,
-                                        icon = { Icon(Icons.Filled.Apps, contentDescription = null) },
-                                        label = { Text(stringResource(R.string.add_application_description)) },
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        selected = false,
-                                        onClick = onAddCategory,
-                                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                                        label = { Text(stringResource(R.string.add_category_description)) },
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
-                                }
-                            }
-                            
-                            // Footer (Profile)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+             ModalDrawerSheet(
+                modifier = Modifier.width(240.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                drawerContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+             ) {
+                Column(Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        destinations.forEach { item ->
+                            val selected = isRouteSelected(currentRoute, item.route)
                             NavigationDrawerItem(
-                                selected = currentRoute == Routes.Profile,
-                                onClick = onProfileClick,
-                                icon = {
-                                    UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 40.dp)
+                                selected = selected,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    onNavigate(item.route)
                                 },
-                                label = { Text(stringResource(R.string.user_profile)) },
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
-                    } else {
-                        Column(
-                            modifier = Modifier.fillMaxHeight(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Column {
-                                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                                    Box(
-                                    modifier = Modifier
-                                        .height(64.dp)
-                                        .width(64.dp), // Fixed width to match standard Rail width
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    IconButton(onClick = { isExpanded = !isExpanded }) {
-                                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_description))
-                                    }
-                                }
-                            }
-
-                            // Top items
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                destinations.forEach { item ->
-                                    val selected = isRouteSelected(currentRoute, item.route)
-                                    NavigationRailItem(
-                                        selected = selected,
-                                        onClick = { onNavigate(item.route) },
-                                        icon = {
-                                            Icon(
-                                                if (selected) item.selectedIcon else item.unselectedIcon,
-                                                contentDescription = stringResource(item.labelRes)
-                                            )
-                                        },
-                                        alwaysShowLabel = false
-                                    )
-                                }
-                                
-                                if (currentRoute == Routes.AppList) {
-                                    Spacer(Modifier.height(16.dp))
-                                    NavigationRailItem(
-                                        selected = false,
-                                        onClick = onAddApp,
-                                        icon = { Icon(Icons.Filled.Apps, contentDescription = stringResource(R.string.add_application_description)) },
-                                        alwaysShowLabel = false
-                                    )
-                                    NavigationRailItem(
-                                        selected = false,
-                                        onClick = onAddCategory,
-                                        icon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_category_description)) },
-                                        alwaysShowLabel = false
-                                    )
-                                }
-                            }
-                            
-                            // Footer (Profile)
-                            NavigationRailItem(
-                                selected = currentRoute == Routes.Profile,
-                                onClick = onProfileClick,
                                 icon = {
-                                    UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 40.dp)
+                                    Icon(
+                                        if (selected) item.selectedIcon else item.unselectedIcon,
+                                        contentDescription = stringResource(item.labelRes)
+                                    )
                                 },
-                                alwaysShowLabel = false
+                                label = { Text(stringResource(item.labelRes)) },
+                                modifier = Modifier.padding(vertical = 4.dp)
                             )
-                            Spacer(Modifier.padding(vertical = 8.dp))
                         }
                     }
+                    
+                    // Footer (Profile)
+                    NavigationDrawerItem(
+                        selected = currentRoute == Routes.Profile,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onProfileClick()
+                        },
+                        icon = {
+                            UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 40.dp)
+                        },
+                        label = { Text(stringResource(R.string.user_profile)) },
+                        modifier = Modifier.padding(12.dp)
+                    )
                 }
-            }
+             }
         }
-    } else {
-        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-        val scope = rememberCoroutineScope()
-        var isSearchActive by rememberSaveable { mutableStateOf(false) }
-
-        // Automatically close search if query is cleared? Optional.
-        // For now, keep it manual close via back button or similar if needed.
-
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                 ModalDrawerSheet(
-                    modifier = Modifier.width(240.dp),
-                    drawerContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    drawerContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                 ) {
-                    Column(Modifier.fillMaxSize()) {
-                        
-
-                        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            destinations.forEach { item ->
-                                val selected = isRouteSelected(currentRoute, item.route)
-                                NavigationDrawerItem(
-                                    selected = selected,
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        onNavigate(item.route)
-                                    },
-                                    icon = {
-                                        Icon(
-                                            if (selected) item.selectedIcon else item.unselectedIcon,
-                                            contentDescription = stringResource(item.labelRes)
-                                        )
-                                    },
-                                    label = { Text(stringResource(item.labelRes)) },
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
+    ) {
+        Scaffold(
+            bottomBar = {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 3.dp,
+                    modifier = Modifier.height(80.dp).fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Menu (10%)
+                        Box(modifier = Modifier.weight(0.1f), contentAlignment = Alignment.Center) {
+                            IconButton(
+                                onClick = { scope.launch { drawerState.open() } },
+                                enabled = !isModalOpen
+                            ) {
+                                Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_description))
                             }
                         }
                         
-                        // Footer (Profile)
-                        NavigationDrawerItem(
-                            selected = currentRoute == Routes.Profile,
-                            onClick = {
-                                scope.launch { drawerState.close() }
-                                onProfileClick()
-                            },
-                            icon = {
-                                UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 40.dp)
-                            },
-                            label = { Text(stringResource(R.string.user_profile)) },
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
-                 }
-            }
-        ) {
-            Scaffold(
-                bottomBar = {
-                    AnimatedContent(targetState = isSearchActive, label = "BottomBarSearchFade") { searchMode ->
-                        if (searchMode) {
-                            Surface(
-                                tonalElevation = 3.dp,
-                                modifier = Modifier.fillMaxWidth().height(64.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = searchQuery,
-                                        onValueChange = onSearchQueryChanged,
-                                        modifier = Modifier.weight(1f),
-                                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                                        singleLine = true,
-                                        trailingIcon = {
-                                            if (searchQuery.isNotEmpty()) {
-                                                IconButton(onClick = { onSearchQueryChanged("") }) {
-                                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search_description))
-                                                }
+                        // Search Bar (80%)
+                        Box(modifier = Modifier.weight(0.8f).padding(vertical = 8.dp)) {
+                            if (currentRoute == Routes.AppList) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = onSearchQueryChanged,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isModalOpen,
+                                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        if (searchQuery.isNotEmpty()) {
+                                            IconButton(
+                                                onClick = { onSearchQueryChanged("") },
+                                                enabled = !isModalOpen
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search_description))
                                             }
                                         }
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    IconButton(onClick = { isSearchActive = false }) {
-                                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel))
-                                    }
-                                }
-                            }
-                        } else {
-                            NavigationBar(modifier = Modifier.height(64.dp)) {
-                                // Menu Item (Left)
-                                NavigationBarItem(
-                                    selected = false,
-                                    onClick = { scope.launch { drawerState.open() } },
-                                    icon = { Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_description)) },
-                                    alwaysShowLabel = false
-                                )
-                                
-                                // Search Item (Left-ish)
-                                NavigationBarItem(
-                                    selected = false,
-                                    onClick = { isSearchActive = true },
-                                    icon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_description)) },
-                                    alwaysShowLabel = false
-                                )
-
-                                // Destinations (Only Home/AppList in Bottom Bar for compact mode)
-                                destinations.forEach { item ->
-                                    if (item.route != Routes.Settings && item.route != Routes.UserList) {
-                                        val selected = isRouteSelected(currentRoute, item.route)
-                                        NavigationBarItem(
-                                            selected = selected,
-                                            onClick = { onNavigate(item.route) },
-                                            icon = {
-                                                Icon(
-                                                    if (selected) item.selectedIcon else item.unselectedIcon,
-                                                    contentDescription = stringResource(item.labelRes)
-                                                )
-                                            },
-                                            alwaysShowLabel = false
-                                        )
-                                    }
-                                }
-                                // Profile Item
-                                NavigationBarItem(
-                                    selected = currentRoute == Routes.Profile,
-                                    onClick = onProfileClick,
-                                    icon = {
-                                        UserAvatar(currentUser = currentUser, backendUrl = backendUrl, size = 32.dp)
                                     },
-                                    alwaysShowLabel = false
+                                    shape = CircleShape,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color.Transparent,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        disabledBorderColor = Color.Transparent,
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    )
                                 )
+                            }
+                        }
+
+                        // Home (10%)
+                        Box(modifier = Modifier.weight(0.1f), contentAlignment = Alignment.Center) {
+                            destinations.find { it.route == Routes.AppList }?.let { item ->
+                                val selected = isRouteSelected(currentRoute, item.route)
+                                IconButton(
+                                    onClick = { onNavigate(item.route) },
+                                    enabled = !isModalOpen
+                                ) {
+                                    Icon(
+                                        if (selected) item.selectedIcon else item.unselectedIcon,
+                                        contentDescription = stringResource(item.labelRes),
+                                        tint = if (selected) {
+                                            if (isModalOpen) MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                                            else MaterialTheme.colorScheme.primary
+                                        } else {
+                                            if (isModalOpen) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            ) { padding ->
-                val layoutDirection = LocalLayoutDirection.current
-                val effectivePadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    top = 0.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = padding.calculateBottomPadding()
-                )
-                Box(modifier = Modifier.padding(effectivePadding)) {
-                    content()
+            },
+            floatingActionButton = {
+                if (currentRoute == Routes.AppList && !isModalOpen) {
+                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        FloatingActionButton(
+                            onClick = onAddCategory,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_category_description)) }
+
+                        FloatingActionButton(
+                            onClick = onAddApp,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Icon(Icons.Default.Apps, contentDescription = stringResource(R.string.add_application_description))
+                        }
+                    }
                 }
+            }
+        ) { padding ->
+            val layoutDirection = LocalLayoutDirection.current
+            val effectivePadding = PaddingValues(
+                start = padding.calculateStartPadding(layoutDirection),
+                top = 0.dp,
+                end = padding.calculateEndPadding(layoutDirection),
+                bottom = padding.calculateBottomPadding()
+            )
+            Box(modifier = Modifier.padding(effectivePadding)) {
+                content()
             }
         }
     }
@@ -494,17 +291,12 @@ data class NavigationItem(
 )
 
 private fun isRouteSelected(currentRoute: NavKey, itemRoute: NavKey): Boolean {
-    // Simple equality check. Might need more complex logic if nested routes exist.
-    // For AppDetail, it counts as AppList being selected?
-    // Maybe not.
     if (currentRoute == itemRoute) return true
     
-    // If current is AppDetail or CategoryDetail, select AppList
     if (itemRoute == Routes.AppList && (currentRoute is Routes.AppDetail || currentRoute is Routes.CategoryDetail)) {
         return true
     }
     
-    // If current is UserDetail, select UserList
     if (itemRoute == Routes.UserList && currentRoute is Routes.UserDetail) {
         return true
     }
