@@ -425,7 +425,7 @@ jobs:
           packageName: org.friesoft.porturl
           releaseFiles: artifacts/**/*.aab
           track: internal
-          status: completed
+          status: draft
           releaseName: ${{ needs.build.outputs.versionName }}
 
   # =================================================================
