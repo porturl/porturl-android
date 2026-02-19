@@ -109,36 +109,19 @@
     <string name="user_permissions_title">Benutzerberechtigungen</string>
     <string name="no_roles_defined">Keine Rollen für diese App definiert.</string>
 
-        <!-- User Menu -->
+    <!-- User Menu -->
+    <string name="user_profile">Profil</string>
+    <string name="menu_description">Menü</string>
 
-        <string name="user_profile">Profil</string>
+    <!-- Admin Operations -->
+    <string name="settings_admin_title">Admin-Operationen</string>
+    <string name="settings_admin_export_button">Daten exportieren (YAML)</string>
+    <string name="settings_admin_import_button">Daten importieren (YAML)</string>
+    <string name="settings_admin_import_warning_title">Gefährliche Operation</string>
+    <string name="settings_admin_import_warning_text">Dies löscht ALLE vorhandenen Apps und Kategorien in der Datenbank und ersetzt sie durch die Daten aus der YAML-Datei. Bilder werden wiederhergestellt und Keycloak-Rollen erstellt. Keycloak-Daten werden NICHT gelöscht. Dies kann nicht rückgängig gemacht werden. Sind Sie sicher, dass Sie fortfahren möchten?</string>
+    <string name="settings_admin_import_success">Daten erfolgreich importiert.</string>
+    <string name="settings_admin_export_success">Daten erfolgreich exportiert.</string>
+    <string name="settings_admin_error_import">Fehler beim Importieren der Daten.</string>
+    <string name="settings_admin_error_export">Fehler beim Exportieren der Daten.</string>
 
-        <string name="menu_description">Menü</string>
-
-    
-
-        <!-- Admin Operations -->
-
-        <string name="settings_admin_title">Admin-Operationen</string>
-
-        <string name="settings_admin_export_button">Daten exportieren (YAML)</string>
-
-        <string name="settings_admin_import_button">Daten importieren (YAML)</string>
-
-        <string name="settings_admin_import_warning_title">Gefährliche Operation</string>
-
-        <string name="settings_admin_import_warning_text">Dies löscht ALLE vorhandenen Apps und Kategorien in der Datenbank und ersetzt sie durch die Daten aus der YAML-Datei. Bilder werden wiederhergestellt und Keycloak-Rollen erstellt. Keycloak-Daten werden NICHT gelöscht. Dies kann nicht rückgängig gemacht werden. Sind Sie sicher, dass Sie fortfahren möchten?</string>
-
-        <string name="settings_admin_import_success">Daten erfolgreich importiert.</string>
-
-        <string name="settings_admin_export_success">Daten erfolgreich exportiert.</string>
-
-        <string name="settings_admin_error_import">Fehler beim Importieren der Daten.</string>
-
-        <string name="settings_admin_error_export">Fehler beim Exportieren der Daten.</string>
-
-    
-
-    </resources>
-
-    
+</resources>
