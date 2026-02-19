@@ -139,22 +139,6 @@ jobs:
              echo "Renamed: $file -> $new_name"
            done
 
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: 'projects/434707438982/locations/global/workloadIdentityPools/github/providers/github-provider'
-          service_account: 'github-action-publish@august-apogee-487912-h3.iam.gserviceaccount.com'
-
-      - name: 'Upload to Google Play'
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
-          packageName: org.friesoft.porturl
-          releaseFiles: app-release-${{ steps.release_info.outputs.tag }}.aab
-          track: internal
-          status: completed
-
       - name: Update Release with Artifacts and Verification Info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -191,6 +175,22 @@ jobs:
           TAG: ${{ steps.release_info.outputs.tag }}
         run: |
           gh release edit "$TAG" --draft=false --repo ${{ github.repository }}
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/434707438982/locations/global/workloadIdentityPools/github/providers/github-provider'
+          service_account: 'github-action-publish@august-apogee-487912-h3.iam.gserviceaccount.com'
+
+      - name: 'Upload to Google Play'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
+          packageName: org.friesoft.porturl
+          releaseFiles: app-release-${{ steps.release_info.outputs.tag }}.aab
+          track: internal
+          status: completed
 
       - name: Label PR as Published
         env:

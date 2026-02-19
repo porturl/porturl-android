@@ -298,6 +298,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -409,6 +410,23 @@ jobs:
             
             ### 🧪 Test Results
             ${{ needs.validate.outputs.test-results || 'No test results available' }}
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/434707438982/locations/global/workloadIdentityPools/github/providers/github-provider'
+          service_account: 'github-action-publish@august-apogee-487912-h3.iam.gserviceaccount.com'
+
+      - name: 'Upload to Google Play'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
+          packageName: org.friesoft.porturl
+          releaseFiles: artifacts/**/*.aab
+          track: internal
+          status: completed
+          changesNotSentForReview: true
 
   # =================================================================
   #           📢 4. NOTIFICATION & CLEANUP
