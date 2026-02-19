@@ -426,7 +426,6 @@ jobs:
           releaseFiles: artifacts/**/*.aab
           track: internal
           status: completed
-          changesNotSentForReview: true
 
   # =================================================================
   #           📢 4. NOTIFICATION & CLEANUP
