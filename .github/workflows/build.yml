@@ -425,8 +425,8 @@ jobs:
           packageName: org.friesoft.porturl
           releaseFiles: artifacts/**/*.aab
           track: internal
-          status: draft
-          releaseName: ${{ needs.build.outputs.versionName }} (${{ needs.build.outputs.commitSha }})
+          status: completed
+          releaseName: ${{ needs.build.outputs.versionName }}
 
   # =================================================================
   #           📢 4. NOTIFICATION & CLEANUP
