@@ -190,7 +190,8 @@ jobs:
           packageName: org.friesoft.porturl
           releaseFiles: app-release-${{ steps.release_info.outputs.tag }}.aab
           track: internal
-          status: completed
+          status: draft
+          releaseName: ${{ steps.release_info.outputs.tag }}
 
       - name: Label PR as Published
         env:
