@@ -4,6 +4,7 @@
 
     <!-- Required for making network requests to your backend and Keycloak -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".PortUrlApplication"

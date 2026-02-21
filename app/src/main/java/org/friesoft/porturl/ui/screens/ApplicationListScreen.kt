@@ -72,6 +72,8 @@ import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.Category
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
+import org.friesoft.porturl.ui.utils.HapticEffect
+import org.friesoft.porturl.ui.utils.VibrationHelper
 import org.friesoft.porturl.viewmodels.*
 import kotlin.math.roundToInt
 
@@ -201,6 +203,7 @@ fun ApplicationListScreen(
     var itemToDelete by remember { mutableStateOf<Pair<String, Long?>?>(null) }
 
     val activity = LocalActivity.current!!
+    val context = LocalContext.current
     val windowWidthSize = calculateWindowSizeClass(activity).widthSizeClass
 
     // --- Drag and Drop State ---
@@ -297,6 +300,7 @@ fun ApplicationListScreen(
                         else -> {
                             val onDragStart: (Application, Category, String, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
                                 { app, cat, key, absPos, relPos, size, composable ->
+                                    VibrationHelper.vibrate(context, HapticEffect.DragStarted)
                                     menuOpenAppId = null
                                     frozenAppBounds = applicationBounds.mapNotNull { (appKey, rect) ->
                                         val parts = appKey.split("_")
@@ -318,6 +322,7 @@ fun ApplicationListScreen(
 
                             val onCategoryDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
                                 { category, absPos, relPos, size, composable ->
+                                    VibrationHelper.vibrate(context, HapticEffect.DragStarted)
                                     draggingItem = DraggingItem.CategoryItem(category, absPos, relPos, size, composable)
                                 }
 
@@ -395,6 +400,9 @@ fun ApplicationListScreen(
                                                   }
                                              }
                                         }
+                                        if (newDropTarget != dropTargetInfo) {
+                                            VibrationHelper.vibrate(context, HapticEffect.DragCellHover)
+                                        }
                                         dropTargetInfo = newDropTarget
                                     }
                                 }
@@ -403,6 +411,7 @@ fun ApplicationListScreen(
                             val onDragEnd: () -> Unit = {
                                 draggingItem?.let { state ->
                                     if (state is DraggingItem.App && !state.isVisualDragStarted) {
+                                        VibrationHelper.vibrate(context, HapticEffect.LongClick)
                                         menuOpenAppId = state.key
                                     } else {
                                         dropTargetInfo?.let { target ->
