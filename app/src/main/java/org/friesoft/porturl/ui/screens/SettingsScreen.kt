@@ -82,16 +82,7 @@ import kotlin.system.exitProcess
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltViewModel()) {
-    val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle(
-        initialValue = UserPreferences(
-            ThemeMode.SYSTEM,
-            ColorSource.SYSTEM,
-            null,
-            null,
-            translucentBackground = false,
-            telemetryEnabled = true
-        )
-    )
+    val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
     val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
@@ -212,67 +203,71 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                ThemeSettings(
-                    selectedThemeMode = userPreferences.themeMode,
-                    onThemeModeSelected = { viewModel.saveThemeMode(it) },
-                    translucentBackground = userPreferences.translucentBackground,
-                    onTranslucentBackgroundChange = { viewModel.saveTranslucentBackground(it) }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                )
-                ColorSettings(
-                    userPreferences = userPreferences,
-                    onColorSourceSelected = { viewModel.saveColorSource(it) },
-                    onPredefinedColorSelected = { viewModel.savePredefinedColorName(it) },
-                    onCustomColorsSelected = { viewModel.saveCustomColors(it) }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                )
-                LanguageSettings(
-                    currentLanguage = settingsState.selectedLanguage,
-                    availableLanguages = settingsState.availableLanguages,
-                    onLanguageSelected = {
-                        viewModel.changeLanguage(it)
-                        (context as? Activity)?.recreate()
-                    }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                )
-                TelemetrySettings(
-                    telemetryEnabled = userPreferences.telemetryEnabled,
-                    telemetryInfo = settingsState.telemetryInfo,
-                    onTelemetryEnabledChange = {
-                        viewModel.saveTelemetryEnabled(it)
-                        showRestartDialog = true
-                    }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                )
-                ServerSettings(viewModel = viewModel)
-                
-                if (isAdmin) {
+        userPreferences?.let { prefs ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ThemeSettings(
+                        selectedThemeMode = prefs.themeMode,
+                        onThemeModeSelected = { viewModel.saveThemeMode(it) },
+                        translucentBackground = prefs.translucentBackground,
+                        onTranslucentBackgroundChange = { viewModel.saveTranslucentBackground(it) }
+                    )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 16.dp),
                     )
-                    AdminOperations(
-                        onExportClick = { exportLauncher.launch("porturl_export.yaml") },
-                        onImportClick = { showImportWarning = true }
+                    ColorSettings(
+                        userPreferences = prefs,
+                        onColorSourceSelected = { viewModel.saveColorSource(it) },
+                        onPredefinedColorSelected = { viewModel.savePredefinedColorName(it) },
+                        onCustomColorsSelected = { viewModel.saveCustomColors(it) }
                     )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                    LanguageSettings(
+                        currentLanguage = settingsState.selectedLanguage,
+                        availableLanguages = settingsState.availableLanguages,
+                        onLanguageSelected = {
+                            viewModel.changeLanguage(it)
+                            (context as? Activity)?.recreate()
+                        }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                    TelemetrySettings(
+                        telemetryEnabled = prefs.telemetryEnabled,
+                        telemetryInfo = settingsState.telemetryInfo,
+                        onTelemetryEnabledChange = {
+                            viewModel.saveTelemetryEnabled(it)
+                            showRestartDialog = true
+                        }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                    ServerSettings(viewModel = viewModel)
+                    
+                    if (isAdmin) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 16.dp),
+                        )
+                        AdminOperations(
+                            onExportClick = { exportLauncher.launch("porturl_export.yaml") },
+                            onImportClick = { showImportWarning = true }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
+        } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
     }
 }

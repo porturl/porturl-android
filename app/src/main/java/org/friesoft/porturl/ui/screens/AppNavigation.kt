@@ -69,14 +69,7 @@ fun AppNavigation() {
 
         val sharedViewModel: AppSharedViewModel = viewModel() // Shared ViewModel for app-wide state
         val settingsViewModel: org.friesoft.porturl.viewmodels.SettingsViewModel = hiltViewModel()
-        val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
-            initialValue = org.friesoft.porturl.data.model.UserPreferences(
-                org.friesoft.porturl.data.model.ThemeMode.SYSTEM,
-                org.friesoft.porturl.data.model.ColorSource.SYSTEM,
-                null,
-                null
-            )
-        )
+        val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle()
         val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
         val activeAppDetailId by sharedViewModel.activeAppDetailId.collectAsStateWithLifecycle()
         val activeCategoryDetailId by sharedViewModel.activeCategoryDetailId.collectAsStateWithLifecycle()
@@ -135,7 +128,7 @@ fun AppNavigation() {
             backendUrl = backendUrl,
             searchQuery = searchQuery,
             onSearchQueryChanged = { sharedViewModel.updateSearchQuery(it) },
-            layoutMode = userPreferences.layoutMode,
+            layoutMode = userPreferences?.layoutMode ?: org.friesoft.porturl.data.model.LayoutMode.GRID,
             onLayoutModeChanged = { settingsViewModel.saveLayoutMode(it) },
             onProfileClick = { navigator.navigate(Routes.Profile) },
             onAddApp = { sharedViewModel.openAppDetail(-1) },

@@ -128,15 +128,7 @@ fun ApplicationListRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val shouldRefresh by sharedViewModel.shouldRefreshAppList.collectAsStateWithLifecycle()
-    val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle(
-        initialValue = org.friesoft.porturl.data.model.UserPreferences(
-            org.friesoft.porturl.data.model.ThemeMode.SYSTEM,
-            org.friesoft.porturl.data.model.ColorSource.SYSTEM,
-            null,
-            null,
-            translucentBackground = false
-        )
-    )
+    val userPreferences by settingsViewModel.userPreferences.collectAsStateWithLifecycle()
 
     val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
@@ -165,7 +157,7 @@ fun ApplicationListRoute(
 
     ApplicationListScreen(
         uiState = uiState,
-        layoutMode = userPreferences.layoutMode,
+        layoutMode = userPreferences?.layoutMode ?: org.friesoft.porturl.data.model.LayoutMode.GRID,
         onCategoryDragEnd = viewModel::moveCategory,
         onMoveApplication = viewModel::moveApplication,
         onSortApps = viewModel::sortAppsAlphabetically,
@@ -177,7 +169,7 @@ fun ApplicationListRoute(
         onAddCategory = { sharedViewModel.openCategoryDetail(-1) },
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
-        translucentBackground = userPreferences.translucentBackground,
+        translucentBackground = userPreferences?.translucentBackground ?: false,
     )
 }
 

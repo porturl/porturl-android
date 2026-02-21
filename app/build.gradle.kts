@@ -123,6 +123,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     ksp(libs.kotlin.metadata.jvm)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.appcompat)
     implementation(libs.materialcomponents)
     implementation(libs.androidx.material3)

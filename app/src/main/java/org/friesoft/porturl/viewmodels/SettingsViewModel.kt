@@ -8,8 +8,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.AppLocaleManager
 import org.friesoft.porturl.Language
@@ -55,7 +57,12 @@ class SettingsViewModel @Inject constructor(
      * display the currently saved backend URL.
      */
     val backendUrl: Flow<String> = settingsRepository.backendUrl
-    val userPreferences: Flow<UserPreferences> = settingsRepository.userPreferences
+    val userPreferences: StateFlow<UserPreferences?> = settingsRepository.userPreferences
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     private val _isAdmin = MutableStateFlow(false)
     val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
