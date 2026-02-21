@@ -49,7 +49,7 @@ class ApplicationDetailViewModel @Inject constructor(
 
     fun loadApplication(id: Long) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.value = UiState(isLoading = true)
             try {
                 val allCategories = categoryRepository.getAllCategories()
                 val app = if (id == -1L) {

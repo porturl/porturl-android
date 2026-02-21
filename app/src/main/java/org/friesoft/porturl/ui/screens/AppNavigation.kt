@@ -141,22 +141,34 @@ fun AppNavigation() {
             )
 
             activeAppDetailId?.let { id ->
-                org.friesoft.porturl.ui.components.ModalWindow(
-                    title = stringResource(if (id == -1L) R.string.app_detail_add_title else R.string.app_detail_edit_title),
-                    onClose = { sharedViewModel.closeAppDetail() },
-                    windowSizeClass = windowSizeClass
-                ) {
-                    ApplicationDetailRoute(navigator = navigator, applicationId = id, sharedViewModel = sharedViewModel)
+                key(id) {
+                    org.friesoft.porturl.ui.components.ModalWindow(
+                        title = stringResource(if (id == -1L) R.string.app_detail_add_title else R.string.app_detail_edit_title),
+                        onClose = { sharedViewModel.closeAppDetail() },
+                        windowSizeClass = windowSizeClass
+                    ) {
+                        ApplicationDetailRoute(
+                            navigator = navigator,
+                            applicationId = id,
+                            sharedViewModel = sharedViewModel
+                        )
+                    }
                 }
             }
 
             activeCategoryDetailId?.let { id ->
-                org.friesoft.porturl.ui.components.ModalWindow(
-                    title = stringResource(if (id == -1L) R.string.category_detail_add_title else R.string.category_detail_edit_title),
-                    onClose = { sharedViewModel.closeCategoryDetail() },
-                    windowSizeClass = windowSizeClass
-                ) {
-                    CategoryDetailScreen(navigator = navigator, categoryId = id, sharedViewModel = sharedViewModel)
+                key(id) {
+                    org.friesoft.porturl.ui.components.ModalWindow(
+                        title = stringResource(if (id == -1L) R.string.category_detail_add_title else R.string.category_detail_edit_title),
+                        onClose = { sharedViewModel.closeCategoryDetail() },
+                        windowSizeClass = windowSizeClass
+                    ) {
+                        CategoryDetailScreen(
+                            navigator = navigator,
+                            categoryId = id,
+                            sharedViewModel = sharedViewModel
+                        )
+                    }
                 }
             }
         }

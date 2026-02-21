@@ -26,7 +26,7 @@ fun CategoryDetailScreen(
     navigator: Navigator,
     categoryId: Long,
     sharedViewModel: AppSharedViewModel,
-    viewModel: CategoryDetailViewModel = hiltViewModel()
+    viewModel: CategoryDetailViewModel = hiltViewModel(key = categoryId.toString())
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }

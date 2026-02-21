@@ -42,7 +42,7 @@ fun ApplicationDetailRoute(
     navigator: Navigator,
     applicationId: Long,
     sharedViewModel: AppSharedViewModel,
-    viewModel: ApplicationDetailViewModel = hiltViewModel()
+    viewModel: ApplicationDetailViewModel = hiltViewModel(key = applicationId.toString())
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
