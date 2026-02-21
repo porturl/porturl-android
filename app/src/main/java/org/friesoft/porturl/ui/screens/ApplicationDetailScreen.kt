@@ -143,7 +143,7 @@ private fun ApplicationForm(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             ImagePicker(
-                imageModel = state.selectedImageUri ?: application.iconUrlThumbnail,
+                imageModel = state.selectedImageUri ?: application.iconUrl,
                 onClick = onImagePickerClick
             )
 

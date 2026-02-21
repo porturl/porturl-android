@@ -813,7 +813,7 @@ fun ApplicationListItem(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(application.iconUrlThumbnail)
+                        .data(application.iconUrl)
                         .crossfade(true)
                         .build(),
                     placeholder = rememberVectorPainter(Icons.Default.Image),
@@ -1026,7 +1026,7 @@ fun ApplicationGridItem(
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(application.iconUrlThumbnail)
+                            .data(application.iconUrl)
                             .crossfade(true)
                             .build(),
                         placeholder = rememberVectorPainter(Icons.Default.Image),

@@ -98,6 +98,7 @@ class ApplicationDetailViewModel @Inject constructor(
                     val appToSave = ApplicationCreateRequest(
                         name = name,
                         url = url,
+                        icon = iconFilename,
                         categories = selectedCategories,
                         roles = availableRoles
                     )
@@ -106,9 +107,7 @@ class ApplicationDetailViewModel @Inject constructor(
                     val appUpdateRequest = ApplicationUpdateRequest(
                         name = name,
                         url = url,
-                        iconLarge = iconFilename ?: originalApplication.iconLarge,
-                        iconMedium = iconFilename ?: originalApplication.iconMedium,
-                        iconThumbnail = iconFilename ?: originalApplication.iconThumbnail,
+                        icon = iconFilename ?: originalApplication.icon,
                         categories = selectedCategories,
                         availableRoles = availableRoles
                     )

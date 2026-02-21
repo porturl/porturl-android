@@ -492,19 +492,9 @@ components:
           type: string
         url:
           type: string
-        iconLarge:
+        icon:
           type: string
-        iconMedium:
-          type: string
-        iconThumbnail:
-          type: string
-        iconUrlLarge:
-          type: string
-          readOnly: true
-        iconUrlMedium:
-          type: string
-          readOnly: true
-        iconUrlThumbnail:
+        iconUrl:
           type: string
           readOnly: true
         categories:
@@ -569,6 +559,8 @@ components:
           type: string
         url:
           type: string
+        icon:
+          type: string
         categories:
           type: array
           items:
@@ -585,11 +577,7 @@ components:
           type: string
         url:
           type: string
-        iconLarge:
-          type: string
-        iconMedium:
-          type: string
-        iconThumbnail:
+        icon:
           type: string
         categories:
           type: array
@@ -656,8 +644,6 @@ components:
           type: array
           items:
             type: string
-        images:
-          type: object
-          additionalProperties:
-            type: string
-            description: Base64 encoded image content. Keys are 'large', 'medium', 'thumbnail'.
+        icon:
+          type: string
+          description: Base64 encoded icon content.
