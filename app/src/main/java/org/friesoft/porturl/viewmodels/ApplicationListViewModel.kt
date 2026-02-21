@@ -181,6 +181,17 @@ class ApplicationListViewModel @Inject constructor(
         val newItem = itemToMove.copy(parentCategoryId = toCatId)
         currentItems.add(insertionIndex, newItem)
 
+        // If target category was alphabetical, switch it to custom because we just performed a manual move
+        val targetCatIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == toCatId }
+        if (targetCatIndex != -1) {
+            val catItem = currentItems[targetCatIndex] as DashboardItem.CategoryItem
+            if (catItem.category.applicationSortMode == Category.ApplicationSortMode.ALPHABETICAL) {
+                currentItems[targetCatIndex] = DashboardItem.CategoryItem(
+                    catItem.category.copy(applicationSortMode = Category.ApplicationSortMode.CUSTOM)
+                )
+            }
+        }
+
         if (fromCatId != toCatId) {
             val duplicateIndex = currentItems.indexOfFirst {
                 it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == toCatId && it !== newItem
@@ -311,19 +322,13 @@ class ApplicationListViewModel @Inject constructor(
         val categoryIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == categoryId }
         if (categoryIndex == -1) return
 
-        val appsForCategory = currentItems
-            .drop(categoryIndex + 1)
-            .takeWhile { it is DashboardItem.ApplicationItem }
-            .map { it as DashboardItem.ApplicationItem }
+        val categoryItem = currentItems[categoryIndex] as DashboardItem.CategoryItem
+        val updatedCategory = categoryItem.category.copy(applicationSortMode = Category.ApplicationSortMode.ALPHABETICAL)
+        currentItems[categoryIndex] = DashboardItem.CategoryItem(updatedCategory)
 
-        if (appsForCategory.isEmpty()) return
-
-        val sortedAppItems = appsForCategory
-            .sortedBy { it.application.name }
-
-        val newItems = currentItems.take(categoryIndex + 1) + sortedAppItems + currentItems.drop(categoryIndex + 1 + appsForCategory.size)
-        _uiState.update { it.copy(allItems = newItems) }
-        debouncedPersist(newItems)
+        // Only update the mode and persist, let backend do the sorting on next load
+        _uiState.update { it.copy(allItems = currentItems) }
+        debouncedPersist(currentItems)
     }
 
     fun deleteApplication(id: Long) {

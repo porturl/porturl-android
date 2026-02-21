@@ -57,6 +57,7 @@
     <string name="logout_description">Abmelden</string>
     <string name="add_category_description">Kategorie hinzufügen</string>
     <string name="add_application_description">Anwendung hinzufügen</string>
+    <string name="toggle_layout_description">Layout umschalten</string>
     <string name="item_type_application">Anwendung</string>
     <string name="item_type_category">Kategorie</string>
     <string name="empty_state_no_results">Keine Ergebnisse gefunden.</string>
@@ -74,6 +75,9 @@
     <string name="category_detail_icon_label">Symbol (z. B. fas fa-server)</string>
     <string name="category_detail_description_label">Beschreibung</string>
     <string name="category_detail_enabled_label">Aktiviert</string>
+    <string name="category_detail_sort_mode_label">Anwendungs-Sortiermodus</string>
+    <string name="sort_mode_custom">Manuell (Benutzerdefiniert)</string>
+    <string name="sort_mode_alphabetical">Alphabetisch</string>
 
     <!-- Application Detail Screen -->
     <string name="app_detail_add_title">Anwendung hinzufügen</string>

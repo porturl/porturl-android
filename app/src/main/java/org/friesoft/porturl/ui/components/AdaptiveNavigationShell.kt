@@ -10,14 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -47,8 +44,6 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
@@ -74,6 +69,8 @@ fun AdaptiveNavigationShell(
     backendUrl: String,
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
+    layoutMode: org.friesoft.porturl.data.model.LayoutMode = org.friesoft.porturl.data.model.LayoutMode.GRID,
+    onLayoutModeChanged: (org.friesoft.porturl.data.model.LayoutMode) -> Unit = {},
     onProfileClick: () -> Unit, // Opens menu or profile screen
     onAddApp: () -> Unit,
     onAddCategory: () -> Unit,
@@ -201,13 +198,40 @@ fun AdaptiveNavigationShell(
                                     enabled = !isModalOpen,
                                     placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                     singleLine = true,
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Search,
+                                            contentDescription = stringResource(R.string.search_description),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
                                     trailingIcon = {
-                                        if (searchQuery.isNotEmpty()) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (searchQuery.isNotEmpty()) {
+                                                IconButton(
+                                                    onClick = { onSearchQueryChanged("") },
+                                                    enabled = !isModalOpen
+                                                ) {
+                                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search_description))
+                                                }
+                                            }
                                             IconButton(
-                                                onClick = { onSearchQueryChanged("") },
+                                                onClick = {
+                                                    val nextMode = if (layoutMode == org.friesoft.porturl.data.model.LayoutMode.GRID)
+                                                        org.friesoft.porturl.data.model.LayoutMode.LIST
+                                                    else
+                                                        org.friesoft.porturl.data.model.LayoutMode.GRID
+                                                    onLayoutModeChanged(nextMode)
+                                                },
                                                 enabled = !isModalOpen
                                             ) {
-                                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search_description))
+                                                Icon(
+                                                    imageVector = if (layoutMode == org.friesoft.porturl.data.model.LayoutMode.GRID)
+                                                        Icons.AutoMirrored.Filled.ViewList
+                                                    else
+                                                        Icons.Filled.GridView,
+                                                    contentDescription = stringResource(R.string.toggle_layout_description)
+                                                )
                                             }
                                         }
                                     },

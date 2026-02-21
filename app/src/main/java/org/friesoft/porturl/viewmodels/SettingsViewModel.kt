@@ -46,7 +46,7 @@ class SettingsViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val adminRepository: AdminRepository,
     private val appLocaleManager: AppLocaleManager,
-    @javax.inject.Named("yaml_mapper") private val yamlMapper: com.fasterxml.jackson.databind.ObjectMapper,
+    @param:javax.inject.Named("yaml_mapper") private val yamlMapper: com.fasterxml.jackson.databind.ObjectMapper,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -203,6 +203,12 @@ class SettingsViewModel @Inject constructor(
     fun saveTelemetryEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.saveTelemetryEnabled(enabled)
+        }
+    }
+
+    fun saveLayoutMode(layoutMode: org.friesoft.porturl.data.model.LayoutMode) {
+        viewModelScope.launch {
+            settingsRepository.saveLayoutMode(layoutMode)
         }
     }
 }

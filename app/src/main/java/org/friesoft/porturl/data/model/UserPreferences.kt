@@ -63,6 +63,21 @@ data class CustomColors(
 }
 
 /**
+ * Represents the available layout modes for the application's dashboard.
+ */
+enum class LayoutMode {
+    /**
+     * Applications are displayed in a grid (icon-based).
+     */
+    GRID,
+
+    /**
+     * Applications are displayed in a list.
+     */
+    LIST
+}
+
+/**
  * Represents the user's preferences for the application's theme.
  *
  * @property themeMode The selected theme mode.
@@ -76,5 +91,6 @@ data class UserPreferences(
     val predefinedColorName: String?,
     val customColors: CustomColors?,
     val translucentBackground: Boolean = false,
-    val telemetryEnabled: Boolean = true
+    val telemetryEnabled: Boolean = true,
+    val layoutMode: LayoutMode = LayoutMode.GRID
 )

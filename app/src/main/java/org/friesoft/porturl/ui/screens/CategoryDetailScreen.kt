@@ -97,6 +97,42 @@ fun CategoryDetailScreen(
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(id = R.string.category_detail_enabled_label))
                         }
+
+                        Text(
+                            text = stringResource(id = R.string.category_detail_sort_mode_label),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(
+                                onClick = { expanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    when (category.applicationSortMode) {
+                                        org.friesoft.porturl.client.model.Category.ApplicationSortMode.ALPHABETICAL -> stringResource(id = R.string.sort_mode_alphabetical)
+                                        else -> stringResource(id = R.string.sort_mode_custom)
+                                    }
+                                )
+                            }
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(id = R.string.sort_mode_custom)) },
+                                    onClick = {
+                                        category = category.copy(applicationSortMode = org.friesoft.porturl.client.model.Category.ApplicationSortMode.CUSTOM)
+                                        expanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(id = R.string.sort_mode_alphabetical)) },
+                                    onClick = {
+                                        category = category.copy(applicationSortMode = org.friesoft.porturl.client.model.Category.ApplicationSortMode.ALPHABETICAL)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+
                         Button(
                             onClick = { viewModel.saveCategory(category) },
                             modifier = Modifier.fillMaxWidth()

@@ -37,6 +37,7 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
         val CUSTOM_COLORS_KEY = stringPreferencesKey("custom_colors")
         val TRANSLUCENT_BACKGROUND_KEY = booleanPreferencesKey("translucent_background")
         val TELEMETRY_ENABLED_KEY = booleanPreferencesKey("telemetry_enabled")
+        val LAYOUT_MODE_KEY = stringPreferencesKey("layout_mode")
 
         // Default URL for a local server accessed from the Android emulator
         const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080" // Default if nothing is set
@@ -71,13 +72,18 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
         preferences[TELEMETRY_ENABLED_KEY] ?: true // Enabled by default
     }
 
+    private val layoutMode: Flow<org.friesoft.porturl.data.model.LayoutMode> = context.dataStore.data.map { preferences ->
+        org.friesoft.porturl.data.model.LayoutMode.valueOf(preferences[LAYOUT_MODE_KEY] ?: org.friesoft.porturl.data.model.LayoutMode.GRID.name)
+    }
+
     val userPreferences: Flow<UserPreferences> = combine(
         themeMode,
         colorSource,
         predefinedColorName,
         customColors,
         translucentBackground,
-        telemetryEnabled
+        telemetryEnabled,
+        layoutMode
     ) { args: Array<Any?> ->
         UserPreferences(
             themeMode = args[0] as ThemeMode,
@@ -85,7 +91,8 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
             predefinedColorName = args[2] as String?,
             customColors = args[3] as CustomColors?,
             translucentBackground = args[4] as Boolean,
-            telemetryEnabled = args[5] as Boolean
+            telemetryEnabled = args[5] as Boolean,
+            layoutMode = args[6] as org.friesoft.porturl.data.model.LayoutMode
         )
     }
 
@@ -133,6 +140,12 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
     suspend fun saveTelemetryEnabled(enabled: Boolean) {
         context.dataStore.edit { settings ->
             settings[TELEMETRY_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun saveLayoutMode(layoutMode: org.friesoft.porturl.data.model.LayoutMode) {
+        context.dataStore.edit { settings ->
+            settings[LAYOUT_MODE_KEY] = layoutMode.name
         }
     }
 

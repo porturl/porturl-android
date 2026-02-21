@@ -163,6 +163,7 @@ fun ApplicationListRoute(
 
     ApplicationListScreen(
         uiState = uiState,
+        layoutMode = userPreferences.layoutMode,
         onCategoryDragEnd = viewModel::moveCategory,
         onMoveApplication = viewModel::moveApplication,
         onSortApps = viewModel::sortAppsAlphabetically,
@@ -182,6 +183,7 @@ fun ApplicationListRoute(
 @Composable
 fun ApplicationListScreen(
     uiState: ApplicationListState,
+    layoutMode: org.friesoft.porturl.data.model.LayoutMode,
     onCategoryDragEnd: (fromCatId: Long, targetCategoryIndex: Int) -> Unit,
     onMoveApplication: (appId: Long, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) -> Unit,
     onSortApps: (categoryId: Long) -> Unit,
@@ -433,6 +435,7 @@ fun ApplicationListScreen(
                                         CategoryColumn(
                                             category = category,
                                             applications = applications,
+                                            layoutMode = layoutMode,
                                             dropTargetInfo = dropTargetInfo,
                                             draggingItem = draggingItem,
                                             menuOpenAppId = menuOpenAppId,
@@ -471,6 +474,7 @@ fun ApplicationListScreen(
                                         CategoryColumn(
                                             category = category,
                                             applications = applications,
+                                            layoutMode = layoutMode,
                                             dropTargetInfo = dropTargetInfo,
                                             draggingItem = draggingItem,
                                             menuOpenAppId = menuOpenAppId,
@@ -541,6 +545,7 @@ fun ApplicationListScreen(
 private fun CategoryColumn(
     category: Category,
     applications: List<Application>,
+    layoutMode: org.friesoft.porturl.data.model.LayoutMode,
     dropTargetInfo: DropTarget?,
     draggingItem: DraggingItem?,
     menuOpenAppId: String?,
@@ -563,6 +568,8 @@ private fun CategoryColumn(
     val context = LocalContext.current
     val color = MaterialTheme.colorScheme.primaryContainer
 
+    val isAlphabetical = category.applicationSortMode == Category.ApplicationSortMode.ALPHABETICAL
+
     Column(
         modifier = modifier.border(borderDp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -583,7 +590,7 @@ private fun CategoryColumn(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(if (layoutMode == org.friesoft.porturl.data.model.LayoutMode.GRID) 16.dp else 8.dp)
         ) {
             val density = LocalDensity.current
             val spacing = 16.dp
@@ -595,94 +602,359 @@ private fun CategoryColumn(
             val itemWidthPx = ((widthPx - (spacingPx * (numColumns - 1))) / numColumns) - 0.5f
             val itemWidth = with(density) { itemWidthPx.toDp() }
             
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing),
-                verticalArrangement = Arrangement.spacedBy(spacing)
-            ) {
-                val displayItems = remember(applications, dropTargetInfo, draggingItem) {
-                    val items = applications.map { CategoryDisplayItem.App(it) }.toMutableList<CategoryDisplayItem>()
-                    if (dropTargetInfo != null && dropTargetInfo.categoryId == category.id) {
-                        val insertionIndex = dropTargetInfo.index.coerceIn(0, items.size)
-                        items.add(insertionIndex, CategoryDisplayItem.Placeholder(IntSize(100, 100)))
-                    }
-                    items
+            val displayItems = remember(applications, dropTargetInfo, draggingItem) {
+                val items = applications.map { CategoryDisplayItem.App(it) }.toMutableList<CategoryDisplayItem>()
+                if (dropTargetInfo != null && dropTargetInfo.categoryId == category.id) {
+                    val insertionIndex = dropTargetInfo.index.coerceIn(0, items.size)
+                    items.add(insertionIndex, CategoryDisplayItem.Placeholder(IntSize(100, 100)))
                 }
+                items
+            }
 
-                displayItems.forEach { item ->
-                    when (item) {
-                        is CategoryDisplayItem.Placeholder -> {
-                            key("placeholder") {
-                                Box(modifier = Modifier.size(itemWidth))
+            if (layoutMode == org.friesoft.porturl.data.model.LayoutMode.GRID) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                    verticalArrangement = Arrangement.spacedBy(spacing)
+                ) {
+                    displayItems.forEach { item ->
+                        when (item) {
+                            is CategoryDisplayItem.Placeholder -> {
+                                key("placeholder") {
+                                    Box(modifier = Modifier.size(itemWidth))
+                                }
                             }
-                        }
-                        is CategoryDisplayItem.App -> {
-                            val application = item.application
-                            key(application.id) {
-                                val appKey = "app_${category.id}_${application.id}"
-                                var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
-                                var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
-                                val isDraggedItem = draggingItem?.key == appKey
-                                val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
-                                val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
-                                val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
+                            is CategoryDisplayItem.App -> {
+                                val application = item.application
+                                key(application.id) {
+                                    val appKey = "app_${category.id}_${application.id}"
+                                    var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
+                                    var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
+                                    val isDraggedItem = draggingItem?.key == appKey
+                                    val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
+                                    val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
+                                    val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
 
-                                Box(
-                                    modifier = Modifier
-                                        .width(itemWidth)
-                                        .aspectRatio(1f)
-                                        .then(alphaModifier)
-                                        .onGloballyPositioned {
-                                            if (!isVisualDrag) {
-                                                itemBounds = it.boundsInRoot().topLeft
-                                                itemSize = it.size
-                                                onAppBoundsChanged(appKey, it.boundsInRoot())
+                                    Box(
+                                        modifier = Modifier
+                                            .width(itemWidth)
+                                            .aspectRatio(1f)
+                                            .then(alphaModifier)
+                                            .onGloballyPositioned {
+                                                if (!isVisualDrag) {
+                                                    itemBounds = it.boundsInRoot().topLeft
+                                                    itemSize = it.size
+                                                    onAppBoundsChanged(appKey, it.boundsInRoot())
+                                                }
                                             }
-                                        }
-                                        .pointerInput(application, category) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { offset ->
-                                                    val composable: @Composable () -> Unit = {
-                                                        ApplicationGridItem(
-                                                            application = application,
-                                                            onClick = {},
-                                                            onEditClick = {},
-                                                            onDeleteClick = {},
-                                                            color = color,
-                                                            translucentBackground = translucentBackground,
-                                                            isMenuOpen = false,
-                                                            onDismissMenu = {},
-                                                            modifier = Modifier.size(with(density) { itemSize.width.toDp() }, with(density) { itemSize.height.toDp() })
-                                                        )
-                                                    }
-                                                    onAppDragStart(application, category, appKey, itemBounds + offset, offset, itemSize, composable)
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    onDrag(dragAmount)
-                                                },
-                                                onDragEnd = onDragEnd,
-                                                onDragCancel = onDragEnd
-                                            )
-                                        }
-                                ) {
-                                    ApplicationGridItem(
-                                        application = application,
-                                        onClick = { application.url?.let { openUrlInCustomTab(it, context) } },
-                                        onEditClick = { onApplicationClick(application) },
-                                        onDeleteClick = { onDeleteApplication(application) },
-                                        modifier = Modifier.fillMaxSize(), 
-                                        isGhost = false,
-                                        color = color,
-                                        translucentBackground = translucentBackground,
-                                        isMenuOpen = isMenuOpen,
-                                        onDismissMenu = onMenuDismiss,
-                                        enabled = !isDraggedItem
-                                    )
+                                            .pointerInput(application, category, isAlphabetical) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        val composable: @Composable () -> Unit = {
+                                                            ApplicationGridItem(
+                                                                application = application,
+                                                                onClick = {},
+                                                                onEditClick = {},
+                                                                onDeleteClick = {},
+                                                                color = color,
+                                                                translucentBackground = translucentBackground,
+                                                                isMenuOpen = false,
+                                                                onDismissMenu = {},
+                                                                modifier = Modifier.size(with(density) { itemSize.width.toDp() }, with(density) { itemSize.height.toDp() })
+                                                            )
+                                                        }
+                                                        onAppDragStart(application, category, appKey, itemBounds + offset, offset, itemSize, composable)
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        onDrag(dragAmount)
+                                                    },
+                                                    onDragEnd = onDragEnd,
+                                                    onDragCancel = onDragEnd
+                                                )
+                                            }
+                                    ) {
+                                        ApplicationGridItem(
+                                            application = application,
+                                            onClick = { application.url?.let { openUrlInCustomTab(it, context) } },
+                                            onEditClick = { onApplicationClick(application) },
+                                            onDeleteClick = { onDeleteApplication(application) },
+                                            modifier = Modifier.fillMaxSize(), 
+                                            isGhost = false,
+                                            color = color,
+                                            translucentBackground = translucentBackground,
+                                            isMenuOpen = isMenuOpen,
+                                            onDismissMenu = onMenuDismiss,
+                                            enabled = !isDraggedItem
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    displayItems.forEach { item ->
+                        when (item) {
+                            is CategoryDisplayItem.Placeholder -> {
+                                key("placeholder") {
+                                    Box(modifier = Modifier.fillMaxWidth().height(56.dp))
+                                }
+                            }
+                            is CategoryDisplayItem.App -> {
+                                val application = item.application
+                                key(application.id) {
+                                    val appKey = "app_${category.id}_${application.id}"
+                                    var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
+                                    var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
+                                    val isDraggedItem = draggingItem?.key == appKey
+                                    val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
+                                    val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
+                                    val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .then(alphaModifier)
+                                            .onGloballyPositioned {
+                                                if (!isVisualDrag) {
+                                                    itemBounds = it.boundsInRoot().topLeft
+                                                    itemSize = it.size
+                                                    onAppBoundsChanged(appKey, it.boundsInRoot())
+                                                }
+                                            }
+                                            .pointerInput(application, category, isAlphabetical) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        val composable: @Composable () -> Unit = {
+                                                            ApplicationListItem(
+                                                                application = application,
+                                                                onClick = {},
+                                                                onEditClick = {},
+                                                                onDeleteClick = {},
+                                                                color = color,
+                                                                translucentBackground = translucentBackground,
+                                                                isMenuOpen = false,
+                                                                onDismissMenu = {},
+                                                                modifier = Modifier.width(with(density) { itemSize.width.toDp() })
+                                                            )
+                                                        }
+                                                        onAppDragStart(application, category, appKey, itemBounds + offset, offset, itemSize, composable)
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        onDrag(dragAmount)
+                                                    },
+                                                    onDragEnd = onDragEnd,
+                                                    onDragCancel = onDragEnd
+                                                )
+                                            }
+                                    ) {
+                                        ApplicationListItem(
+                                            application = application,
+                                            onClick = { application.url?.let { openUrlInCustomTab(it, context) } },
+                                            onEditClick = { onApplicationClick(application) },
+                                            onDeleteClick = { onDeleteApplication(application) },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            isGhost = false,
+                                            color = color,
+                                            translucentBackground = translucentBackground,
+                                            isMenuOpen = isMenuOpen,
+                                            onDismissMenu = onMenuDismiss,
+                                            enabled = !isDraggedItem
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ApplicationListItem(
+    application: Application,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isGhost: Boolean = false,
+    color: Color,
+    translucentBackground: Boolean,
+    isMenuOpen: Boolean = false,
+    onDismissMenu: () -> Unit = {},
+    enabled: Boolean = true
+) {
+    val screenWidth = LocalWindowInfo.current.containerSize.width
+    var itemBounds by remember { mutableStateOf(Rect.Zero) }
+
+    Box(modifier = modifier.onGloballyPositioned { itemBounds = it.boundsInRoot() }) {
+        val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
+        val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
+        ElevatedCard(
+            onClick = onClick,
+            enabled = enabled && !isGhost,
+            modifier = Modifier.fillMaxWidth().height(56.dp).graphicsLayer { this.alpha = alpha },
+            colors = CardDefaults.cardColors(containerColor = cardColor)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(application.iconUrlThumbnail)
+                        .crossfade(true)
+                        .build(),
+                    placeholder = rememberVectorPainter(Icons.Default.Image),
+                    error = rememberVectorPainter(Icons.Default.BrokenImage),
+                    contentDescription = stringResource(id = R.string.application_icon_description, application.name ?: ""),
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = application.name ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Box {
+                    DropdownMenu(
+                        expanded = isMenuOpen,
+                        onDismissRequest = onDismissMenu
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(id = R.string.edit_button_text)) },
+                            onClick = {
+                                onDismissMenu()
+                                onEditClick()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(id = R.string.delete_button_text)) },
+                            onClick = {
+                                onDismissMenu()
+                                onDeleteClick()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryHeader(
+    category: Category,
+    onSortClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit,
+    onDrag: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    color: Color,
+    isGhost: Boolean = false,
+    translucentBackground: Boolean
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    var headerSize by remember(category.id) { mutableStateOf(IntSize.Zero) }
+    var headerPosition by remember(category.id) { mutableStateOf(Offset.Zero) }
+    val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
+    val surfaceColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { this.alpha = alpha }
+            .onGloballyPositioned {
+                headerSize = it.size
+                headerPosition = it.boundsInRoot().topLeft
+            }
+            .pointerInput(category) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val composable: @Composable () -> Unit = {
+                            CategoryHeader(
+                                category = category,
+                                onSortClick = {},
+                                onEditClick = {},
+                                onDeleteClick = {},
+                                onDragStart = { _, _, _, _, _ -> },
+                                onDrag = {},
+                                onDragEnd = {},
+                                color = color,
+                                isGhost = false,
+                                translucentBackground = translucentBackground
+                            )
+                        }
+                        onDragStart(category, headerPosition + offset, offset, headerSize, composable)
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDrag(dragAmount)
+                    },
+                    onDragEnd = onDragEnd,
+                    onDragCancel = onDragEnd
+                )
+            },
+        color = surfaceColor,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = category.name ?: "",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f, fill = false),
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.width(8.dp))
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = stringResource(id = R.string.edit_mode_description),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(id = R.string.edit_button_text)) },
+                        onClick = {
+                            menuExpanded = false
+                            onEditClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(id = R.string.delete_button_text)) },
+                        onClick = {
+                            menuExpanded = false
+                            onDeleteClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                    )
                 }
             }
         }
@@ -794,118 +1066,6 @@ fun ApplicationGridItem(
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CategoryHeader(
-    category: Category,
-    onSortClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit,
-    onDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit,
-    onDrag: (Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    color: Color,
-    isGhost: Boolean = false,
-    translucentBackground: Boolean
-) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    var headerSize by remember(category.id) { mutableStateOf(IntSize.Zero) }
-    var headerPosition by remember(category.id) { mutableStateOf(Offset.Zero) }
-    val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
-    val surfaceColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer { this.alpha = alpha }
-            .onGloballyPositioned {
-                headerSize = it.size
-                headerPosition = it.boundsInRoot().topLeft
-            }
-            .pointerInput(category) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        val composable: @Composable () -> Unit = {
-                            CategoryHeader(
-                                category = category,
-                                onSortClick = {},
-                                onEditClick = {},
-                                onDeleteClick = {},
-                                onDragStart = { _, _, _, _, _ -> },
-                                onDrag = {},
-                                onDragEnd = {},
-                                color = color,
-                                isGhost = false,
-                                translucentBackground = translucentBackground
-                            )
-                        }
-                        onDragStart(category, headerPosition + offset, offset, headerSize, composable)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        onDrag(dragAmount)
-                    },
-                    onDragEnd = onDragEnd,
-                    onDragCancel = onDragEnd
-                )
-            },
-        color = surfaceColor,
-        shape = MaterialTheme.shapes.medium,
-        tonalElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = category.name ?: "",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f, fill = false),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(Modifier.width(8.dp))
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = stringResource(id = R.string.edit_mode_description),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(id = R.string.sort_alpha_description)) },
-                        onClick = {
-                            menuExpanded = false
-                            onSortClick()
-                        },
-                        leadingIcon = { Icon(Icons.Default.SortByAlpha, contentDescription = null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(id = R.string.edit_button_text)) },
-                        onClick = {
-                            menuExpanded = false
-                            onEditClick()
-                        },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(id = R.string.delete_button_text)) },
-                        onClick = {
-                            menuExpanded = false
-                            onDeleteClick()
-                        },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
-                    )
                 }
             }
         }

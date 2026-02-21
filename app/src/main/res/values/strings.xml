@@ -57,6 +57,7 @@
     <string name="logout_description">Logout</string>
     <string name="add_category_description">Add Category</string>
     <string name="add_application_description">Add Application</string>
+    <string name="toggle_layout_description">Toggle Layout</string>
     <string name="item_type_application">Application</string>
     <string name="item_type_category">Category</string>
     <string name="empty_state_no_results">No results found.</string>
@@ -74,6 +75,9 @@
     <string name="category_detail_icon_label">Icon (e.g., fas fa-server)</string>
     <string name="category_detail_description_label">Description</string>
     <string name="category_detail_enabled_label">Enabled</string>
+    <string name="category_detail_sort_mode_label">Application Sort Mode</string>
+    <string name="sort_mode_custom">Manual (Custom)</string>
+    <string name="sort_mode_alphabetical">Alphabetical</string>
 
     <!-- Application Detail Screen -->
     <string name="app_detail_add_title">Add Application</string>
