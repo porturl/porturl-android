@@ -72,9 +72,7 @@
     <string name="category_detail_add_title">Kategorie hinzufügen</string>
     <string name="category_detail_edit_title">Kategorie bearbeiten</string>
     <string name="category_detail_name_label">Kategoriename</string>
-    <string name="category_detail_icon_label">Symbol (z. B. fas fa-server)</string>
     <string name="category_detail_description_label">Beschreibung</string>
-    <string name="category_detail_enabled_label">Aktiviert</string>
     <string name="category_detail_sort_mode_label">Anwendungs-Sortiermodus</string>
     <string name="sort_mode_custom">Manuell (Benutzerdefiniert)</string>
     <string name="sort_mode_alphabetical">Alphabetisch</string>

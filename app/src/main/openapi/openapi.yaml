@@ -515,12 +515,8 @@ components:
         applicationSortMode:
           type: string
           enum: [CUSTOM, ALPHABETICAL]
-        icon:
-          type: string
         description:
           type: string
-        enabled:
-          type: boolean
         applications:
           type: array
           items:
@@ -622,12 +618,8 @@ components:
         applicationSortMode:
           type: string
           enum: [CUSTOM, ALPHABETICAL]
-        icon:
-          type: string
         description:
           type: string
-        enabled:
-          type: boolean
 
     ApplicationExport:
       type: object

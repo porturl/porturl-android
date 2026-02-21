@@ -72,9 +72,7 @@
     <string name="category_detail_add_title">Add Category</string>
     <string name="category_detail_edit_title">Edit Category</string>
     <string name="category_detail_name_label">Category Name</string>
-    <string name="category_detail_icon_label">Icon (e.g., fas fa-server)</string>
     <string name="category_detail_description_label">Description</string>
-    <string name="category_detail_enabled_label">Enabled</string>
     <string name="category_detail_sort_mode_label">Application Sort Mode</string>
     <string name="sort_mode_custom">Manual (Custom)</string>
     <string name="sort_mode_alphabetical">Alphabetical</string>

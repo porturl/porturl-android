@@ -41,7 +41,7 @@ class CategoryDetailViewModel @Inject constructor(
             _uiState.value = UiState.Loading
             try {
                 val category = if (id == -1L) {
-                    Category(id = null, name = "", sortOrder = 0, applicationSortMode = Category.ApplicationSortMode.CUSTOM, icon = null, description = null, enabled = true)
+                    Category(id = null, name = "", sortOrder = 0, applicationSortMode = Category.ApplicationSortMode.CUSTOM, description = null)
                 } else {
                     categoryRepository.getCategoryById(id)
                 }
