@@ -39,7 +39,7 @@ uiTooling = "1.10.3"
 opentelemetryAndroidAgent = "1.1.0"
 openapi-generator = "7.20.0"
 security-crypto = "1.1.0"
-jackson-yaml = "2.21.0"
+jackson-yaml = "2.21.1"
 
 [libraries]
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson-yaml" }
