@@ -1,17 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow HTTP for the local backend and trust the self-signed cert for Keycloak -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <trust-anchors>
-            <!-- This refers to res/raw/local_ca.crt -->
-            <certificates src="@raw/local_ca" />
-            <certificates src="system" />
-        </trust-anchors>
-    </domain-config>
-    
-    <!-- Enforce HTTPS for everything else (Production) -->
+    <!-- Enforce HTTPS for everything in production -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP for the local backend in debug mode -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <trust-anchors>
+            <!-- 
+              Note: We no longer refer to @raw/local_ca here to avoid build failures in CI.
+              SSL trust for self-signed certificates is handled manually in 
+              SelfSignedConnectionBuilder and OkHttpClient providers when in debug mode.
+            -->
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    
+    <!-- Enforce HTTPS for everything else -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

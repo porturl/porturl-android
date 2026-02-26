@@ -22,6 +22,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
 import org.friesoft.porturl.AppLocaleManager
+import org.friesoft.porturl.BuildConfig
+import org.friesoft.porturl.data.auth.SslUtils
 import retrofit2.Converter
 import java.lang.reflect.Type
 import org.friesoft.porturl.client.api.ApplicationApi
@@ -51,9 +53,13 @@ object AppModule {
     @Singleton
     @Provides
     @Named("unauthenticated_client")
-    fun provideUnauthenticatedOkHttpClient(): OkHttpClient {
+    fun provideUnauthenticatedOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
         val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-        return OkHttpClient.Builder().addInterceptor(logging).build()
+        val builder = OkHttpClient.Builder().addInterceptor(logging)
+        if (BuildConfig.DEBUG) {
+            SslUtils.applySelfSignedTrust(context, builder)
+        }
+        return builder.build()
     }
 
     @Singleton
@@ -78,23 +84,35 @@ object AppModule {
     @Singleton
     @Provides
     @Named("authenticated_client")
-    fun provideAuthenticatedOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
+    fun provideAuthenticatedOkHttpClient(
+        @ApplicationContext context: Context,
+        authInterceptor: AuthInterceptor
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
-            .build()
+        if (BuildConfig.DEBUG) {
+            SslUtils.applySelfSignedTrust(context, builder)
+        }
+        return builder.build()
     }
 
     @Singleton
     @Provides
     @Named("admin_client")
-    fun provideAdminOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
+    fun provideAdminOkHttpClient(
+        @ApplicationContext context: Context,
+        authInterceptor: AuthInterceptor
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
-            .build()
+        if (BuildConfig.DEBUG) {
+            SslUtils.applySelfSignedTrust(context, builder)
+        }
+        return builder.build()
     }
 
     @Singleton
