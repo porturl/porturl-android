@@ -90,8 +90,20 @@ class UserDetailViewModel @Inject constructor(
     }
 
     fun hasRole(app: Application, role: String): Boolean {
-        val sanitizedAppName = app.name?.uppercase()?.replace(Regex("[^A-Z0-9]"), "_") ?: ""
-        val expectedRole = "ROLE_${sanitizedAppName}_${role.uppercase()}"
-        return _uiState.value.userRoles.contains(expectedRole)
+        if (!app.clientId.isNullOrBlank()) {
+            // Linked apps: APP_{id}_{role}
+            return _uiState.value.userRoles.contains("APP_${app.id}_$role")
+        }
+        return false // Unlinked apps no longer have functional roles besides access
+    }
+
+    fun hasAccess(app: Application): Boolean {
+        val accessRoleName = "APP_${app.name?.uppercase()?.replace(Regex("[^A-Z0-9]"), "_")}_ACCESS"
+        return _uiState.value.userRoles.contains(accessRoleName)
+    }
+
+    fun toggleAccess(app: Application, isChecked: Boolean) {
+        val accessRoleName = "APP_${app.name?.uppercase()?.replace(Regex("[^A-Z0-9]"), "_")}_ACCESS"
+        if (isChecked) assignRole(app, accessRoleName) else unassignRole(app, accessRoleName)
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,7 +71,43 @@ fun ApplicationDetailRoute(
         onImageSelected = viewModel::onImageSelected,
         onSaveClick = viewModel::saveApplication,
         onBackClick = { sharedViewModel.closeAppDetail() },
+        onScanRealmClick = viewModel::scanRealmClients,
+        onCheckLinkStatus = viewModel::checkLinkStatus,
+        onClearScannedClients = viewModel::clearScannedClients,
         applicationId = applicationId,
+    )
+}
+
+@Composable
+private fun ClientDiscoveryDialog(
+    clients: List<org.friesoft.porturl.client.model.KeycloakClientDto>,
+    onClientSelected: (org.friesoft.porturl.client.model.KeycloakClientDto) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.app_detail_discovery_dialog_title)) },
+        text = {
+            if (clients.isEmpty()) {
+                Text(stringResource(id = R.string.app_detail_discovery_no_clients))
+            } else {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    clients.forEach { client ->
+                        val currentClientId = client.clientId ?: return@forEach
+                        ListItem(
+                            headlineContent = { Text(currentClientId) },
+                            supportingContent = client.name?.let { { Text(it) } },
+                            modifier = Modifier.clickable { onClientSelected(client) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.cancel))
+            }
+        }
     )
 }
 
@@ -80,14 +117,21 @@ fun ApplicationDetailScreen(
     uiState: ApplicationDetailViewModel.UiState,
     snackbarHostState: SnackbarHostState,
     onImageSelected: (uri: android.net.Uri?) -> Unit,
-    onSaveClick: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>) -> Unit,
+    onSaveClick: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>, clientId: String?, realm: String?) -> Unit,
     onBackClick: () -> Unit,
+    onScanRealmClick: (realm: String) -> Unit,
+    onCheckLinkStatus: (realm: String, clientId: String) -> Unit,
+    onClearScannedClients: () -> Unit,
     applicationId: Long
 ) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri -> onImageSelected(uri) }
     )
+
+    if (uiState.scannedClients.isNotEmpty()) {
+        // Handled in ApplicationForm for better state management of name/clientId
+    }
 
     Surface(
         color = MaterialTheme.colorScheme.surface
@@ -102,7 +146,10 @@ fun ApplicationDetailScreen(
                 ApplicationForm(
                     state = uiState,
                     onImagePickerClick = { imagePickerLauncher.launch("image/*") },
-                    onSave = onSaveClick
+                    onSave = onSaveClick,
+                    onScanRealmClick = onScanRealmClick,
+                    onCheckLinkStatus = onCheckLinkStatus,
+                    onClearScannedClients = onClearScannedClients
                 )
             }
             
@@ -118,15 +165,35 @@ fun ApplicationDetailScreen(
 private fun ApplicationForm(
     state: ApplicationDetailViewModel.UiState,
     onImagePickerClick: () -> Unit,
-    onSave: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>) -> Unit
+    onSave: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>, clientId: String?, realm: String?) -> Unit,
+    onScanRealmClick: (realm: String) -> Unit,
+    onCheckLinkStatus: (realm: String, clientId: String) -> Unit,
+    onClearScannedClients: () -> Unit
 ) {
     val application = state.application ?: return
     val focusManager = LocalFocusManager.current
     var name by remember(application.name) { mutableStateOf(application.name ?: "") }
     var url by remember(application.url) { mutableStateOf(application.url ?: "") }
+    var clientId by remember(application.clientId) { mutableStateOf(application.clientId ?: "") }
+    var realm by remember(application.realm) { mutableStateOf(application.realm ?: "") }
     var rolesInput by remember(state.roles) { mutableStateOf(state.roles) }
     var selectedCategoryIds by remember(application.categories) {
         mutableStateOf(application.categories?.mapNotNull { it.id }?.toSet() ?: emptySet())
+    }
+
+    if (state.scannedClients.isNotEmpty()) {
+        ClientDiscoveryDialog(
+            clients = state.scannedClients,
+            onClientSelected = { client ->
+                clientId = client.clientId ?: ""
+                if (name.isBlank()) {
+                    name = client.name ?: client.clientId ?: ""
+                }
+                onClearScannedClients()
+                onCheckLinkStatus(realm, clientId)
+            },
+            onDismiss = onClearScannedClients
+        )
     }
 
     Column(
@@ -168,9 +235,84 @@ private fun ApplicationForm(
                 onSelectionChanged = { selectedCategoryIds = it }
             )
 
+            // Keycloak Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = stringResource(id = R.string.app_detail_keycloak_section_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = realm,
+                            onValueChange = { 
+                                realm = it
+                                onCheckLinkStatus(realm, clientId)
+                            },
+                            label = { Text(stringResource(id = R.string.app_detail_realm_label)) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { onScanRealmClick(realm) },
+                            enabled = realm.isNotBlank() && !state.isScanning
+                        ) {
+                            if (state.isScanning) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            } else {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = stringResource(id = R.string.app_detail_scan_button)
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = clientId,
+                        onValueChange = { 
+                            clientId = it
+                            onCheckLinkStatus(realm, clientId)
+                        },
+                        label = { Text(stringResource(id = R.string.app_detail_client_id_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(id = R.string.app_detail_link_status_label),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = if (state.isLinked) stringResource(id = R.string.app_detail_link_status_linked) else stringResource(id = R.string.app_detail_link_status_not_linked),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (state.isLinked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                        if (state.isLinked) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp).padding(start = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             RolesEditor(
                 roles = rolesInput,
-                onRolesChanged = { rolesInput = it }
+                onRolesChanged = { rolesInput = it },
+                isEnabled = state.isLinked
             )
         }
 
@@ -179,7 +321,7 @@ private fun ApplicationForm(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                onSave(name, url, selectedCategoryIds, rolesInput)
+                onSave(name, url, selectedCategoryIds, rolesInput, clientId.takeIf { it.isNotBlank() }, realm.takeIf { it.isNotBlank() })
             },
             enabled = !state.isSaving,
             modifier = Modifier
@@ -204,15 +346,24 @@ private fun ApplicationForm(
 @Composable
 private fun RolesEditor(
     roles: List<String>?,
-    onRolesChanged: (List<String>) -> Unit
+    onRolesChanged: (List<String>) -> Unit,
+    isEnabled: Boolean
 ) {
     var newRole by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
         Text(
             text = stringResource(id = R.string.app_detail_roles_title),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         )
+        if (!isEnabled) {
+            Text(
+                text = stringResource(id = R.string.app_detail_roles_disabled_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
         Spacer(Modifier.height(8.dp))
 
         Row(
@@ -224,15 +375,19 @@ private fun RolesEditor(
                 onValueChange = { newRole = it },
                 label = { Text(stringResource(id = R.string.app_detail_new_role_label)) },
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                singleLine = true,
+                enabled = isEnabled
             )
             Spacer(Modifier.width(8.dp))
-            IconButton(onClick = {
-                if (newRole.isNotBlank() && !(roles?.contains(newRole) ?: false)) {
-                    onRolesChanged((roles ?: emptyList()) + newRole.trim())
-                    newRole = ""
+            IconButton(
+                enabled = isEnabled,
+                onClick = {
+                    if (newRole.isNotBlank() && !(roles?.contains(newRole) ?: false)) {
+                        onRolesChanged((roles ?: emptyList()) + newRole.trim())
+                        newRole = ""
+                    }
                 }
-            }) {
+            ) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = stringResource(id = R.string.app_detail_add_role_description)
@@ -250,11 +405,12 @@ private fun RolesEditor(
                     selected = true,
                     onClick = { },
                     label = { Text(role) },
+                    enabled = isEnabled,
                     trailingIcon = {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = stringResource(id = R.string.app_detail_remove_role_description),
-                            modifier = Modifier.clickable {
+                            modifier = Modifier.clickable(enabled = isEnabled) {
                                 onRolesChanged((roles ?: emptyList()) - role)
                             }
                         )

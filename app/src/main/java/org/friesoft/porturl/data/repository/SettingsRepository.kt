@@ -39,8 +39,9 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
         val TELEMETRY_ENABLED_KEY = booleanPreferencesKey("telemetry_enabled")
         val LAYOUT_MODE_KEY = stringPreferencesKey("layout_mode")
 
-        // Default URL for a local server accessed from the Android emulator
-        const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080" // Default if nothing is set
+        // Default URL for a local server. For the Android emulator, use 'adb reverse tcp:8080 tcp:8080'
+        // to make this localhost URL work seamlessly.
+        const val DEFAULT_BACKEND_URL = "http://localhost:8080" // Default if nothing is set
     }
 
     // Flow that emits the backend URL whenever it changes

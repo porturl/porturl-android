@@ -20,7 +20,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -830,6 +832,15 @@ fun ApplicationListItem(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
+                if (application.isLinked == true) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = stringResource(id = R.string.app_list_linked_badge_description),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp).padding(end = 4.dp)
+                    )
+                }
+
                 Box {
                     DropdownMenu(
                         expanded = isMenuOpen,
@@ -1024,16 +1035,29 @@ fun ApplicationGridItem(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(application.iconUrl)
-                            .crossfade(true)
-                            .build(),
-                        placeholder = rememberVectorPainter(Icons.Default.Image),
-                        error = rememberVectorPainter(Icons.Default.BrokenImage),
-                        contentDescription = stringResource(id = R.string.application_icon_description, application.name ?: ""),
-                        modifier = Modifier.size(40.dp)
-                    )
+                    Box {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(application.iconUrl)
+                                .crossfade(true)
+                                .build(),
+                            placeholder = rememberVectorPainter(Icons.Default.Image),
+                            error = rememberVectorPainter(Icons.Default.BrokenImage),
+                            contentDescription = stringResource(id = R.string.application_icon_description, application.name ?: ""),
+                            modifier = Modifier.size(40.dp)
+                        )
+                        if (application.isLinked == true) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = stringResource(id = R.string.app_list_linked_badge_description),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = 4.dp, y = 4.dp)
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = application.name ?: "",

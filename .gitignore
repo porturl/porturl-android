@@ -9,3 +9,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/src/main/res/raw/local_ca.crt

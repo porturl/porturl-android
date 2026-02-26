@@ -16,8 +16,8 @@
     <string name="settings_color_tertiary">Tertiär</string>
     <string name="settings_server_title">Server</string>
     <string name="settings_server_backend_url_label">Backend-Basis-URL</string>
-    <string name="settings_server_backend_url_placeholder">z.B. http://10.0.2.2:8080</string>
-    <string name="settings_server_backend_url_hint">Verwenden Sie http://10.0.2.2 für einen lokalen Server auf Ihrem Host-Computer, wenn Sie einen Android-Emulator verwenden.</string>
+    <string name="settings_server_backend_url_placeholder">z.B. http://localhost:8080</string>
+    <string name="settings_server_backend_url_hint">Verwenden Sie http://localhost:8080 für einen lokalen Server. Führen Sie für den Android-Emulator \'adb reverse tcp:8080 tcp:8080\' auf Ihrem Host-Computer aus.</string>
     <string name="settings_server_save_and_validate_button">Speichern und validieren</string>
     <string name="settings_language_title">Sprache</string>
     <string name="settings_language_label">Sprache</string>

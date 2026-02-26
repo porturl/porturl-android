@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.runBlocking
+import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthorizationService
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -26,7 +27,8 @@ import javax.inject.Singleton
 class AuthInterceptor @Inject constructor(
     private val authStateManager: AuthStateManager,
     private val sessionNotifier: SessionExpiredNotifier,
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val appAuthConfiguration: AppAuthConfiguration
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -45,7 +47,7 @@ class AuthInterceptor @Inject constructor(
         if (authState.isAuthorized) {
             val latch = CountDownLatch(1)
             var newRequest: okhttp3.Request? = null
-            val authService = AuthorizationService(context)
+            val authService = AuthorizationService(context, appAuthConfiguration)
 
             try {
                 authState.performActionWithFreshTokens(authService) { accessToken, _, ex ->

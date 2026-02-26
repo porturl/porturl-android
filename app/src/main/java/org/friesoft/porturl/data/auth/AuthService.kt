@@ -6,7 +6,17 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
-import net.openid.appauth.*
+import net.openid.appauth.AppAuthConfiguration
+import net.openid.appauth.AuthorizationRequest
+import net.openid.appauth.AuthorizationResponse
+import net.openid.appauth.AuthorizationService
+import net.openid.appauth.AuthorizationServiceConfiguration
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthState
+import net.openid.appauth.EndSessionRequest
+import net.openid.appauth.ResponseTypeValues
+import net.openid.appauth.TokenResponse
+import net.openid.appauth.connectivity.ConnectionBuilder
 import org.friesoft.porturl.data.repository.ConfigRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,22 +31,29 @@ class AuthService @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val configRepository: ConfigRepository,
     private val sessionExpiredNotifier: SessionExpiredNotifier,
-    private val authStateManager: AuthStateManager
+    private val authStateManager: AuthStateManager,
+    private val appAuthConfiguration: AppAuthConfiguration,
+    private val connectionBuilder: ConnectionBuilder
 ) {
-    private val authService = AuthorizationService(context)
+    private val authService = AuthorizationService(context, appAuthConfiguration)
 
     private suspend fun getAuthServiceConfig(): AuthorizationServiceConfiguration {
         val issuerUri = configRepository.getIssuerUri().toUri()
+        android.util.Log.d("AuthService", "Fetching OIDC config from $issuerUri using $connectionBuilder")
         return suspendCancellableCoroutine { continuation ->
-            AuthorizationServiceConfiguration.fetchFromIssuer(issuerUri) { config, ex ->
-                if (config != null) {
-                    continuation.resume(config)
-                } else {
-                    continuation.resumeWithException(
-                        ex ?: RuntimeException("Failed to fetch OIDC configuration.")
-                    )
-                }
-            }
+            AuthorizationServiceConfiguration.fetchFromIssuer(
+                issuerUri,
+                { config, ex ->
+                    if (config != null) {
+                        continuation.resume(config)
+                    } else {
+                        continuation.resumeWithException(
+                            ex ?: RuntimeException("Failed to fetch OIDC configuration.")
+                        )
+                    }
+                },
+                connectionBuilder
+            )
         }
     }
 
@@ -44,7 +61,7 @@ class AuthService @Inject constructor(
         val config = getAuthServiceConfig()
         val authRequest = AuthorizationRequest.Builder(
             config,
-            "porturl-android-client",
+            "porturl-android",
             ResponseTypeValues.CODE,
             "org.friesoft.porturl:/oauth2redirect".toUri()
         ).setScope("openid profile email offline_access")

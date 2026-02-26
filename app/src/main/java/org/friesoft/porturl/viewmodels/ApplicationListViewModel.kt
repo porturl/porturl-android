@@ -146,6 +146,11 @@ class ApplicationListViewModel @Inject constructor(
 
     private suspend fun loadAllItemsFromRepositories() {
         val categories = categoryRepository.getAllCategories()
+        categories.forEach { cat ->
+            cat.applications?.forEach { app ->
+                Log.d("AppListViewModel", "App: $app")
+            }
+        }
         _uiState.update {
             it.copy(allItems = buildDashboardItems(categories))
         }

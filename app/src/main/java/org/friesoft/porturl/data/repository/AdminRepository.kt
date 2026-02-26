@@ -23,4 +23,13 @@ class AdminRepository @Inject constructor(private val adminApi: AdminApi) {
             throw Exception("Import failed: ${response.code()}")
         }
     }
+
+    suspend fun scanRealmClients(realm: String): List<org.friesoft.porturl.client.model.KeycloakClientDto> {
+        val response = adminApi.scanRealmClients(realm)
+        if (response.isSuccessful) {
+            return response.body() ?: emptyList()
+        } else {
+            throw Exception("Scan failed: ${response.code()}")
+        }
+    }
 }

@@ -71,6 +71,8 @@ fun UserDetailScreen(
                             AppPermissionItem(
                                 app = app,
                                 availableRoles = appWithRoles.availableRoles ?: emptyList(),
+                                hasAccess = viewModel.hasAccess(app),
+                                onAccessToggle = { isChecked -> viewModel.toggleAccess(app, isChecked) },
                                 hasRole = { role -> viewModel.hasRole(app, role) },
                                 onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
                             )
@@ -87,12 +89,31 @@ fun UserDetailScreen(
 fun AppPermissionItem(
     app: Application,
     availableRoles: List<String>,
+    hasAccess: Boolean,
+    onAccessToggle: (Boolean) -> Unit,
     hasRole: (String) -> Boolean,
     onRoleToggle: (String, Boolean) -> Unit
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = app.name ?: "", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = app.name ?: "", style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(id = R.string.user_permissions_grant_access),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Switch(
+                        checked = hasAccess,
+                        onCheckedChange = onAccessToggle
+                    )
+                }
+            }
             Spacer(Modifier.height(8.dp))
 
             if (availableRoles.isEmpty()) {

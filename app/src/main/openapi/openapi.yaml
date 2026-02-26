@@ -46,6 +46,28 @@ paths:
       responses:
         '204':
           description: No Content
+  /api/admin/realms/{realm}/clients:
+    get:
+      tags:
+        - Admin
+      summary: List available clients in a target realm (auto-discovery)
+      operationId: scanRealmClients
+      parameters:
+        - name: realm
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KeycloakClientDto'
+
   /api/applications:
     get:
       tags:
@@ -482,6 +504,19 @@ paths:
 
 components:
   schemas:
+    KeycloakClientDto:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Internal Keycloak UUID
+        clientId:
+          type: string
+          description: Public client ID (e.g. "grafana")
+        name:
+          type: string
+          description: Human readable name
+
     Application:
       type: object
       properties:
@@ -497,6 +532,17 @@ components:
         iconUrl:
           type: string
           readOnly: true
+        clientId:
+          type: string
+          nullable: true
+          description: "Optional Keycloak Client ID (e.g. 'grafana')"
+        realm:
+          type: string
+          nullable: true
+          description: "Optional Keycloak Realm where the client resides"
+        isLinked:
+          type: boolean
+          description: "Indicates if the application is correctly linked to a Keycloak client"
         categories:
           type: array
           items:
@@ -565,6 +611,12 @@ components:
           type: array
           items:
             type: string
+        clientId:
+          type: string
+          nullable: true
+        realm:
+          type: string
+          nullable: true
 
     ApplicationUpdateRequest:
       type: object
@@ -583,6 +635,12 @@ components:
           type: array
           items:
             type: string
+        clientId:
+          type: string
+          nullable: true
+        realm:
+          type: string
+          nullable: true
 
     UserUpdateRequest:
       type: object
@@ -639,3 +697,9 @@ components:
         icon:
           type: string
           description: Base64 encoded icon content.
+        clientId:
+          type: string
+          nullable: true
+        realm:
+          type: string
+          nullable: true
