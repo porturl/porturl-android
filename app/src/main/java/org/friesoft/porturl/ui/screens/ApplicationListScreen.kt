@@ -56,6 +56,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -82,32 +83,35 @@ import kotlin.math.roundToInt
 // A sealed class to represent the item currently being dragged.
 private sealed class DraggingItem {
     abstract val key: String
-    abstract var dragPosition: Offset
+    abstract val dragPosition: Offset
     abstract val itemOffset: Offset
     abstract val itemSize: IntSize
     abstract val composable: @Composable () -> Unit
+    abstract val isVisualDragStarted: Boolean
 
     data class App(
         val application: Application,
         val fromCategory: Category,
         val dashboardItemKey: String,
-        override var dragPosition: Offset,
+        override val dragPosition: Offset,
         override val itemOffset: Offset,
         override val itemSize: IntSize,
         override val composable: @Composable () -> Unit,
-        val isVisualDragStarted: Boolean = false
+        override val isVisualDragStarted: Boolean = false,
+        val accumulatedOffset: Offset = Offset.Zero
     ) : DraggingItem() {
         override val key: String = dashboardItemKey
     }
 
     data class CategoryItem(
         val category: Category,
-        override var dragPosition: Offset,
+        override val dragPosition: Offset,
         override val itemOffset: Offset,
         override val itemSize: IntSize,
         override val composable: @Composable () -> Unit
     ) : DraggingItem() {
         override val key: String = "category_${category.id}"
+        override val isVisualDragStarted: Boolean = true
     }
 }
 
@@ -198,6 +202,7 @@ fun ApplicationListScreen(
 
     val activity = LocalActivity.current!!
     val context = LocalContext.current
+    val density = LocalDensity.current
     val windowWidthSize = calculateWindowSizeClass(activity).widthSizeClass
 
     // --- Drag and Drop State ---
@@ -217,11 +222,7 @@ fun ApplicationListScreen(
         if (draggingItem != null) {
             while (true) {
                 val state = draggingItem
-                val isVisualDrag = when(state) {
-                    is DraggingItem.App -> state.isVisualDragStarted
-                    is DraggingItem.CategoryItem -> true
-                    else -> false
-                }
+                val isVisualDrag = state?.isVisualDragStarted ?: false
 
                 if (state != null && isVisualDrag) {
                     val dragPos = state.dragPosition
@@ -294,7 +295,6 @@ fun ApplicationListScreen(
                         else -> {
                             val onDragStart: (Application, Category, String, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
                                 { app, cat, key, absPos, relPos, size, composable ->
-                                    VibrationHelper.vibrate(context, HapticEffect.DragStarted)
                                     menuOpenAppId = null
                                     frozenAppBounds = applicationBounds.mapNotNull { (appKey, rect) ->
                                         val parts = appKey.split("_")
@@ -309,8 +309,7 @@ fun ApplicationListScreen(
                                         } else null
                                     }.toMap()
                                     draggingItem = DraggingItem.App(
-                                        app, cat, key, absPos, relPos, size, composable,
-                                        isVisualDragStarted = false
+                                        app, cat, key, absPos, relPos, size, composable
                                     )
                                 }
 
@@ -324,9 +323,18 @@ fun ApplicationListScreen(
                                 draggingItem?.let { state ->
                                     val nextState = when (state) {
                                         is DraggingItem.App -> {
+                                            val newAccumulatedOffset = state.accumulatedOffset + dragAmount
+                                            val threshold = with(density) { 20.dp.toPx() }
+                                            val isVisualDrag = state.isVisualDragStarted || newAccumulatedOffset.getDistance() > threshold
+
+                                            if (isVisualDrag && !state.isVisualDragStarted) {
+                                                VibrationHelper.vibrate(context, HapticEffect.DragStarted)
+                                            }
+
                                             state.copy(
                                                 dragPosition = state.dragPosition + dragAmount,
-                                                isVisualDragStarted = true
+                                                accumulatedOffset = newAccumulatedOffset,
+                                                isVisualDragStarted = isVisualDrag
                                             )
                                         }
                                         is DraggingItem.CategoryItem -> {
@@ -335,7 +343,7 @@ fun ApplicationListScreen(
                                     }
                                     draggingItem = nextState
 
-                                    val isVisualDrag = if (nextState is DraggingItem.App) nextState.isVisualDragStarted else true
+                                    val isVisualDrag = nextState.isVisualDragStarted
 
                                     if (isVisualDrag) {
                                         var newDropTarget: DropTarget? = null
@@ -515,7 +523,7 @@ fun ApplicationListScreen(
             }
 
             draggingItem?.let { state ->
-                val isVisualDrag = if (state is DraggingItem.App) state.isVisualDragStarted else true
+                val isVisualDrag = state.isVisualDragStarted
                 if (isVisualDrag) {
                     val scale by animateFloatAsState(targetValue = 1.1f, label = "DragScale")
                     val elevation by animateDpAsState(targetValue = 8.dp, label = "DragElevation")
@@ -634,7 +642,7 @@ private fun CategoryColumn(
                                     var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
                                     var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
                                     val isDraggedItem = draggingItem?.key == appKey
-                                    val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
+                                    val isVisualDrag = isDraggedItem && draggingItem.isVisualDragStarted
                                     val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
                                     val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
 
@@ -715,7 +723,7 @@ private fun CategoryColumn(
                                     var itemBounds by remember(application.id) { mutableStateOf(Offset.Zero) }
                                     var itemSize by remember(application.id) { mutableStateOf(IntSize.Zero) }
                                     val isDraggedItem = draggingItem?.key == appKey
-                                    val isVisualDrag = if (isDraggedItem && draggingItem is DraggingItem.App) draggingItem.isVisualDragStarted else false
+                                    val isVisualDrag = isDraggedItem && draggingItem.isVisualDragStarted
                                     val alphaModifier = if (isVisualDrag) Modifier.alpha(0f) else Modifier
                                     val isMenuOpen = menuOpenAppId == appKey || (isDraggedItem && !isVisualDrag)
 
