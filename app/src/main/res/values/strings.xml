@@ -63,7 +63,6 @@
     <string name="empty_state_no_results">No results found.</string>
     <string name="empty_state_no_items">No applications or categories found.\nTap \'Edit\' then \'+\' to add some!</string>
     <string name="application_icon_description">%s icon</string>
-    <string name="sort_alpha_description">Sort alphabetically</string>
     <string name="delete_dialog_title">Delete %s</string>
     <string name="delete_dialog_text">Are you sure you want to permanently delete this %s?</string>
     <string name="delete_button_text">Delete</string>

@@ -176,6 +176,7 @@ dependencies {
     implementation(libs.androidx.browser)
 
     implementation(libs.androidx.security.crypto)
+    implementation(libs.tink.android)
 
     // OpenTelemetry
     implementation(libs.opentelemetry.android.agent)

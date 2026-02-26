@@ -63,7 +63,6 @@
     <string name="empty_state_no_results">Keine Ergebnisse gefunden.</string>
     <string name="empty_state_no_items">Keine Anwendungen oder Kategorien gefunden.\nTippen Sie auf \'Bearbeiten\' und dann auf \'+\', um welche hinzuzufügen!</string>
     <string name="application_icon_description">%s-Symbol</string>
-    <string name="sort_alpha_description">Alphabetisch sortieren</string>
     <string name="delete_dialog_title">%s löschen</string>
     <string name="delete_dialog_text">Sind Sie sicher, dass Sie diese %s dauerhaft löschen möchten?</string>
     <string name="delete_button_text">Löschen</string>
@@ -99,6 +98,17 @@
     <string name="app_detail_new_role_label">Neue Rolle</string>
     <string name="app_detail_add_role_description">Rolle hinzufügen</string>
     <string name="app_detail_remove_role_description">Rolle entfernen</string>
+    <string name="app_detail_client_id_label">Keycloak Client-ID (Optional)</string>
+    <string name="app_detail_realm_label">Keycloak Realm (Optional)</string>
+    <string name="app_detail_scan_button">Scannen</string>
+    <string name="app_detail_discovery_dialog_title">Client auswählen</string>
+    <string name="app_detail_discovery_no_clients">Keine Clients in diesem Realm gefunden.</string>
+    <string name="app_detail_keycloak_section_title">Keycloak-Integration</string>
+    <string name="app_detail_link_status_label">Verknüpfungsstatus: </string>
+    <string name="app_detail_link_status_linked">Verknüpft</string>
+    <string name="app_detail_link_status_not_linked">Nicht verknüpft</string>
+    <string name="app_detail_roles_disabled_hint">Rollen können nur für verknüpfte Anwendungen verwaltet werden.</string>
+    <string name="app_list_linked_badge_description">Mit Keycloak verknüpft</string>
 
     <!-- AuthViewModel -->
     <string name="authviewmodel_error_could_not_connect_backend">Verbindung zum Backend nicht möglich. Bitte überprüfen Sie die Backend-Basis-URL in den Einstellungen oder versuchen Sie es später noch einmal.</string>
@@ -109,6 +119,7 @@
     <!-- User Management -->
     <string name="manage_users_title">Benutzer verwalten</string>
     <string name="user_permissions_title">Benutzerberechtigungen</string>
+    <string name="user_permissions_grant_access">Zugriff gewähren</string>
     <string name="no_roles_defined">Keine Rollen für diese App definiert.</string>
 
     <!-- User Menu -->

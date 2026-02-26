@@ -1,50 +1,47 @@
 package org.friesoft.porturl.data.auth
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.annotation.AnyThread
-import androidx.core.content.edit
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import com.google.crypto.tink.Aead
+import com.google.crypto.tink.KeyTemplates
+import com.google.crypto.tink.aead.AeadConfig
+import com.google.crypto.tink.integration.android.AndroidKeysetManager
+import com.google.crypto.tink.RegistryConfiguration
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import net.openid.appauth.AuthState
-import org.json.JSONException
-import java.io.File
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
 
-class AuthStateManager private constructor(context: Context) {
-    private val prefs: SharedPreferences
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_state_secure")
+
+class AuthStateManager private constructor(private val context: Context) {
+    private val currentAuthState: AtomicReference<AuthState> = AtomicReference()
+    private val aead: Aead
 
     init {
-        // Delete old insecure preferences if they exist
-        val oldPrefsFile = File(context.filesDir.parent, "shared_prefs/$STORE_NAME.xml")
-        if (oldPrefsFile.exists()) {
-            context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE).edit().clear().apply()
-            oldPrefsFile.delete()
-        }
-
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        AeadConfig.register()
+        aead = AndroidKeysetManager.Builder()
+            .withSharedPref(context, "tink_keyset", "tink_key")
+            .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
+            .withMasterKeyUri("android-keystore://tink_master_key")
             .build()
-
-        prefs = EncryptedSharedPreferences.create(
-            context,
-            SECURE_STORE_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+            .keysetHandle
+            .getPrimitive(RegistryConfiguration.get(), Aead::class.java)
     }
-
-    private val prefsLock: ReentrantLock = ReentrantLock()
-    private val currentAuthState: AtomicReference<AuthState> = AtomicReference()
 
     @get:AnyThread
     val current: AuthState
         get() {
-            if (currentAuthState.get() != null) {
-                return currentAuthState.get()
+            val cached = currentAuthState.get()
+            if (cached != null) {
+                return cached
             }
             val state = readState()
             return if (currentAuthState.compareAndSet(null, state)) {
@@ -69,51 +66,46 @@ class AuthStateManager private constructor(context: Context) {
     @AnyThread
     fun clearAuthState() {
         val clearedState = AuthState()
-        // perform read and write in critical section to avoid race conditions
-        prefsLock.lock()
-        try {
-            prefs.edit {
-                remove(KEY_STATE)
+        runBlocking {
+            context.dataStore.edit {
+                it.remove(KEY_STATE_ENCRYPTED)
             }
-        } finally {
-            prefsLock.unlock()
         }
         currentAuthState.set(clearedState)
     }
 
     @AnyThread
     private fun readState(): AuthState {
-        prefsLock.lock()
         return try {
-            val currentState = prefs.getString(KEY_STATE, null)
-            if (currentState == null) {
+            val encryptedBase64 = runBlocking {
+                context.dataStore.data.map { it[KEY_STATE_ENCRYPTED] }.first()
+            }
+            if (encryptedBase64 == null) {
                 AuthState()
             } else {
-                try {
-                    AuthState.jsonDeserialize(currentState)
-                } catch (ex: JSONException) {
-                    AuthState()
-                }
+                val encryptedBytes = android.util.Base64.decode(encryptedBase64, android.util.Base64.DEFAULT)
+                val decryptedBytes = aead.decrypt(encryptedBytes, null)
+                val stateJson = String(decryptedBytes, Charsets.UTF_8)
+                AuthState.jsonDeserialize(stateJson)
             }
-        } finally {
-            prefsLock.unlock()
+        } catch (ex: Exception) {
+            AuthState()
         }
     }
 
     @AnyThread
     private fun writeState(state: AuthState?) {
-        prefsLock.lock()
-        try {
-            val editor = prefs.edit()
-            if (state == null) {
-                editor.remove(KEY_STATE)
-            } else {
-                editor.putString(KEY_STATE, state.jsonSerializeString())
+        runBlocking {
+            context.dataStore.edit { prefs ->
+                if (state == null) {
+                    prefs.remove(KEY_STATE_ENCRYPTED)
+                } else {
+                    val stateJson = state.jsonSerializeString()
+                    val encryptedBytes = aead.encrypt(stateJson.toByteArray(Charsets.UTF_8), null)
+                    val encryptedBase64 = android.util.Base64.encodeToString(encryptedBytes, android.util.Base64.DEFAULT)
+                    prefs[KEY_STATE_ENCRYPTED] = encryptedBase64
+                }
             }
-
-            check(editor.commit()) { "Failed to write state to shared prefs" }
-        } finally {
-            prefsLock.unlock()
         }
     }
 
@@ -130,8 +122,6 @@ class AuthStateManager private constructor(context: Context) {
             return instance
         }
 
-        private const val STORE_NAME = "AuthState"
-        private const val SECURE_STORE_NAME = "AuthStateSecure"
-        private const val KEY_STATE = "state"
+        private val KEY_STATE_ENCRYPTED = stringPreferencesKey("state_encrypted")
     }
 }

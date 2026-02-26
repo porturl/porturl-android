@@ -14,6 +14,7 @@ import javax.net.ssl.X509TrustManager
 
 object SslUtils {
     
+    @android.annotation.SuppressLint("DiscouragedApi")
     fun applySelfSignedTrust(context: Context, builder: OkHttpClient.Builder) {
         val resId = context.resources.getIdentifier("local_ca", "raw", context.packageName)
         if (resId == 0) {

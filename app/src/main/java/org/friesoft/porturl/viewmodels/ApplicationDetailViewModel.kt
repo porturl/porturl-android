@@ -97,7 +97,7 @@ class ApplicationDetailViewModel @Inject constructor(
                     )
                 }
                 if (!app.realm.isNullOrBlank() && !app.clientId.isNullOrBlank()) {
-                    checkLinkStatus(app.realm!!, app.clientId!!)
+                    checkLinkStatus(app.realm, app.clientId)
                 }
             } catch (e: Exception) {
                 errorMessage.emit("Failed to load application data.")

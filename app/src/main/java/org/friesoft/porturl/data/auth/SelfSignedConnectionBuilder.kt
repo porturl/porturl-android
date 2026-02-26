@@ -1,5 +1,6 @@
 package org.friesoft.porturl.data.auth
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -15,13 +16,13 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.X509TrustManager
 
 /**
  * A connection builder that explicitly trusts our local self-signed Root CA.
  * This bypasses the system's Network Security Configuration and manually 
  * initializes an SSLContext with the provided Root CA.
  */
+@SuppressLint("DiscouragedApi")
 class SelfSignedConnectionBuilder(context: Context) : ConnectionBuilder {
     private var sslContext: SSLContext? = null
     private var hostnameVerifier: HostnameVerifier? = null
