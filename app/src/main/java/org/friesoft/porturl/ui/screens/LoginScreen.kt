@@ -25,6 +25,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -155,11 +158,21 @@ fun LoginScreen(
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = { navigator.navigate(Routes.Settings) },
-                            modifier = Modifier.align(Alignment.End)
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(stringResource(id = R.string.login_go_to_settings))
+                            TextButton(
+                                onClick = { authViewModel.checkBackendUrlValid() }
+                            ) {
+                                Text(stringResource(id = R.string.login_retry_backend_check))
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = { navigator.navigate(Routes.Settings) }
+                            ) {
+                                Text(stringResource(id = R.string.login_go_to_settings))
+                            }
                         }
                     }
                 }

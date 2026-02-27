@@ -45,6 +45,7 @@
     <string name="login_sso_button">Login with SSO</string>
     <string name="login_backend_not_valid">Backend URL is not valid/reachable. Please configure it correctly.</string>
     <string name="login_go_to_settings">Go to settings</string>
+    <string name="login_retry_backend_check">Retry</string>
 
     <!-- Application List Screen -->
     <string name="app_list_title">Applications</string>

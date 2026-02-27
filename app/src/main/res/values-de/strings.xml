@@ -45,6 +45,7 @@
     <string name="login_sso_button">Mit SSO anmelden</string>
     <string name="login_backend_not_valid">Die Backend-URL ist nicht gültig/erreichbar. Bitte konfigurieren Sie sie korrekt.</string>
     <string name="login_go_to_settings">Einstellungen öffnen</string>
+    <string name="login_retry_backend_check">Wiederholen</string>
 
     <!-- Application List Screen -->
     <string name="app_list_title">Anwendungen</string>

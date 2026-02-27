@@ -175,6 +175,7 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
 
     LaunchedEffect(validationState) {
         if (validationState == ValidationState.SUCCESS) {
+            viewModel.resetValidationState()
             navigator.goBack()
         }
     }
