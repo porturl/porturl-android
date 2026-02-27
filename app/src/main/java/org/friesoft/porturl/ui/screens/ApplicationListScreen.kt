@@ -295,6 +295,7 @@ fun ApplicationListScreen(
                         else -> {
                             val onDragStart: (Application, Category, String, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit =
                                 { app, cat, key, absPos, relPos, size, composable ->
+                                    VibrationHelper.vibrate(context, HapticEffect.LongClick)
                                     menuOpenAppId = null
                                     frozenAppBounds = applicationBounds.mapNotNull { (appKey, rect) ->
                                         val parts = appKey.split("_")
@@ -413,7 +414,6 @@ fun ApplicationListScreen(
                             val onDragEnd: () -> Unit = {
                                 draggingItem?.let { state ->
                                     if (state is DraggingItem.App && !state.isVisualDragStarted) {
-                                        VibrationHelper.vibrate(context, HapticEffect.LongClick)
                                         menuOpenAppId = state.key
                                     } else {
                                         dropTargetInfo?.let { target ->
