@@ -343,6 +343,47 @@ jobs:
             find artifacts/ -name "*.aab"
           fi
 
+      - name: Fetch upcoming release notes
+        id: fetch_notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find the Release Please PR
+          PR_JSON=$(gh pr list --label "autorelease: pending" --state open --json body,title --limit 1)
+          
+          if [ "$(echo "$PR_JSON" | jq 'length')" -gt 0 ]; then
+            TITLE=$(echo "$PR_JSON" | jq -r '.[0].title')
+            BODY=$(echo "$PR_JSON" | jq -r '.[0].body')
+            
+            # Extract the version from title like "chore(main): release 0.4.0"
+            VERSION=$(echo "$TITLE" | sed -E 's/.*release ([0-9.]+).*/\1/')
+            [ -z "$VERSION" ] && VERSION="upcoming release"
+            
+            # Extract only the changelog part (usually starts with ## and ends before the metadata/footer)
+            CHANGELOG=$(echo "$BODY" | sed -n '/^## /,$p' | sed '/^---/,$d' | sed '/^This PR was/,$d')
+            
+            # 1. Clean Markdown links and hashes
+            # 2. Deduplicate lines (handles multiple commits with the same message)
+            CLEAN_NOTES=$(echo "$CHANGELOG" | \
+              sed -E 's/\[([^]]+)\]\([^)]+\)/\1/g' | \
+              sed -E 's/ \([0-9a-f]{7,}\)//g' | \
+              sed -E 's/,? (closes )?#[0-9]+//g' | \
+              awk '!seen[$0]++')
+            
+            FULL_NOTES="Upcoming changes for $VERSION (unreleased):\n\n$CLEAN_NOTES"
+          else
+            FULL_NOTES="🚧 Snapshot Build\nCommit: ${{ needs.build.outputs.commitSha }}\nTime: ${{ needs.build.outputs.buildTime }}\n\nThis build contains the latest changes from main."
+          fi
+          
+          # Truncate to 500 chars for Google Play
+          if [ ${#FULL_NOTES} -gt 500 ]; then
+            FULL_NOTES="${FULL_NOTES:0:497}..."
+          fi
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$FULL_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Prepare release assets
         run: |
           cd artifacts
@@ -427,6 +468,7 @@ jobs:
           track: internal
           status: draft
           releaseName: ${{ needs.build.outputs.versionName }}
+          releaseNotes: ${{ steps.fetch_notes.outputs.notes }}
 
   # =================================================================
   #           📢 4. NOTIFICATION & CLEANUP

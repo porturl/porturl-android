@@ -140,6 +140,7 @@ jobs:
            done
 
       - name: Update Release with Artifacts and Verification Info
+        id: update_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release_info.outputs.tag }}
@@ -147,7 +148,23 @@ jobs:
           # Fetch existing body
           EXISTING_BODY=$(gh release view "$TAG" --json body --template '{{.body}}')
           
-          # Create new body with verification info appended
+          # Prepare clean notes for Google Play (before appending verification info)
+          # 1. Remove Markdown links but keep text: [text](url) -> text
+          # 2. Remove commit hashes: (9d9ced4)
+          # 3. Remove "closes #123" or similar
+          CLEAN_NOTES=$(echo "$EXISTING_BODY" | sed -E 's/\[([^]]+)\]\([^)]+\)/\1/g' | sed -E 's/ \([0-9a-f]{7,}\)//g' | sed -E 's/,? (closes )?#[0-9]+//g')
+          
+          # Truncate to 500 characters for Google Play
+          if [ ${#CLEAN_NOTES} -gt 500 ]; then
+            CLEAN_NOTES="${CLEAN_NOTES:0:497}..."
+          fi
+          
+          # Export for Google Play step
+          echo "clean_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$CLEAN_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Create new body for GitHub Release with verification info appended
           NEW_BODY=$(cat <<EOF
           $EXISTING_BODY
 
@@ -160,13 +177,10 @@ jobs:
           EOF
           )
           
-          # Update release notes
+          # Update GitHub release notes
           gh release edit "$TAG" --notes "$NEW_BODY"
           
           # Upload all artifacts (APK, AAB, checksums)
-
-          # We use a loop to handle the multiple files found by the glob
-
           find . -name "*.apk" -o -name "*.aab" -o -name "checksums.txt" | xargs -I {} gh release upload "$TAG" "{}" --clobber
 
       - name: Publish Release (Undraft)
@@ -192,6 +206,7 @@ jobs:
           track: internal
           status: draft
           releaseName: ${{ steps.release_info.outputs.tag }}
+          releaseNotes: ${{ steps.update_release.outputs.clean_notes }}
 
       - name: Label PR as Published
         env:
