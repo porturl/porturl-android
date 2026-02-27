@@ -61,6 +61,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -289,14 +290,14 @@ fun AdaptiveNavigationShell(
                             onClick = onAddCategory,
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
-                        ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_category_description)) }
+                        ) { Icon(Icons.Default.CreateNewFolder, contentDescription = stringResource(R.string.add_category_description)) }
 
                         FloatingActionButton(
                             onClick = onAddApp,
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
-                            Icon(Icons.Default.Apps, contentDescription = stringResource(R.string.add_application_description))
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_application_description))
                         }
                     }
                 }
@@ -309,7 +310,10 @@ fun AdaptiveNavigationShell(
                 end = padding.calculateEndPadding(layoutDirection),
                 bottom = padding.calculateBottomPadding()
             )
-            Box(modifier = Modifier.padding(effectivePadding)) {
+            Box(
+                modifier = Modifier
+                    .padding(effectivePadding)
+            ) {
                 content()
             }
         }

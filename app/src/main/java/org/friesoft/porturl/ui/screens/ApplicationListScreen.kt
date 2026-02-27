@@ -282,6 +282,7 @@ fun ApplicationListScreen(
     ) { padding ->
         Box(modifier = Modifier
             .padding(padding)
+            .statusBarsPadding()
             .onGloballyPositioned { listBounds = it.boundsInRoot() }
         ) {
             Column(Modifier.fillMaxSize()) {
