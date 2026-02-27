@@ -92,10 +92,6 @@ fun AdaptiveNavigationShell(
         return
     }
 
-    BackHandler(enabled = searchQuery.isNotEmpty() && currentRoute == Routes.AppList) {
-        onSearchQueryChanged("")
-    }
-
     val destinations = mutableListOf(
         NavigationItem(
             route = Routes.AppList,
@@ -315,6 +311,14 @@ fun AdaptiveNavigationShell(
                     .padding(effectivePadding)
             ) {
                 content()
+
+                BackHandler(enabled = searchQuery.isNotEmpty() && currentRoute == Routes.AppList) {
+                    onSearchQueryChanged("")
+                }
+
+                BackHandler(enabled = drawerState.isOpen) {
+                    scope.launch { drawerState.close() }
+                }
             }
         }
     }
