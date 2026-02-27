@@ -146,14 +146,17 @@ object AppModule {
     fun provideAdminRetrofit(
         @Named("admin_client") okHttpClient: OkHttpClient,
         settingsRepository: SettingsRepository,
-        @Named("yaml_mapper") yamlMapper: ObjectMapper
+        @Named("yaml_mapper") yamlMapper: ObjectMapper,
+        json: Json
     ): Retrofit {
         val backendUrl = settingsRepository.getBackendUrlBlocking()
+        val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl(backendUrl)
             .client(okHttpClient)
             .addConverterFactory(ScalarsConverterFactory.create())
             .addConverterFactory(YamlConverterFactory(yamlMapper))
+            .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
@@ -165,7 +168,10 @@ object AppModule {
             parameterAnnotations: Array<out Annotation>,
             methodAnnotations: Array<out Annotation>,
             retrofit: Retrofit
-        ): Converter<*, RequestBody> {
+        ): Converter<*, RequestBody>? {
+            if (type != org.friesoft.porturl.client.model.ExportData::class.java) {
+                return null
+            }
             val javaType = mapper.typeFactory.constructType(type)
             val writer = mapper.writerFor(javaType)
             return Converter<Any, RequestBody> { value ->
@@ -178,7 +184,10 @@ object AppModule {
             type: Type,
             annotations: Array<out Annotation>,
             retrofit: Retrofit
-        ): Converter<ResponseBody, *> {
+        ): Converter<ResponseBody, *>? {
+            if (type != org.friesoft.porturl.client.model.ExportData::class.java) {
+                return null
+            }
             val javaType: JavaType = mapper.typeFactory.constructType(type)
             val reader = mapper.readerFor(javaType)
             return Converter<ResponseBody, Any> { value ->

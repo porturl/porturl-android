@@ -5,6 +5,10 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# Keep generated OpenAPI models for Jackson/YAML deserialization
+-keep class org.friesoft.porturl.client.model.** { *; }
+-keepattributes Signature,AnnotationDefault,EnclosingMethod,InnerClasses,MethodParameters
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
