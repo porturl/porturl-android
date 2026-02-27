@@ -54,6 +54,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
@@ -73,6 +76,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
@@ -232,6 +236,7 @@ fun ApplicationListScreen(
     val listState = rememberLazyListState()
     val gridState = rememberLazyStaggeredGridState()
     var listBounds by remember { mutableStateOf<Rect?>(null) }
+    var lastPointerType by remember { mutableStateOf(PointerType.Touch) }
 
     LaunchedEffect(listState.isScrollInProgress) {
         if (listState.isScrollInProgress) onAppListInteraction()
@@ -305,6 +310,22 @@ fun ApplicationListScreen(
             .padding(padding)
             .statusBarsPadding()
             .onGloballyPositioned { listBounds = it.boundsInRoot() }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                        val type = when {
+                            event.type == PointerEventType.Scroll -> PointerType.Mouse
+                            event.changes.any { it.type == PointerType.Mouse } -> PointerType.Mouse
+                            event.changes.any { it.type == PointerType.Touch } -> PointerType.Touch
+                            else -> null
+                        }
+                        if (type != null) {
+                            lastPointerType = type
+                        }
+                    }
+                }
+            }
         ) {
             Column(Modifier.fillMaxSize()) {
                 val screenContent = @Composable {
@@ -552,6 +573,57 @@ fun ApplicationListScreen(
                     }
                 }
 
+                val canScrollBackward = remember {
+                    derivedStateOf {
+                        if (windowWidthSize == WindowWidthSizeClass.Compact) listState.canScrollBackward
+                        else gridState.canScrollBackward
+                    }
+                }
+
+                val mouseScrollFilter = remember(lastPointerType) {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            // If it's a mouse and we are trying to pull down (available.y > 0)
+                            // AND we are already at the top (!canScrollBackward), consume it early.
+                            if (lastPointerType == PointerType.Mouse && available.y > 0 && !canScrollBackward.value) {
+                                return available
+                            }
+                            return Offset.Zero
+                        }
+
+                        override fun onPostScroll(
+                            consumed: Offset,
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            // If it's a mouse and there's remaining "pull down" delta that the list didn't use (at the top), consume it.
+                            if (lastPointerType == PointerType.Mouse && available.y > 0) {
+                                return available
+                            }
+                            return Offset.Zero
+                        }
+
+                        override suspend fun onPreFling(available: Velocity): Velocity {
+                            // Block mouse "flings" (fast scrolls) when at the top.
+                            if (lastPointerType == PointerType.Mouse && available.y > 0 && !canScrollBackward.value) {
+                                return available
+                            }
+                            return Velocity.Zero
+                        }
+
+                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                            // Block remaining mouse fling velocity that the list didn't consume (at the top).
+                            if (lastPointerType == PointerType.Mouse && available.y > 0) {
+                                return available
+                            }
+                            return Velocity.Zero
+                        }
+                    }
+                }
+
                 Box(modifier = Modifier.weight(1f)) {
                     PullToRefreshBox(
                         isRefreshing = uiState.isRefreshing,
@@ -559,7 +631,11 @@ fun ApplicationListScreen(
                         modifier = Modifier.pointerInput(Unit) {
                             detectTapGestures(onTap = { onAppListInteraction() })
                         }
-                    ) { screenContent() }
+                    ) {
+                        Box(Modifier.nestedScroll(mouseScrollFilter)) {
+                            screenContent()
+                        }
+                    }
                 }
             }
 

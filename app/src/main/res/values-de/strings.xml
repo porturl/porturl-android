@@ -61,6 +61,7 @@
     <string name="toggle_layout_description">Layout umschalten</string>
     <string name="item_type_application">Anwendung</string>
     <string name="item_type_category">Kategorie</string>
+    <string name="refresh_description">Aktualisieren</string>
     <string name="empty_state_no_results">Keine Ergebnisse gefunden.</string>
     <string name="empty_state_no_items">Keine Anwendungen oder Kategorien gefunden.\nTippen Sie auf \'Bearbeiten\' und dann auf \'+\', um welche hinzuzufügen!</string>
     <string name="application_icon_description">%s-Symbol</string>

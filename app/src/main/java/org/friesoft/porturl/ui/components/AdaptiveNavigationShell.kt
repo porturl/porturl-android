@@ -91,6 +91,7 @@ fun AdaptiveNavigationShell(
     layoutMode: org.friesoft.porturl.data.model.LayoutMode = org.friesoft.porturl.data.model.LayoutMode.GRID,
     onLayoutModeChanged: (org.friesoft.porturl.data.model.LayoutMode) -> Unit = {},
     onProfileClick: () -> Unit, // Opens menu or profile screen
+    onRefresh: () -> Unit = {},
     onAddApp: () -> Unit,
     onAddCategory: () -> Unit,
     isModalOpen: Boolean = false,
@@ -161,20 +162,7 @@ fun AdaptiveNavigationShell(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        modifier = Modifier
-            .focusRequester(rootFocusRequester)
-            .focusTarget()
-            .onPreviewKeyEvent { event ->
-                if (!isModalOpen && event.isCtrlPressed && event.key == Key.F && event.type == KeyEventType.KeyDown) {
-                    if (currentRoute != Routes.AppList) {
-                        onNavigate(Routes.AppList)
-                        shouldFocusSearch = true
-                    } else {
-                        searchFocusRequester.requestFocus()
-                    }
-                    true
-                } else false
-            },
+        modifier = Modifier,
         drawerContent = {
              ModalDrawerSheet(
                 modifier = Modifier.width(240.dp),
@@ -221,7 +209,24 @@ fun AdaptiveNavigationShell(
         }
     ) {
         Scaffold(
-            modifier = Modifier.imePadding(),
+            modifier = Modifier
+                .imePadding()
+                .focusRequester(rootFocusRequester)
+                .focusTarget()
+                .onPreviewKeyEvent { event ->
+                    if (!isModalOpen && event.isCtrlPressed && event.key == Key.F && event.type == KeyEventType.KeyDown) {
+                        if (currentRoute != Routes.AppList) {
+                            onNavigate(Routes.AppList)
+                            shouldFocusSearch = true
+                        } else {
+                            searchFocusRequester.requestFocus()
+                        }
+                        true
+                    } else if (!isModalOpen && event.key == Key.F5 && event.type == KeyEventType.KeyDown) {
+                        onRefresh()
+                        true
+                    } else false
+                },
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 Surface(
@@ -265,6 +270,14 @@ fun AdaptiveNavigationShell(
                                     },
                                     trailingIcon = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (windowSizeClass != WindowWidthSizeClass.Compact) {
+                                                IconButton(
+                                                    onClick = onRefresh,
+                                                    enabled = !isModalOpen
+                                                ) {
+                                                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh_description))
+                                                }
+                                            }
                                             if (searchQuery.isNotEmpty()) {
                                                 IconButton(
                                                     onClick = { onSearchQueryChanged("") },

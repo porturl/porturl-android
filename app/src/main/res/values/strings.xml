@@ -61,6 +61,7 @@
     <string name="toggle_layout_description">Toggle Layout</string>
     <string name="item_type_application">Application</string>
     <string name="item_type_category">Category</string>
+    <string name="refresh_description">Refresh</string>
     <string name="empty_state_no_results">No results found.</string>
     <string name="empty_state_no_items">No applications or categories found.\nTap \'Edit\' then \'+\' to add some!</string>
     <string name="application_icon_description">%s icon</string>

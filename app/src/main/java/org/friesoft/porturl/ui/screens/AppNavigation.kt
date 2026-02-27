@@ -107,6 +107,7 @@ fun AppNavigation() {
             layoutMode = userPreferences?.layoutMode ?: org.friesoft.porturl.data.model.LayoutMode.GRID,
             onLayoutModeChanged = { settingsViewModel.saveLayoutMode(it) },
             onProfileClick = { navigator.navigate(Routes.Profile) },
+            onRefresh = { sharedViewModel.triggerRefreshAppList() },
             onAddApp = { sharedViewModel.openAppDetail(-1) },
             onAddCategory = { sharedViewModel.openCategoryDetail(-1) },
             isModalOpen = activeAppDetailId != null || activeCategoryDetailId != null
