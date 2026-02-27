@@ -23,8 +23,11 @@ import org.friesoft.porturl.ui.navigation.rememberNavigationState
 import org.friesoft.porturl.ui.navigation.toEntries
 import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.AuthViewModel
-import android.util.Log
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.animation.*
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.IntOffset
 
 /**
  * The main navigation component for the application.
@@ -137,7 +140,25 @@ fun AppNavigation() {
         ) {
             NavDisplay(
                 entries = navigationState.toEntries(entryProvider),
-                onBack = { navigator.goBack() }
+                onBack = { navigator.goBack() },
+                transitionSpec = {
+                    val spec = tween<IntOffset>(durationMillis = 400, easing = LinearOutSlowInEasing)
+                    val fadeSpec = tween<Float>(durationMillis = 400)
+                    slideInHorizontally(animationSpec = spec) { it }
+                        .togetherWith(slideOutHorizontally(animationSpec = spec) { -it / 3 } + fadeOut(animationSpec = fadeSpec))
+                        .apply { targetContentZIndex = 1f }
+                },
+                popTransitionSpec = {
+                    val spec = tween<IntOffset>(durationMillis = 400, easing = LinearOutSlowInEasing)
+                    slideInHorizontally(animationSpec = spec) { -it / 3 }.togetherWith(
+                        slideOutHorizontally(animationSpec = spec) { it }
+                    ).apply { targetContentZIndex = -1f }
+                },
+                predictivePopTransitionSpec = {
+                    val spec = tween<IntOffset>(durationMillis = 400, easing = LinearOutSlowInEasing)
+                    slideInHorizontally(animationSpec = spec) { -it } togetherWith
+                            slideOutHorizontally(animationSpec = spec) { it }
+                }
             )
 
             activeAppDetailId?.let { id ->

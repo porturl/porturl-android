@@ -44,38 +44,44 @@ fun UserDetailScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            PortUrlTopAppBar(
-                title = { Text(stringResource(R.string.user_permissions_title)) },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.goBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                PortUrlTopAppBar(
+                    title = { Text(stringResource(R.string.user_permissions_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.goBack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
-                }
-            )
-        }
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(uiState.allApplications) { appWithRoles ->
-                        appWithRoles.application?.let { app ->
-                            AppPermissionItem(
-                                app = app,
-                                availableRoles = appWithRoles.availableRoles ?: emptyList(),
-                                hasAccess = viewModel.hasAccess(app),
-                                onAccessToggle = { isChecked -> viewModel.toggleAccess(app, isChecked) },
-                                hasRole = { role -> viewModel.hasRole(app, role) },
-                                onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
-                            )
+                )
+            }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(uiState.allApplications) { appWithRoles ->
+                            appWithRoles.application?.let { app ->
+                                AppPermissionItem(
+                                    app = app,
+                                    availableRoles = appWithRoles.availableRoles ?: emptyList(),
+                                    hasAccess = viewModel.hasAccess(app),
+                                    onAccessToggle = { isChecked -> viewModel.toggleAccess(app, isChecked) },
+                                    hasRole = { role -> viewModel.hasRole(app, role) },
+                                    onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
+                                )
+                            }
                         }
                     }
                 }

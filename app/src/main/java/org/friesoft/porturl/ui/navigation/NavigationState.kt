@@ -61,6 +61,7 @@ class NavigationState(
     val backStacks: Map<NavKey, NavBackStack<NavKey>>
 ) {
     var topLevelRoute: NavKey by topLevelRoute
+
     val stacksInUse: List<NavKey>
         get() = if (topLevelRoute == Routes.Login) {
             listOf(Routes.Login)

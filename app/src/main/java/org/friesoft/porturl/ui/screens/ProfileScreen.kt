@@ -51,94 +51,100 @@ fun ProfileScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {}
 
-    Scaffold(
-        topBar = {
-            PortUrlTopAppBar(
-                title = { Text(stringResource(R.string.user_profile)) },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.goBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_description))
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                PortUrlTopAppBar(
+                    title = { Text(stringResource(R.string.user_profile)) },
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.goBack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_description))
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Profile Picture
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    UserAvatar(
+                        currentUser = currentUser,
+                        backendUrl = backendUrl,
+                        size = 120.dp
+                    )
+                    FilledIconButton(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoCamera,
+                            contentDescription = stringResource(R.string.edit_button_text),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
 
-            // Profile Picture
-            Box(contentAlignment = Alignment.BottomEnd) {
-                UserAvatar(
-                    currentUser = currentUser,
-                    backendUrl = backendUrl,
-                    size = 120.dp
-                )
-                FilledIconButton(
-                    onClick = { imagePickerLauncher.launch("image/*") },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        Icons.Default.PhotoCamera,
-                        contentDescription = stringResource(R.string.edit_button_text),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // User Info
-            Text(
-                text = currentUser?.email ?: "",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // Logout Button
-            Button(
-                onClick = { authViewModel.logout(logoutLauncher) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.logout_description))
-            }
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // Roles
-            if (userRoles.isNotEmpty()) {
+                // User Info
                 Text(
-                    text = "Current Roles",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = currentUser?.email ?: "",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                FlowRow(
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                // Logout Button
+                Button(
+                    onClick = { authViewModel.logout(logoutLauncher) },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxItemsInEachRow = Int.MAX_VALUE
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
                 ) {
-                    userRoles.forEach { role ->
-                        SuggestionChip(
-                            onClick = { },
-                            label = { Text(role) },
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.logout_description))
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                // Roles
+                if (userRoles.isNotEmpty()) {
+                    Text(
+                        text = "Current Roles",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = Int.MAX_VALUE
+                    ) {
+                        userRoles.forEach { role ->
+                            SuggestionChip(
+                                onClick = { },
+                                label = { Text(role) },
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     }
                 }
             }

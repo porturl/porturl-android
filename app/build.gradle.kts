@@ -120,6 +120,7 @@ dependencies {
     implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.animation.core)
     debugImplementation(libs.androidx.ui.tooling)
     ksp(libs.kotlin.metadata.jvm)
     implementation(libs.androidx.core.ktx)

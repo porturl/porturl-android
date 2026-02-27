@@ -8,6 +8,14 @@ import android.util.Log
  * Handles navigation events (forward and back) by updating the navigation state.
  */
 class Navigator(val state: NavigationState){
+    val canGoBack: Boolean
+        get() {
+            val currentStack = state.backStacks[state.topLevelRoute] ?: return false
+            // Can go back if there's more than one item in the current stack,
+            // or if the current topLevelRoute is not the startRoute.
+            return currentStack.size > 1 || state.topLevelRoute != state.startRoute
+        }
+
     fun navigate(route: NavKey){
         Log.d("Navigator", "Navigating to $route")
         if (route in state.backStacks.keys){
