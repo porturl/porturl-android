@@ -26,6 +26,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,6 +68,10 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.focus.focusTarget
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,9 +130,38 @@ fun AdaptiveNavigationShell(
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val searchFocusRequester = remember { FocusRequester() }
+    val rootFocusRequester = remember { FocusRequester() }
+    var shouldFocusSearch by remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldFocusSearch, currentRoute) {
+        if (shouldFocusSearch && currentRoute == Routes.AppList) {
+            searchFocusRequester.requestFocus()
+            shouldFocusSearch = false
+        }
+    }
+
+    // Ensure the root can receive key events
+    LaunchedEffect(Unit) {
+        rootFocusRequester.requestFocus()
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        modifier = Modifier
+            .focusRequester(rootFocusRequester)
+            .focusTarget()
+            .onPreviewKeyEvent { event ->
+                if (!isModalOpen && event.isCtrlPressed && event.key == Key.F && event.type == KeyEventType.KeyDown) {
+                    if (currentRoute != Routes.AppList) {
+                        onNavigate(Routes.AppList)
+                        shouldFocusSearch = true
+                    } else {
+                        searchFocusRequester.requestFocus()
+                    }
+                    true
+                } else false
+            },
         drawerContent = {
              ModalDrawerSheet(
                 modifier = Modifier.width(240.dp),
@@ -200,7 +236,9 @@ fun AdaptiveNavigationShell(
                                 OutlinedTextField(
                                     value = searchQuery,
                                     onValueChange = onSearchQueryChanged,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(searchFocusRequester),
                                     enabled = !isModalOpen,
                                     placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                     singleLine = true,
