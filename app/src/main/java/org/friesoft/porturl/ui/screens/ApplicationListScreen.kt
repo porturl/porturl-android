@@ -26,6 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -53,6 +54,11 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.isTertiaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.boundsInRoot
@@ -217,6 +223,7 @@ fun ApplicationListScreen(
     var draggingItem by remember { mutableStateOf<DraggingItem?>(null) }
     var dropTargetInfo by remember { mutableStateOf<DropTarget?>(null) }
     var menuOpenAppId by remember { mutableStateOf<String?>(null) }
+    var menuOpenOffset by remember { mutableStateOf(Offset.Zero) }
 
     val categoryBounds = remember { mutableStateMapOf<Long, Rect>() }
     val applicationBounds = remember { mutableStateMapOf<String, Rect>() }
@@ -314,6 +321,7 @@ fun ApplicationListScreen(
                                 { app, cat, key, absPos, relPos, size, composable ->
                                     VibrationHelper.vibrate(context, HapticEffect.LongClick)
                                     menuOpenAppId = null
+                                    menuOpenOffset = relPos // Set offset immediately to prevent jumping if menu shows early
                                     frozenAppBounds = applicationBounds.mapNotNull { (appKey, rect) ->
                                         val parts = appKey.split("_")
                                         if (parts.size >= 2) {
@@ -432,6 +440,7 @@ fun ApplicationListScreen(
                                 draggingItem?.let { state ->
                                     if (state is DraggingItem.App && !state.isVisualDragStarted) {
                                         menuOpenAppId = state.key
+                                        menuOpenOffset = state.itemOffset
                                     } else {
                                         dropTargetInfo?.let { target ->
                                             if (state is DraggingItem.App) {
@@ -468,7 +477,12 @@ fun ApplicationListScreen(
                                             dropTargetInfo = dropTargetInfo,
                                             draggingItem = draggingItem,
                                             menuOpenAppId = menuOpenAppId,
+                                            menuOpenOffset = menuOpenOffset,
                                             onMenuDismiss = { menuOpenAppId = null },
+                                            onAppMenuOpen = { key, offset ->
+                                                menuOpenAppId = key
+                                                menuOpenOffset = offset
+                                            },
                                             onSortApps = onSortApps,
                                             onCategoryClick = onCategoryClick,
                                             onDeleteCategory = { itemToDelete = "Category" to category.id },
@@ -508,7 +522,12 @@ fun ApplicationListScreen(
                                             dropTargetInfo = dropTargetInfo,
                                             draggingItem = draggingItem,
                                             menuOpenAppId = menuOpenAppId,
+                                            menuOpenOffset = menuOpenOffset,
                                             onMenuDismiss = { menuOpenAppId = null },
+                                            onAppMenuOpen = { key, offset ->
+                                                menuOpenAppId = key
+                                                menuOpenOffset = offset
+                                            },
                                             onSortApps = onSortApps,
                                             onCategoryClick = onCategoryClick,
                                             onDeleteCategory = { itemToDelete = "Category" to category.id },
@@ -582,7 +601,9 @@ private fun CategoryColumn(
     dropTargetInfo: DropTarget?,
     draggingItem: DraggingItem?,
     menuOpenAppId: String?,
+    menuOpenOffset: Offset,
     onMenuDismiss: () -> Unit,
+    onAppMenuOpen: (String, Offset) -> Unit,
     onSortApps: (categoryId: Long) -> Unit,
     onCategoryClick: (Category) -> Unit,
     onDeleteCategory: () -> Unit,
@@ -680,6 +701,18 @@ private fun CategoryColumn(
                                                     onAppBoundsChanged(appKey, it.boundsInRoot())
                                                 }
                                             }
+                                            .pointerInput(appKey) {
+                                                awaitPointerEventScope {
+                                                    while (true) {
+                                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                                        if (event.type == PointerEventType.Press && 
+                                                            (event.buttons.isSecondaryPressed || event.buttons.isTertiaryPressed)) {
+                                                            onAppMenuOpen(appKey, event.changes.first().position)
+                                                            event.changes.forEach { it.consume() }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             .pointerInput(application, category, isAlphabetical) {
                                                 detectDragGesturesAfterLongPress(
                                                     onDragStart = { offset ->
@@ -717,6 +750,7 @@ private fun CategoryColumn(
                                             color = color,
                                             translucentBackground = translucentBackground,
                                             isMenuOpen = isMenuOpen,
+                                            menuOffset = menuOpenOffset,
                                             onDismissMenu = onMenuDismiss,
                                             enabled = !isDraggedItem
                                         )
@@ -760,6 +794,18 @@ private fun CategoryColumn(
                                                     onAppBoundsChanged(appKey, it.boundsInRoot())
                                                 }
                                             }
+                                            .pointerInput(appKey) {
+                                                awaitPointerEventScope {
+                                                    while (true) {
+                                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                                        if (event.type == PointerEventType.Press && 
+                                                            (event.buttons.isSecondaryPressed || event.buttons.isTertiaryPressed)) {
+                                                            onAppMenuOpen(appKey, event.changes.first().position)
+                                                            event.changes.forEach { it.consume() }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             .pointerInput(application, category, isAlphabetical) {
                                                 detectDragGesturesAfterLongPress(
                                                     onDragStart = { offset ->
@@ -797,6 +843,7 @@ private fun CategoryColumn(
                                             color = color,
                                             translucentBackground = translucentBackground,
                                             isMenuOpen = isMenuOpen,
+                                            menuOffset = menuOpenOffset,
                                             onDismissMenu = onMenuDismiss,
                                             enabled = !isDraggedItem
                                         )
@@ -822,15 +869,60 @@ fun ApplicationListItem(
     color: Color,
     translucentBackground: Boolean,
     isMenuOpen: Boolean = false,
+    menuOffset: Offset = Offset.Zero,
     onDismissMenu: () -> Unit = {},
     enabled: Boolean = true
 ) {
-    val screenWidth = LocalWindowInfo.current.containerSize.width
+    val density = LocalDensity.current
     var itemBounds by remember { mutableStateOf(Rect.Zero) }
 
     Box(modifier = modifier.onGloballyPositioned { itemBounds = it.boundsInRoot() }) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
         val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
+        
+        // Use a Box as a precise anchor at the click position
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(menuOffset.x.roundToInt(), menuOffset.y.roundToInt()) }
+                .size(0.dp)
+        ) {
+            DropdownMenu(
+                expanded = isMenuOpen,
+                onDismissRequest = onDismissMenu,
+                shape = MaterialTheme.shapes.extraLarge,
+                offset = DpOffset(0.dp, 0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = application.name ?: "",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                DropdownMenuItem(
+                    text = { Text(stringResource(id = R.string.edit_button_text)) },
+                    onClick = {
+                        onDismissMenu()
+                        onEditClick()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(id = R.string.delete_button_text)) },
+                    onClick = {
+                        onDismissMenu()
+                        onDeleteClick()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                )
+            }
+        }
+
         ElevatedCard(
             onClick = onClick,
             enabled = enabled && !isGhost,
@@ -870,44 +962,6 @@ fun ApplicationListItem(
                         modifier = Modifier.size(24.dp).padding(end = 4.dp)
                     )
                 }
-
-                Box {
-                    DropdownMenu(
-                        expanded = isMenuOpen,
-                        onDismissRequest = onDismissMenu,
-                        shape = MaterialTheme.shapes.extraLarge,
-                        offset = DpOffset(x = (-16).dp, y = 0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .fillMaxWidth()
-                        ) {
-                            Text(
-                                text = application.name ?: "",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.edit_button_text)) },
-                            onClick = {
-                                onDismissMenu()
-                                onEditClick()
-                            },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.delete_button_text)) },
-                            onClick = {
-                                onDismissMenu()
-                                onDeleteClick()
-                            },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
-                        )
-                    }
-                }
             }
         }
     }
@@ -927,11 +981,14 @@ fun CategoryHeader(
     translucentBackground: Boolean
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    var menuOpenViaButton by remember { mutableStateOf(false) }
+    var menuPressPosition by remember { mutableStateOf(Offset.Zero) }
     var isExpanded by remember { mutableStateOf(false) }
     var headerSize by remember(category.id) { mutableStateOf(IntSize.Zero) }
     var headerPosition by remember(category.id) { mutableStateOf(Offset.Zero) }
     val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
     val surfaceColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
+    val density = LocalDensity.current
 
     Surface(
         modifier = Modifier
@@ -940,6 +997,20 @@ fun CategoryHeader(
             .onGloballyPositioned {
                 headerSize = it.size
                 headerPosition = it.boundsInRoot().topLeft
+            }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.type == PointerEventType.Press && 
+                            (event.buttons.isSecondaryPressed || event.buttons.isTertiaryPressed)) {
+                            menuPressPosition = event.changes.first().position
+                            menuOpenViaButton = false
+                            menuExpanded = true
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                }
             }
             .pointerInput(category) {
                 detectDragGesturesAfterLongPress(
@@ -1004,39 +1075,71 @@ fun CategoryHeader(
             }
             Spacer(Modifier.width(8.dp))
             Box {
-                IconButton(onClick = { menuExpanded = true }) {
+                IconButton(onClick = { 
+                    menuOpenViaButton = true
+                    menuExpanded = true 
+                }) {
                     Icon(
                         Icons.Default.MoreVert,
                         contentDescription = stringResource(id = R.string.edit_mode_description),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
+                
+                if (menuOpenViaButton) {
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        shape = MaterialTheme.shapes.extraLarge,
+                        offset = DpOffset(x = (-16).dp, y = 0.dp)
+                    ) {
+                        CategoryMenuContent(onEditClick, onDeleteClick, { menuExpanded = false })
+                    }
+                }
+            }
+        }
+
+        if (menuExpanded && !menuOpenViaButton) {
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(menuPressPosition.x.roundToInt(), menuPressPosition.y.roundToInt()) }
+                    .size(0.dp)
+            ) {
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                     shape = MaterialTheme.shapes.extraLarge,
-                    offset = DpOffset(x = (-16).dp, y = 0.dp)
+                    offset = DpOffset(0.dp, 0.dp)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(id = R.string.edit_button_text)) },
-                        onClick = {
-                            menuExpanded = false
-                            onEditClick()
-                        },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(id = R.string.delete_button_text)) },
-                        onClick = {
-                            menuExpanded = false
-                            onDeleteClick()
-                        },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
-                    )
+                    CategoryMenuContent(onEditClick, onDeleteClick, { menuExpanded = false })
                 }
             }
         }
     }
+}
+
+@Composable
+private fun CategoryMenuContent(
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(stringResource(id = R.string.edit_button_text)) },
+        onClick = {
+            onDismiss()
+            onEditClick()
+        },
+        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(id = R.string.delete_button_text)) },
+        onClick = {
+            onDismiss()
+            onDeleteClick()
+        },
+        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+    )
 }
 
 private fun openUrlInCustomTab(url: String, context: android.content.Context) {
@@ -1078,15 +1181,60 @@ fun ApplicationGridItem(
     color: Color,
     translucentBackground: Boolean,
     isMenuOpen: Boolean = false,
+    menuOffset: Offset = Offset.Zero,
     onDismissMenu: () -> Unit = {},
     enabled: Boolean = true
 ) {
-    val screenWidth = LocalWindowInfo.current.containerSize.width
+    val density = LocalDensity.current
     var itemBounds by remember { mutableStateOf(Rect.Zero) }
 
     Box(modifier = modifier.onGloballyPositioned { itemBounds = it.boundsInRoot() }) {
         val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
         val cardColor = if (translucentBackground) color.copy(alpha = 0.5f) else color
+        
+        // Use a Box as a precise anchor at the click position
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(menuOffset.x.roundToInt(), menuOffset.y.roundToInt()) }
+                .size(0.dp)
+        ) {
+            DropdownMenu(
+                expanded = isMenuOpen,
+                onDismissRequest = onDismissMenu,
+                shape = MaterialTheme.shapes.extraLarge,
+                offset = DpOffset(0.dp, 0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = application.name ?: "",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                DropdownMenuItem(
+                    text = { Text(stringResource(id = R.string.edit_button_text)) },
+                    onClick = {
+                        onDismissMenu()
+                        onEditClick()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(id = R.string.delete_button_text)) },
+                    onClick = {
+                        onDismissMenu()
+                        onDeleteClick()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                )
+            }
+        }
+
         ElevatedCard(
             onClick = onClick,
             enabled = enabled && !isGhost,
@@ -1132,45 +1280,6 @@ fun ApplicationGridItem(
                         maxLines = 2,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                }
-
-                val anchorAlignment = if (itemBounds.center.x > screenWidth / 2) Alignment.TopStart else Alignment.TopEnd
-                Box(modifier = Modifier.align(anchorAlignment)) {
-                    DropdownMenu(
-                        expanded = isMenuOpen,
-                        onDismissRequest = onDismissMenu,
-                        shape = MaterialTheme.shapes.extraLarge,
-                        offset = DpOffset(x = if (anchorAlignment == Alignment.TopStart) 16.dp else (-16).dp, y = 0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .fillMaxWidth()
-                        ) {
-                            Text(
-                                text = application.name ?: "",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.edit_button_text)) },
-                            onClick = {
-                                onDismissMenu()
-                                onEditClick()
-                            },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(id = R.string.delete_button_text)) },
-                            onClick = {
-                                onDismissMenu()
-                                onDeleteClick()
-                            },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
-                        )
-                    }
                 }
             }
         }
