@@ -32,4 +32,13 @@ class AdminRepository @Inject constructor(private val adminApi: AdminApi) {
             throw Exception("Scan failed: ${response.code()}")
         }
     }
+
+    suspend fun listRealms(): List<String> {
+        val response = adminApi.listRealms()
+        if (response.isSuccessful) {
+            return response.body() ?: emptyList()
+        } else {
+            throw Exception("Failed to list realms: ${response.code()}")
+        }
+    }
 }

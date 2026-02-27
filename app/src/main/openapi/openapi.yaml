@@ -67,6 +67,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/KeycloakClientDto'
+  /api/admin/realms:
+    get:
+      tags:
+        - Admin
+      summary: List available Keycloak realms
+      operationId: listRealms
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
 
   /api/applications:
     get:

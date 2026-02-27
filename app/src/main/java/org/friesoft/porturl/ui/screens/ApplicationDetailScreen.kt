@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,6 +75,7 @@ fun ApplicationDetailRoute(
         onScanRealmClick = viewModel::scanRealmClients,
         onCheckLinkStatus = viewModel::checkLinkStatus,
         onClearScannedClients = viewModel::clearScannedClients,
+        onRefreshRealms = viewModel::refreshRealms,
         applicationId = applicationId,
     )
 }
@@ -122,6 +124,7 @@ fun ApplicationDetailScreen(
     onScanRealmClick: (realm: String) -> Unit,
     onCheckLinkStatus: (realm: String, clientId: String) -> Unit,
     onClearScannedClients: () -> Unit,
+    onRefreshRealms: () -> Unit,
     applicationId: Long
 ) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -149,7 +152,8 @@ fun ApplicationDetailScreen(
                     onSave = onSaveClick,
                     onScanRealmClick = onScanRealmClick,
                     onCheckLinkStatus = onCheckLinkStatus,
-                    onClearScannedClients = onClearScannedClients
+                    onClearScannedClients = onClearScannedClients,
+                    onRefreshRealms = onRefreshRealms
                 )
             }
             
@@ -161,6 +165,7 @@ fun ApplicationDetailScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ApplicationForm(
     state: ApplicationDetailViewModel.UiState,
@@ -168,7 +173,8 @@ private fun ApplicationForm(
     onSave: (name: String, url: String, categoryIds: Set<Long>, availableRoles: List<String>, clientId: String?, realm: String?) -> Unit,
     onScanRealmClick: (realm: String) -> Unit,
     onCheckLinkStatus: (realm: String, clientId: String) -> Unit,
-    onClearScannedClients: () -> Unit
+    onClearScannedClients: () -> Unit,
+    onRefreshRealms: () -> Unit
 ) {
     val application = state.application ?: return
     val focusManager = LocalFocusManager.current
@@ -179,21 +185,6 @@ private fun ApplicationForm(
     var rolesInput by remember(state.roles) { mutableStateOf(state.roles) }
     var selectedCategoryIds by remember(application.categories) {
         mutableStateOf(application.categories?.mapNotNull { it.id }?.toSet() ?: emptySet())
-    }
-
-    if (state.scannedClients.isNotEmpty()) {
-        ClientDiscoveryDialog(
-            clients = state.scannedClients,
-            onClientSelected = { client ->
-                clientId = client.clientId ?: ""
-                if (name.isBlank()) {
-                    name = client.name ?: client.clientId ?: ""
-                }
-                onClearScannedClients()
-                onCheckLinkStatus(realm, clientId)
-            },
-            onDismiss = onClearScannedClients
-        )
     }
 
     Column(
@@ -246,46 +237,113 @@ private fun ApplicationForm(
                         style = MaterialTheme.typography.titleMedium
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    var realmExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = realmExpanded,
+                        onExpandedChange = { realmExpanded = !realmExpanded },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
                             value = realm,
                             onValueChange = { 
                                 realm = it
                                 onCheckLinkStatus(realm, clientId)
+                                if (realm.isBlank()) {
+                                    onClearScannedClients()
+                                    clientId = ""
+                                }
                             },
                             label = { Text(stringResource(id = R.string.app_detail_realm_label)) },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            singleLine = true,
+                            trailingIcon = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = onRefreshRealms) {
+                                        Icon(Icons.Default.Search, contentDescription = stringResource(id = R.string.app_detail_scan_button))
+                                    }
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = realmExpanded)
+                                }
+                            },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                         )
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(
-                            onClick = { onScanRealmClick(realm) },
-                            enabled = realm.isNotBlank() && !state.isScanning
-                        ) {
-                            if (state.isScanning) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            } else {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = stringResource(id = R.string.app_detail_scan_button)
-                                )
+                        if (state.availableRealms.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = realmExpanded,
+                                onDismissRequest = { realmExpanded = false }
+                            ) {
+                                state.availableRealms.forEach { availableRealm ->
+                                    DropdownMenuItem(
+                                        text = { Text(availableRealm) },
+                                        onClick = {
+                                            realm = availableRealm
+                                            realmExpanded = false
+                                            onCheckLinkStatus(realm, clientId)
+                                            onScanRealmClick(realm)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
 
-                    OutlinedTextField(
-                        value = clientId,
-                        onValueChange = { 
-                            clientId = it
-                            onCheckLinkStatus(realm, clientId)
-                        },
-                        label = { Text(stringResource(id = R.string.app_detail_client_id_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                    var clientExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = clientExpanded,
+                        onExpandedChange = { clientExpanded = !clientExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = clientId,
+                            onValueChange = { 
+                                clientId = it
+                                onCheckLinkStatus(realm, clientId)
+                            },
+                            label = { Text(stringResource(id = R.string.app_detail_client_id_label)) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            singleLine = true,
+                            trailingIcon = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (state.isScanning) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    } else {
+                                        IconButton(onClick = { onScanRealmClick(realm) }, enabled = realm.isNotBlank()) {
+                                            Icon(Icons.Default.Search, contentDescription = stringResource(id = R.string.app_detail_scan_button))
+                                        }
+                                    }
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = clientExpanded)
+                                }
+                            },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        if (state.scannedClients.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = clientExpanded,
+                                onDismissRequest = { clientExpanded = false }
+                            ) {
+                                state.scannedClients.forEach { scannedClient ->
+                                    val currentClientId = scannedClient.clientId ?: return@forEach
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(currentClientId)
+                                                scannedClient.name?.let { 
+                                                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            clientId = currentClientId
+                                            if (name.isBlank()) {
+                                                name = scannedClient.name ?: scannedClient.clientId
+                                            }
+                                            clientExpanded = false
+                                            onCheckLinkStatus(realm, clientId)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -306,14 +364,16 @@ private fun ApplicationForm(
                             )
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    RolesEditor(
+                        roles = rolesInput,
+                        onRolesChanged = { rolesInput = it },
+                        isEnabled = state.isLinked
+                    )
                 }
             }
-
-            RolesEditor(
-                roles = rolesInput,
-                onRolesChanged = { rolesInput = it },
-                isEnabled = state.isLinked
-            )
         }
 
         Spacer(Modifier.height(16.dp))

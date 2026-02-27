@@ -40,6 +40,7 @@ class ApplicationDetailViewModel @Inject constructor(
         val roles: List<String> = emptyList(),
         val isScanning: Boolean = false,
         val scannedClients: List<KeycloakClientDto> = emptyList(),
+        val availableRealms: List<String> = emptyList(),
         val isLinked: Boolean = false
     )
 
@@ -74,6 +75,11 @@ class ApplicationDetailViewModel @Inject constructor(
             _uiState.value = UiState(isLoading = true)
             try {
                 val allCategories = categoryRepository.getAllCategories()
+                val realms = try {
+                    adminRepository.listRealms()
+                } catch (e: Exception) {
+                    emptyList()
+                }
                 val app = if (id == -1L) {
                     Application(
                         id = null, name = "", url = "", categories = emptyList()
@@ -92,12 +98,16 @@ class ApplicationDetailViewModel @Inject constructor(
                     it.copy(
                         application = app,
                         allCategories = allCategories,
+                        availableRealms = realms,
                         isLoading = false,
                         roles = roles
                     )
                 }
                 if (!app.realm.isNullOrBlank() && !app.clientId.isNullOrBlank()) {
                     checkLinkStatus(app.realm, app.clientId)
+                }
+                if (!app.realm.isNullOrBlank()) {
+                    scanRealmClients(app.realm)
                 }
             } catch (e: Exception) {
                 errorMessage.emit("Failed to load application data.")
@@ -155,7 +165,10 @@ class ApplicationDetailViewModel @Inject constructor(
     }
 
     fun scanRealmClients(realm: String) {
-        if (realm.isBlank()) return
+        if (realm.isBlank()) {
+            _uiState.update { it.copy(scannedClients = emptyList()) }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isScanning = true, scannedClients = emptyList()) }
             try {
@@ -165,6 +178,17 @@ class ApplicationDetailViewModel @Inject constructor(
                 errorMessage.emit("Failed to scan realm: ${e.message}")
             } finally {
                 _uiState.update { it.copy(isScanning = false) }
+            }
+        }
+    }
+
+    fun refreshRealms() {
+        viewModelScope.launch {
+            try {
+                val realms = adminRepository.listRealms()
+                _uiState.update { it.copy(availableRealms = realms) }
+            } catch (e: Exception) {
+                errorMessage.emit("Failed to refresh realms: ${e.message}")
             }
         }
     }
