@@ -44,7 +44,10 @@ fun ModalWindow(
             )
         ) {
             Surface(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .imePadding()
+                    .navigationBarsPadding(),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Column {

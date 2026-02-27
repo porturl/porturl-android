@@ -39,7 +39,8 @@ fun UserListScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (uiState.isLoading) {
