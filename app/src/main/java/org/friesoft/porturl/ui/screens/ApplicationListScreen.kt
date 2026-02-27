@@ -751,7 +751,7 @@ private fun CategoryColumn(
                         when (item) {
                             is CategoryDisplayItem.Placeholder -> {
                                 key("placeholder") {
-                                    Box(modifier = Modifier.size(itemWidth))
+                                    Box(modifier = Modifier.width(itemWidth))
                                 }
                             }
                             is CategoryDisplayItem.App -> {
@@ -768,7 +768,6 @@ private fun CategoryColumn(
                                     Box(
                                         modifier = Modifier
                                             .width(itemWidth)
-                                            .aspectRatio(1f)
                                             .then(alphaModifier)
                                             .onGloballyPositioned {
                                                 if (!isVisualDrag) {
@@ -1002,13 +1001,13 @@ fun ApplicationListItem(
         ElevatedCard(
             onClick = onClick,
             enabled = enabled && !isGhost,
-            modifier = Modifier.fillMaxWidth().height(56.dp).graphicsLayer { this.alpha = alpha },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).graphicsLayer { this.alpha = alpha },
             colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
@@ -1022,13 +1021,24 @@ fun ApplicationListItem(
                     modifier = Modifier.size(32.dp)
                 )
                 Spacer(Modifier.width(12.dp))
-                Text(
-                    text = application.name ?: "",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = application.name ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    if (!application.url.isNullOrBlank()) {
+                        Text(
+                            text = application.url,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                }
 
                 if (application.isLinked == true) {
                     Icon(
@@ -1314,49 +1324,48 @@ fun ApplicationGridItem(
         ElevatedCard(
             onClick = onClick,
             enabled = enabled && !isGhost,
-            modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
+            modifier = Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha },
             colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Box {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(application.iconUrl)
-                                .crossfade(true)
-                                .build(),
-                            placeholder = rememberVectorPainter(Icons.Default.Image),
-                            error = rememberVectorPainter(Icons.Default.BrokenImage),
-                            contentDescription = stringResource(id = R.string.application_icon_description, application.name ?: ""),
-                            modifier = Modifier.size(40.dp)
-                        )
-                        if (application.isLinked == true) {
-                            Icon(
-                                imageVector = Icons.Default.Shield,
-                                contentDescription = stringResource(id = R.string.app_list_linked_badge_description),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .align(Alignment.BottomEnd)
-                                    .offset(x = 4.dp, y = 4.dp)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = application.name ?: "",
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(application.iconUrl)
+                            .crossfade(true)
+                            .build(),
+                        placeholder = rememberVectorPainter(Icons.Default.Image),
+                        error = rememberVectorPainter(Icons.Default.BrokenImage),
+                        contentDescription = stringResource(id = R.string.application_icon_description, application.name ?: ""),
+                        modifier = Modifier.size(40.dp)
                     )
+                    if (application.isLinked == true) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = stringResource(id = R.string.app_list_linked_badge_description),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 4.dp, y = 4.dp)
+                        )
+                    }
                 }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = application.name ?: "",
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
         }
     }
