@@ -101,7 +101,11 @@ fun CategoryDetailScreen(
                                     }
                                 )
                             }
-                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                shape = MaterialTheme.shapes.extraLarge
+                            ) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(id = R.string.sort_mode_custom)) },
                                     onClick = {

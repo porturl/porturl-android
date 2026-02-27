@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -852,8 +853,22 @@ fun ApplicationListItem(
                 Box {
                     DropdownMenu(
                         expanded = isMenuOpen,
-                        onDismissRequest = onDismissMenu
+                        onDismissRequest = onDismissMenu,
+                        shape = MaterialTheme.shapes.extraLarge,
+                        offset = DpOffset(x = (-16).dp, y = 0.dp)
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                text = application.name ?: "",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         DropdownMenuItem(
                             text = { Text(stringResource(id = R.string.edit_button_text)) },
                             onClick = {
@@ -957,7 +972,9 @@ fun CategoryHeader(
                 }
                 DropdownMenu(
                     expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
+                    onDismissRequest = { menuExpanded = false },
+                    shape = MaterialTheme.shapes.extraLarge,
+                    offset = DpOffset(x = (-16).dp, y = 0.dp)
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(id = R.string.edit_button_text)) },
@@ -1080,8 +1097,22 @@ fun ApplicationGridItem(
                 Box(modifier = Modifier.align(anchorAlignment)) {
                     DropdownMenu(
                         expanded = isMenuOpen,
-                        onDismissRequest = onDismissMenu
+                        onDismissRequest = onDismissMenu,
+                        shape = MaterialTheme.shapes.extraLarge,
+                        offset = DpOffset(x = if (anchorAlignment == Alignment.TopStart) 16.dp else (-16).dp, y = 0.dp)
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                text = application.name ?: "",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         DropdownMenuItem(
                             text = { Text(stringResource(id = R.string.edit_button_text)) },
                             onClick = {
