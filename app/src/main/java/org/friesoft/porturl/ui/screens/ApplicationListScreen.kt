@@ -442,7 +442,8 @@ fun ApplicationListScreen(
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    itemsIndexed(sortedCategories, key = { _, cat -> "cat_${cat.id}" }) { _, category ->
+                                    val categoriesToShow = sortedCategories.filter { groupedItems.containsKey(it) }
+                                    itemsIndexed(categoriesToShow, key = { _, cat -> "cat_${cat.id}" }) { _, category ->
                                         val applications = groupedItems[category].orEmpty()
                                         CategoryColumn(
                                             category = category,
@@ -481,7 +482,8 @@ fun ApplicationListScreen(
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     verticalItemSpacing = 16.dp
                                 ) {
-                                    itemsIndexed(sortedCategories, key = { _, cat -> "cat_${cat.id}" }) { _, category ->
+                                    val categoriesToShow = sortedCategories.filter { groupedItems.containsKey(it) }
+                                    itemsIndexed(categoriesToShow, key = { _, cat -> "cat_${cat.id}" }) { _, category ->
                                         val applications = groupedItems[category].orEmpty()
                                         CategoryColumn(
                                             category = category,

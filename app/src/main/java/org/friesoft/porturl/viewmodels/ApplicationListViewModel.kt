@@ -70,11 +70,13 @@ data class ApplicationListState(
             groupedMap.forEach { (category, applications) ->
                 val categoryNameMatches = category.name?.lowercase()?.contains(lowerCaseQuery) == true
                 val matchingApps = applications.filter { app ->
-                    app.name?.lowercase()?.contains(lowerCaseQuery) == true || app.url?.lowercase()?.contains(lowerCaseQuery) == true
+                    categoryNameMatches || 
+                    app.name?.lowercase()?.contains(lowerCaseQuery) == true || 
+                    app.url?.lowercase()?.contains(lowerCaseQuery) == true
                 }
 
                 if (categoryNameMatches || matchingApps.isNotEmpty()) {
-                    filteredMap[category] = if (categoryNameMatches) applications else matchingApps
+                    filteredMap[category] = matchingApps
                 }
             }
             return filteredMap
