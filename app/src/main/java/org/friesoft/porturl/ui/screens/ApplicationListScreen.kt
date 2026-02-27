@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -133,7 +134,8 @@ fun ApplicationListRoute(
     sharedViewModel: AppSharedViewModel,
     viewModel: ApplicationListViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel(),
-    settingsViewModel: SettingsViewModel = hiltViewModel()
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
+    onAppListInteraction: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
@@ -180,6 +182,7 @@ fun ApplicationListRoute(
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         translucentBackground = userPreferences?.translucentBackground ?: false,
+        onAppListInteraction = onAppListInteraction
     )
 }
 
@@ -199,7 +202,8 @@ fun ApplicationListScreen(
     onAddCategory: () -> Unit,
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
-    translucentBackground: Boolean
+    translucentBackground: Boolean,
+    onAppListInteraction: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var itemToDelete by remember { mutableStateOf<Pair<String, Long?>?>(null) }
@@ -221,6 +225,13 @@ fun ApplicationListScreen(
     val listState = rememberLazyListState()
     val gridState = rememberLazyStaggeredGridState()
     var listBounds by remember { mutableStateOf<Rect?>(null) }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) onAppListInteraction()
+    }
+    LaunchedEffect(gridState.isScrollInProgress) {
+        if (gridState.isScrollInProgress) onAppListInteraction()
+    }
 
     LaunchedEffect(draggingItem) {
         if (draggingItem != null) {
@@ -525,7 +536,10 @@ fun ApplicationListScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     PullToRefreshBox(
                         isRefreshing = uiState.isRefreshing,
-                        onRefresh = onRefresh
+                        onRefresh = onRefresh,
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectTapGestures(onTap = { onAppListInteraction() })
+                        }
                     ) { screenContent() }
                 }
             }

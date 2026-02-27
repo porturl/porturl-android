@@ -77,33 +77,6 @@ fun AppNavigation() {
         val activeAppDetailId by sharedViewModel.activeAppDetailId.collectAsStateWithLifecycle()
         val activeCategoryDetailId by sharedViewModel.activeCategoryDetailId.collectAsStateWithLifecycle()
 
-        val entryProvider = entryProvider {
-            entry<Routes.Login> {
-                LoginScreen(navigator, authViewModel = authViewModel)
-            }
-            entry<Routes.Settings> {
-                SettingsScreen(navigator)
-            }
-            entry<Routes.AppList> {
-                ApplicationListRoute(navigator = navigator, sharedViewModel = sharedViewModel, authViewModel = authViewModel)
-            }
-            entry<Routes.AppDetail> { key ->
-                ApplicationDetailRoute(navigator = navigator, applicationId = key.appId, sharedViewModel = sharedViewModel)
-            }
-            entry<Routes.CategoryDetail> { key ->
-                CategoryDetailScreen(navigator = navigator, categoryId = key.categoryId, sharedViewModel = sharedViewModel)
-            }
-            entry<Routes.UserList> {
-                UserListScreen(navigator = navigator)
-            }
-            entry<Routes.UserDetail> { key ->
-                UserDetailScreen(navigator = navigator, userId = key.userId)
-            }
-            entry<Routes.Profile> {
-                ProfileScreen(navigator = navigator, authViewModel = authViewModel)
-            }
-        }
-
         // Initial Auth Check and Redirection
         LaunchedEffect(Unit) {
             if (!authState.isAuthorized) {
@@ -137,7 +110,39 @@ fun AppNavigation() {
             onAddApp = { sharedViewModel.openAppDetail(-1) },
             onAddCategory = { sharedViewModel.openCategoryDetail(-1) },
             isModalOpen = activeAppDetailId != null || activeCategoryDetailId != null
-        ) {
+        ) { onAppListInteraction ->
+            val entryProvider = entryProvider {
+                entry<Routes.Login> {
+                    LoginScreen(navigator, authViewModel = authViewModel)
+                }
+                entry<Routes.Settings> {
+                    SettingsScreen(navigator)
+                }
+                entry<Routes.AppList> {
+                    ApplicationListRoute(
+                        navigator = navigator,
+                        sharedViewModel = sharedViewModel,
+                        authViewModel = authViewModel,
+                        onAppListInteraction = onAppListInteraction
+                    )
+                }
+                entry<Routes.AppDetail> { key ->
+                    ApplicationDetailRoute(navigator = navigator, applicationId = key.appId, sharedViewModel = sharedViewModel)
+                }
+                entry<Routes.CategoryDetail> { key ->
+                    CategoryDetailScreen(navigator = navigator, categoryId = key.categoryId, sharedViewModel = sharedViewModel)
+                }
+                entry<Routes.UserList> {
+                    UserListScreen(navigator = navigator)
+                }
+                entry<Routes.UserDetail> { key ->
+                    UserDetailScreen(navigator = navigator, userId = key.userId)
+                }
+                entry<Routes.Profile> {
+                    ProfileScreen(navigator = navigator, authViewModel = authViewModel)
+                }
+            }
+
             NavDisplay(
                 entries = navigationState.toEntries(entryProvider),
                 onBack = { navigator.goBack() },

@@ -70,8 +70,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.focus.focusTarget
+
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.LocalFocusManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,12 +94,13 @@ fun AdaptiveNavigationShell(
     onAddApp: () -> Unit,
     onAddCategory: () -> Unit,
     isModalOpen: Boolean = false,
-    content: @Composable () -> Unit
+    onAppListInteraction: () -> Unit = {},
+    content: @Composable (() -> Unit) -> Unit
 ) {
     val showNavigation = currentRoute != Routes.Login
 
     if (!showNavigation) {
-        content()
+        content {}
         return
     }
 
@@ -133,6 +138,14 @@ fun AdaptiveNavigationShell(
     val searchFocusRequester = remember { FocusRequester() }
     val rootFocusRequester = remember { FocusRequester() }
     var shouldFocusSearch by remember { mutableStateOf(false) }
+    var isSearchFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+
+    val internalOnAppListInteraction = {
+        focusManager.clearFocus()
+        rootFocusRequester.requestFocus()
+        onAppListInteraction()
+    }
 
     LaunchedEffect(shouldFocusSearch, currentRoute) {
         if (shouldFocusSearch && currentRoute == Routes.AppList) {
@@ -238,7 +251,8 @@ fun AdaptiveNavigationShell(
                                     onValueChange = onSearchQueryChanged,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .focusRequester(searchFocusRequester),
+                                        .focusRequester(searchFocusRequester)
+                                        .onFocusChanged { isSearchFocused = it.isFocused },
                                     enabled = !isModalOpen,
                                     placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                     singleLine = true,
@@ -348,10 +362,15 @@ fun AdaptiveNavigationShell(
                 modifier = Modifier
                     .padding(effectivePadding)
             ) {
-                content()
+                content(internalOnAppListInteraction)
 
-                BackHandler(enabled = searchQuery.isNotEmpty() && currentRoute == Routes.AppList) {
-                    onSearchQueryChanged("")
+                BackHandler(enabled = (searchQuery.isNotEmpty() || isSearchFocused) && currentRoute == Routes.AppList) {
+                    if (searchQuery.isNotEmpty()) {
+                        onSearchQueryChanged("")
+                    } else {
+                        focusManager.clearFocus()
+                        rootFocusRequester.requestFocus()
+                    }
                 }
 
                 BackHandler(enabled = drawerState.isOpen) {
