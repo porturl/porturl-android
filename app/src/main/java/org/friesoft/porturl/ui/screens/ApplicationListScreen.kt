@@ -22,6 +22,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -60,6 +62,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -910,6 +913,7 @@ fun CategoryHeader(
     translucentBackground: Boolean
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) }
     var headerSize by remember(category.id) { mutableStateOf(IntSize.Zero) }
     var headerPosition by remember(category.id) { mutableStateOf(Offset.Zero) }
     val alpha by animateFloatAsState(targetValue = if (isGhost) 0f else 1f, label = "GhostAlpha")
@@ -959,12 +963,31 @@ fun CategoryHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = category.name ?: "",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f, fill = false),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        enabled = !category.description.isNullOrBlank() && !isGhost,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { isExpanded = !isExpanded }
+                    )
+            ) {
+                Text(
+                    text = category.name ?: "",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                if (!category.description.isNullOrBlank()) {
+                    Text(
+                        text = category.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             Spacer(Modifier.width(8.dp))
             Box {
                 IconButton(onClick = { menuExpanded = true }) {

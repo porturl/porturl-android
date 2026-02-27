@@ -81,7 +81,8 @@ fun CategoryDetailScreen(
                             value = category.description ?: "",
                             onValueChange = { category = category.copy(description = it) },
                             label = { Text(stringResource(id = R.string.category_detail_description_label)) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3
                         )
 
                         Text(
