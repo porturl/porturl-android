@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +39,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -82,7 +87,10 @@ import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    navigator: Navigator,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
@@ -210,71 +218,97 @@ fun SettingsScreen(navigator: Navigator, viewModel: SettingsViewModel = hiltView
             }
         ) { paddingValues ->
             userPreferences?.let { prefs ->
-                LazyColumn(
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Adaptive(minSize = 400.dp),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                         .padding(horizontal = 16.dp),
+                    verticalItemSpacing = 16.dp,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        Spacer(modifier = Modifier.height(0.dp))
+                    }
+
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ThemeSettings(
-                            selectedThemeMode = prefs.themeMode,
-                            onThemeModeSelected = { viewModel.saveThemeMode(it) },
-                            translucentBackground = prefs.translucentBackground,
-                            onTranslucentBackgroundChange = { viewModel.saveTranslucentBackground(it) }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                        )
-                        ColorSettings(
-                            userPreferences = prefs,
-                            onColorSourceSelected = { viewModel.saveColorSource(it) },
-                            onPredefinedColorSelected = { viewModel.savePredefinedColorName(it) },
-                            onCustomColorsSelected = { viewModel.saveCustomColors(it) }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                        )
-                        LanguageSettings(
-                            currentLanguage = settingsState.selectedLanguage,
-                            availableLanguages = settingsState.availableLanguages,
-                            onLanguageSelected = {
-                                viewModel.changeLanguage(it)
-                                (context as? Activity)?.recreate()
-                            }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                        )
-                        TelemetrySettings(
-                            telemetryEnabled = prefs.telemetryEnabled,
-                            telemetryInfo = settingsState.telemetryInfo,
-                            onTelemetryEnabledChange = {
-                                viewModel.saveTelemetryEnabled(it)
-                                showRestartDialog = true
-                            }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                        )
-                        ServerSettings(viewModel = viewModel)
-                        
-                        if (isAdmin) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 16.dp),
-                            )
-                            AdminOperations(
-                                onExportClick = { exportLauncher.launch("porturl_export.yaml") },
-                                onImportClick = { showImportWarning = true }
+                        SettingsSection {
+                            ServerSettings(viewModel = viewModel)
+                        }
+                    }
+                    item {
+                        SettingsSection {
+                            ThemeSettings(
+                                selectedThemeMode = prefs.themeMode,
+                                onThemeModeSelected = { viewModel.saveThemeMode(it) },
+                                translucentBackground = prefs.translucentBackground,
+                                onTranslucentBackgroundChange = { viewModel.saveTranslucentBackground(it) }
                             )
                         }
+                    }
+                    item {
+                        SettingsSection {
+                            ColorSettings(
+                                userPreferences = prefs,
+                                onColorSourceSelected = { viewModel.saveColorSource(it) },
+                                onPredefinedColorSelected = { viewModel.savePredefinedColorName(it) },
+                                onCustomColorsSelected = { viewModel.saveCustomColors(it) }
+                            )
+                        }
+                    }
+                    item {
+                        SettingsSection {
+                            LanguageSettings(
+                                currentLanguage = settingsState.selectedLanguage,
+                                availableLanguages = settingsState.availableLanguages,
+                                onLanguageSelected = {
+                                    viewModel.changeLanguage(it)
+                                    (context as? Activity)?.recreate()
+                                }
+                            )
+                        }
+                    }
+                    item {
+                        SettingsSection {
+                            TelemetrySettings(
+                                telemetryEnabled = prefs.telemetryEnabled,
+                                telemetryInfo = settingsState.telemetryInfo,
+                                onTelemetryEnabledChange = {
+                                    viewModel.saveTelemetryEnabled(it)
+                                    showRestartDialog = true
+                                }
+                            )
+                        }
+                    }
+                    if (isAdmin) {
+                        item {
+                            SettingsSection {
+                                AdminOperations(
+                                    onExportClick = { exportLauncher.launch("porturl_export.yaml") },
+                                    onImportClick = { showImportWarning = true }
+                                )
+                            }
+                        }
+                    }
+
+                    item(span = StaggeredGridItemSpan.FullLine) {
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSection(content: @Composable () -> Unit) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            content()
         }
     }
 }
@@ -383,115 +417,126 @@ private fun ColorSettings(
     Column {
         SectionTitle(stringResource(id = R.string.settings_color_title))
         ColorSource.entries.forEach { colorSource ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        if (colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
-                            onCustomColorsSelected(
-                                CustomColors(
-                                    primary = primaryColor.toArgb(),
-                                    secondary = secondaryColor.toArgb(),
-                                    tertiary = tertiaryColor.toArgb()
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
+                                onCustomColorsSelected(
+                                    CustomColors(
+                                        primary = primaryColor.toArgb(),
+                                        secondary = secondaryColor.toArgb(),
+                                        tertiary = tertiaryColor.toArgb()
+                                    )
                                 )
-                            )
-                        }
-                        onColorSourceSelected(colorSource)
-                    }
-                    .padding(vertical = 8.dp)
-            ) {
-                RadioButton(
-                    selected = userPreferences.colorSource == colorSource,
-                    onClick = {
-                        if (colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
-                            onCustomColorsSelected(
-                                CustomColors(
-                                    primary = primaryColor.toArgb(),
-                                    secondary = secondaryColor.toArgb(),
-                                    tertiary = tertiaryColor.toArgb()
-                                )
-                            )
-                        }
-                        onColorSourceSelected(colorSource)
-                    }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                val colorSourceName = when (colorSource) {
-                    ColorSource.SYSTEM -> stringResource(id = R.string.color_source_system)
-                    ColorSource.PREDEFINED -> stringResource(id = R.string.color_source_predefined)
-                    ColorSource.CUSTOM -> stringResource(id = R.string.color_source_custom)
-                }
-                Text(text = colorSourceName)
-            }
-        }
-
-        if (userPreferences.colorSource == ColorSource.PREDEFINED) {
-            var expanded by remember { mutableStateOf(false) }
-            val currentThemeName = userPreferences.predefinedColorName ?: predefinedThemes.keys.first()
-
-            Spacer(modifier = Modifier.height(8.dp))
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.padding(start = 40.dp)
-            ) {
-                OutlinedTextField(
-                    value = currentThemeName,
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor(
-                        type = ExposedDropdownMenuAnchorType.PrimaryNotEditable
-                    )
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    predefinedThemes.keys.forEach { themeName ->
-                        DropdownMenuItem(
-                            text = { Text(themeName) },
-                            onClick = {
-                                onPredefinedColorSelected(themeName)
-                                expanded = false
                             }
-                        )
+                            onColorSourceSelected(colorSource)
+                        }
+                        .padding(vertical = 8.dp)
+                ) {
+                    RadioButton(
+                        selected = userPreferences.colorSource == colorSource,
+                        onClick = {
+                            if (colorSource == ColorSource.CUSTOM && userPreferences.customColors == null) {
+                                onCustomColorsSelected(
+                                    CustomColors(
+                                        primary = primaryColor.toArgb(),
+                                        secondary = secondaryColor.toArgb(),
+                                        tertiary = tertiaryColor.toArgb()
+                                    )
+                                )
+                            }
+                            onColorSourceSelected(colorSource)
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val colorSourceName = when (colorSource) {
+                        ColorSource.SYSTEM -> stringResource(id = R.string.color_source_system)
+                        ColorSource.PREDEFINED -> stringResource(id = R.string.color_source_predefined)
+                        ColorSource.CUSTOM -> stringResource(id = R.string.color_source_custom)
                     }
+                    Text(text = colorSourceName)
                 }
-            }
-        }
 
-        if (userPreferences.colorSource == ColorSource.CUSTOM) {
-            val customColors = userPreferences.customColors
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 40.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ColorPickerButton(
-                    stringResource(id = R.string.settings_color_primary),
-                    customColors?.primary,
-                    fallbackColor = primaryColor
-                ) {
-                    colorToEdit = "primary"; showDialog = true
-                }
-                ColorPickerButton(
-                    stringResource(id = R.string.settings_color_secondary),
-                    customColors?.secondary,
-                    fallbackColor = secondaryColor
-                ) {
-                    colorToEdit = "secondary"; showDialog = true
-                }
-                ColorPickerButton(
-                    stringResource(id = R.string.settings_color_tertiary),
-                    customColors?.tertiary,
-                    fallbackColor = tertiaryColor
-                ) {
-                    colorToEdit = "tertiary"; showDialog = true
+                if (userPreferences.colorSource == colorSource) {
+                    when (colorSource) {
+                        ColorSource.PREDEFINED -> {
+                            var expanded by remember { mutableStateOf(false) }
+                            val currentThemeName =
+                                userPreferences.predefinedColorName ?: predefinedThemes.keys.first()
+
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = !expanded },
+                                modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = currentThemeName,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                            expanded = expanded
+                                        )
+                                    },
+                                    modifier = Modifier.menuAnchor(
+                                        type = ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                                    )
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    predefinedThemes.keys.forEach { themeName ->
+                                        DropdownMenuItem(
+                                            text = { Text(themeName) },
+                                            onClick = {
+                                                onPredefinedColorSelected(themeName)
+                                                expanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        ColorSource.CUSTOM -> {
+                            val customColors = userPreferences.customColors
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 48.dp, bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ColorPickerButton(
+                                    stringResource(id = R.string.settings_color_primary),
+                                    customColors?.primary,
+                                    fallbackColor = primaryColor
+                                ) {
+                                    colorToEdit = "primary"; showDialog = true
+                                }
+                                ColorPickerButton(
+                                    stringResource(id = R.string.settings_color_secondary),
+                                    customColors?.secondary,
+                                    fallbackColor = secondaryColor
+                                ) {
+                                    colorToEdit = "secondary"; showDialog = true
+                                }
+                                ColorPickerButton(
+                                    stringResource(id = R.string.settings_color_tertiary),
+                                    customColors?.tertiary,
+                                    fallbackColor = tertiaryColor
+                                ) {
+                                    colorToEdit = "tertiary"; showDialog = true
+                                }
+                            }
+                        }
+
+                        else -> {}
+                    }
                 }
             }
         }
@@ -611,8 +656,7 @@ private fun LanguageSelectionDialog(
         onDismissRequest = onDismiss, title = { Text(stringResource(id = R.string.settings_language_dialog_title)) },
         text = {
             LazyColumn {
-                items(availableLanguages.size) { index ->
-                    val language = availableLanguages[index]
+                items(availableLanguages) { language ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
