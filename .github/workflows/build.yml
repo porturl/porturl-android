@@ -348,6 +348,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Create whatsnew directory
+          mkdir -p distribution/whatsnew
+          
           # Find the Release Please PR
           PR_JSON=$(gh pr list --label "autorelease: pending" --state open --json body,title --limit 1)
           
@@ -360,6 +363,7 @@ jobs:
             [ -z "$VERSION" ] && VERSION="upcoming release"
             
             # Extract only the changelog part (usually starts with ## and ends before the metadata/footer)
+            # We look for the first ## header and take everything until the first --- or the end of a typical release-please footer
             CHANGELOG=$(echo "$BODY" | sed -n '/^## /,$p' | sed '/^---/,$d' | sed '/^This PR was/,$d')
             
             # 1. Clean Markdown links and hashes
@@ -370,19 +374,34 @@ jobs:
               sed -E 's/,? (closes )?#[0-9]+//g' | \
               awk '!seen[$0]++')
             
-            FULL_NOTES="Upcoming changes for $VERSION (unreleased):\n\n$CLEAN_NOTES"
+            if [ -n "$CLEAN_NOTES" ]; then
+              NOTES_HEADER="Upcoming changes for $VERSION (unreleased):"
+              printf "%s\n\n%s" "$NOTES_HEADER" "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-default
+            else
+              printf "🚧 Snapshot Build\nCommit: %s\nTime: %s\n\nLatest changes from main." "${{ needs.build.outputs.commitSha }}" "${{ needs.build.outputs.buildTime }}" > distribution/whatsnew/whatsnew-default
+            fi
           else
-            FULL_NOTES="🚧 Snapshot Build\nCommit: ${{ needs.build.outputs.commitSha }}\nTime: ${{ needs.build.outputs.buildTime }}\n\nThis build contains the latest changes from main."
+            printf "🚧 Snapshot Build\nCommit: %s\nTime: %s\n\nLatest changes from main." "${{ needs.build.outputs.commitSha }}" "${{ needs.build.outputs.buildTime }}" > distribution/whatsnew/whatsnew-default
           fi
           
-          # Truncate to 500 chars for Google Play
-          if [ ${#FULL_NOTES} -gt 500 ]; then
-            FULL_NOTES="${FULL_NOTES:0:497}..."
-          fi
+          # Truncate to 500 chars (Google Play limit)
+          for f in distribution/whatsnew/whatsnew-*; do
+            if [ -f "$f" ]; then
+              # Use head/cut to ensure we don't exceed limit
+              # 500 characters might be more than 500 bytes if UTF-8 is used
+              # We use a safe margin
+              content=$(cat "$f")
+              if [ ${#content} -gt 500 ]; then
+                echo "${content:0:497}..." > "$f"
+              fi
+              # Copy default to specific locales supported by the app
+              cp "$f" distribution/whatsnew/whatsnew-en-US
+              cp "$f" distribution/whatsnew/whatsnew-de-DE
+            fi
+          done
           
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$FULL_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "Generated release notes:"
+          cat distribution/whatsnew/whatsnew-en-US
 
       - name: Prepare release assets
         run: |
@@ -468,7 +487,7 @@ jobs:
           track: internal
           status: draft
           releaseName: ${{ needs.build.outputs.versionName }}
-          releaseNotes: ${{ steps.fetch_notes.outputs.notes }}
+          whatsNewDirectory: distribution/whatsnew
 
   # =================================================================
   #           📢 4. NOTIFICATION & CLEANUP

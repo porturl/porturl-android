@@ -159,10 +159,10 @@ jobs:
             CLEAN_NOTES="${CLEAN_NOTES:0:497}..."
           fi
           
-          # Export for Google Play step
-          echo "clean_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$CLEAN_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Create whatsnew directory
+          mkdir -p distribution/whatsnew
+          echo "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-en-US
+          echo "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-de-DE
 
           # Create new body for GitHub Release with verification info appended
           NEW_BODY=$(cat <<EOF
@@ -206,7 +206,7 @@ jobs:
           track: internal
           status: draft
           releaseName: ${{ steps.release_info.outputs.tag }}
-          releaseNotes: ${{ steps.update_release.outputs.clean_notes }}
+          whatsNewDirectory: distribution/whatsnew
 
       - name: Label PR as Published
         env:
