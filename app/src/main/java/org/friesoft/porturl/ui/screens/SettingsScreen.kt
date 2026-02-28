@@ -292,6 +292,41 @@ fun SettingsScreen(
                     }
 
                     item(span = StaggeredGridItemSpan.FullLine) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = stringResource(id = R.string.settings_app_version, settingsState.appVersion),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (settingsState.isDebugBuild) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = stringResource(id = R.string.settings_app_debug_label),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                if (settingsState.isPlayStore) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = stringResource(id = R.string.settings_app_play_store_label),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item(span = StaggeredGridItemSpan.FullLine) {
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
@@ -736,6 +771,7 @@ private fun TelemetrySettings(
 private fun ServerSettings(viewModel: SettingsViewModel) {
     val backendUrl by viewModel.backendUrl.collectAsStateWithLifecycle(initialValue = "")
     val validationState by viewModel.validationState.collectAsStateWithLifecycle()
+    val settingsState by viewModel.settingState.collectAsStateWithLifecycle()
     var currentBackendUrl by remember(backendUrl) { mutableStateOf(backendUrl) }
 
     Column {
@@ -750,6 +786,16 @@ private fun ServerSettings(viewModel: SettingsViewModel) {
             enabled = validationState != ValidationState.LOADING,
             singleLine = true
         )
+        
+        settingsState.backendVersion?.let { version ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(id = R.string.settings_backend_version, version),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         Spacer(Modifier.height(8.dp))
         Text(
             stringResource(id = R.string.settings_server_backend_url_hint),

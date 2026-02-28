@@ -18,12 +18,18 @@ import javax.inject.Singleton
 @Serializable
 data class AppConfig(
     @SerialName("auth") val auth: AuthInfo,
+    @SerialName("build") val build: BuildInfo? = null,
     @SerialName("telemetry") val telemetry: TelemetryInfo? = null
 )
 
 @Serializable
 data class AuthInfo(
     @SerialName("issuer-uri") val issuerUri: String
+)
+
+@Serializable
+data class BuildInfo(
+    @SerialName("version") val version: String
 )
 
 @Serializable
@@ -48,13 +54,17 @@ class ConfigRepository @Inject constructor(
         retrofit.create(ConfigService::class.java)
     }
 
+    suspend fun getAppConfig(): AppConfig {
+        return configService.getAppConfig()
+    }
+
     suspend fun getIssuerUri(): String {
-        return configService.getAppConfig().auth.issuerUri
+        return getAppConfig().auth.issuerUri
     }
 
     suspend fun getTelemetryStatus(): TelemetryInfo? {
         return try {
-            configService.getAppConfig().telemetry
+            getAppConfig().telemetry
         } catch (e: Exception) {
             Log.e("ConfigRepository", "Failed to fetch telemetry status", e)
             null

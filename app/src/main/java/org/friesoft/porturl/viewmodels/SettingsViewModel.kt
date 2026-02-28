@@ -82,8 +82,31 @@ class SettingsViewModel @Inject constructor(
 
     init {
         loadInitialLanguage()
-        loadTelemetryStatus()
+        loadBackendInfo()
         checkAdminStatus()
+        loadAppVersion()
+    }
+
+    private fun loadAppVersion() {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            
+            val installSource = try {
+                context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+            } catch (e: Exception) {
+                null
+            }
+            val isPlayStore = installSource == "com.android.vending"
+
+            _settingState.value = _settingState.value.copy(
+                appVersion = packageInfo.versionName ?: "Unknown",
+                isDebugBuild = isDebug,
+                isPlayStore = isPlayStore
+            )
+        } catch (e: Exception) {
+            _settingState.value = _settingState.value.copy(appVersion = "Unknown")
+        }
     }
 
     private fun checkAdminStatus() {
@@ -134,13 +157,20 @@ class SettingsViewModel @Inject constructor(
         )
     }
 
-    private fun loadTelemetryStatus() {
+    private fun loadBackendInfo() {
         viewModelScope.launch {
-            val status = configRepository.getTelemetryStatus()
-            _settingState.value = _settingState.value.copy(telemetryInfo = status)
-            // Sync with local settings if we got a valid status
-            status?.let {
-                settingsRepository.saveTelemetryEnabled(it.enabled)
+            try {
+                val config = configRepository.getAppConfig()
+                _settingState.value = _settingState.value.copy(
+                    telemetryInfo = config.telemetry,
+                    backendVersion = config.build?.version
+                )
+                // Sync with local settings if we got a valid status
+                config.telemetry?.let {
+                    settingsRepository.saveTelemetryEnabled(it.enabled)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsViewModel", "Failed to fetch backend info", e)
             }
         }
     }
@@ -223,5 +253,9 @@ class SettingsViewModel @Inject constructor(
 data class SettingState(
     val selectedLanguage: String = "",
     val availableLanguages: List<Language> = emptyList(),
-    val telemetryInfo: TelemetryInfo? = null
+    val telemetryInfo: TelemetryInfo? = null,
+    val backendVersion: String? = null,
+    val appVersion: String = "",
+    val isDebugBuild: Boolean = false,
+    val isPlayStore: Boolean = false
 )

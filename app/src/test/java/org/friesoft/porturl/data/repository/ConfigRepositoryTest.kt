@@ -29,23 +29,43 @@ class ConfigRepositoryTest {
     }
 
     @Test
-    fun `AppConfig should parse if telemetry fields are missing`() {
+    fun `AppConfig should parse build info and telemetry`() {
         val jsonString = """
             {
                 "auth": {
                     "issuer-uri": "https://example.com"
                 },
+                "build": {
+                    "version": "0.11.0"
+                },
                 "telemetry": {
-                    "enabled": false
+                    "enabled": true,
+                    "healthy": true
                 }
             }
         """.trimIndent()
         val appConfig = json.decodeFromString<AppConfig>(jsonString)
         
         assertEquals("https://example.com", appConfig.auth.issuerUri)
+        assertEquals("0.11.0", appConfig.build?.version)
         val telemetry = appConfig.telemetry
         assertTrue(telemetry != null)
-        assertFalse(telemetry!!.enabled)
-        assertFalse(telemetry.healthy)
+        assertTrue(telemetry!!.enabled)
+        assertTrue(telemetry.healthy)
+    }
+
+    @Test
+    fun `AppConfig should parse if build info is missing`() {
+        val jsonString = """
+            {
+                "auth": {
+                    "issuer-uri": "https://example.com"
+                }
+            }
+        """.trimIndent()
+        val appConfig = json.decodeFromString<AppConfig>(jsonString)
+        
+        assertEquals("https://example.com", appConfig.auth.issuerUri)
+        assertTrue(appConfig.build == null)
     }
 }

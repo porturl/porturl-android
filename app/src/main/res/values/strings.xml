@@ -14,11 +14,15 @@
     <string name="settings_color_primary">Primary</string>
     <string name="settings_color_secondary">Secondary</string>
     <string name="settings_color_tertiary">Tertiary</string>
-    <string name="settings_server_title">Server</string>
+    <string name="settings_server_title">Backend</string>
     <string name="settings_server_backend_url_label">Backend Base URL</string>
     <string name="settings_server_backend_url_placeholder">e.g., http://localhost:8080</string>
     <string name="settings_server_backend_url_hint">Use http://localhost:8080 for a local server. For the Android emulator, run \'adb reverse tcp:8080 tcp:8080\' on your host machine.</string>
     <string name="settings_server_save_and_validate_button">Save and Validate</string>
+    <string name="settings_backend_version">Backend Version: %s</string>
+    <string name="settings_app_version">App Version: %s</string>
+    <string name="settings_app_debug_label">(Debug)</string>
+    <string name="settings_app_play_store_label">(Google Play)</string>
     <string name="settings_language_title">Language</string>
     <string name="settings_language_label">Language</string>
     <string name="settings_language_dialog_title">Select Language</string>
