@@ -362,12 +362,11 @@ jobs:
             VERSION=$(echo "$TITLE" | sed -E 's/.*release ([0-9.]+).*/\1/')
             [ -z "$VERSION" ] && VERSION="upcoming release"
             
-            # Extract only the changelog part (usually starts with ## and ends before the metadata/footer)
-            # We look for the first ## header and take everything until the first --- or the end of a typical release-please footer
+            # Extract only the changelog part
             CHANGELOG=$(echo "$BODY" | sed -n '/^## /,$p' | sed '/^---/,$d' | sed '/^This PR was/,$d')
             
             # 1. Clean Markdown links and hashes
-            # 2. Deduplicate lines (handles multiple commits with the same message)
+            # 2. Deduplicate lines
             CLEAN_NOTES=$(echo "$CHANGELOG" | \
               sed -E 's/\[([^]]+)\]\([^)]+\)/\1/g' | \
               sed -E 's/ \([0-9a-f]{7,}\)//g' | \
@@ -376,27 +375,26 @@ jobs:
             
             if [ -n "$CLEAN_NOTES" ]; then
               NOTES_HEADER="Upcoming changes for $VERSION (unreleased):"
-              printf "%s\n\n%s" "$NOTES_HEADER" "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-default
+              printf "%s\n\n%s" "$NOTES_HEADER" "$CLEAN_NOTES" > notes.tmp
             else
-              printf "🚧 Snapshot Build\nCommit: %s\nTime: %s\n\nLatest changes from main." "${{ needs.build.outputs.commitSha }}" "${{ needs.build.outputs.buildTime }}" > distribution/whatsnew/whatsnew-default
+              printf "🚧 Snapshot Build\nCommit: %s\nTime: %s\n\nLatest changes from main." "${{ needs.build.outputs.commitSha }}" "${{ needs.build.outputs.buildTime }}" > notes.tmp
             fi
           else
-            printf "🚧 Snapshot Build\nCommit: %s\nTime: %s\n\nLatest changes from main." "${{ needs.build.outputs.commitSha }}" "${{ needs.build.outputs.buildTime }}" > distribution/whatsnew/whatsnew-default
+            printf "🚧 Snapshot Build\nCommit: %s\nTime: %s\n\nLatest changes from main." "${{ needs.build.outputs.commitSha }}" "${{ needs.build.outputs.buildTime }}" > notes.tmp
           fi
+          
+          # Create locale-specific files from the temp notes
+          cp notes.tmp distribution/whatsnew/whatsnew-en-US
+          cp notes.tmp distribution/whatsnew/whatsnew-de-DE
+          rm notes.tmp
           
           # Truncate to 500 chars (Google Play limit)
           for f in distribution/whatsnew/whatsnew-*; do
             if [ -f "$f" ]; then
-              # Use head/cut to ensure we don't exceed limit
-              # 500 characters might be more than 500 bytes if UTF-8 is used
-              # We use a safe margin
               content=$(cat "$f")
               if [ ${#content} -gt 500 ]; then
                 echo "${content:0:497}..." > "$f"
               fi
-              # Copy default to specific locales supported by the app
-              cp "$f" distribution/whatsnew/whatsnew-en-US
-              cp "$f" distribution/whatsnew/whatsnew-de-DE
             fi
           done
           

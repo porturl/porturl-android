@@ -159,10 +159,20 @@ jobs:
             CLEAN_NOTES="${CLEAN_NOTES:0:497}..."
           fi
           
-          # Create whatsnew directory
+          # Create whatsnew directory and locale files
           mkdir -p distribution/whatsnew
           echo "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-en-US
           echo "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-de-DE
+
+          # Double check truncation for all generated files
+          for f in distribution/whatsnew/whatsnew-*; do
+            if [ -f "$f" ]; then
+              content=$(cat "$f")
+              if [ ${#content} -gt 500 ]; then
+                echo "${content:0:497}..." > "$f"
+              fi
+            fi
+          done
 
           # Create new body for GitHub Release with verification info appended
           NEW_BODY=$(cat <<EOF
