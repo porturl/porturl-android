@@ -32,17 +32,34 @@ class AuthInterceptor @Inject constructor(
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val authState = authStateManager.current
         var request = chain.request()
+        var attempt = 0
+        var response: Response? = null
+        var lastException: java.io.IOException? = null
 
-        // --- DEBUG LOGGING START ---
-        Log.d("AuthInterceptor", "Intercepting request for: ${request.url}")
-        Log.d("AuthInterceptor", "Checking auth state. Is Authorized: ${authState.isAuthorized}")
-        if (authState.isAuthorized) {
-            Log.d("AuthInterceptor", "Access Token Expiration: ${authState.accessTokenExpirationTime}")
-            Log.d("AuthInterceptor", "Refresh Token is null: ${authState.refreshToken == null}")
+        while (attempt < 3) {
+            try {
+                response = proceedWithAuth(chain, request)
+                return response
+            } catch (e: java.io.IOException) {
+                lastException = e
+                if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException) {
+                    Log.w("AuthInterceptor", "Network error on attempt ${attempt + 1}: ${e.message}. Retrying...")
+                    attempt++
+                    if (attempt < 3) {
+                        Thread.sleep(500L * attempt) // Exponential backoff
+                        continue
+                    }
+                }
+                throw e
+            }
         }
-        // --- DEBUG LOGGING END ---
+        throw lastException ?: java.io.IOException("Unknown network error after retries")
+    }
+
+    private fun proceedWithAuth(chain: Interceptor.Chain, originalRequest: okhttp3.Request): Response {
+        val authState = authStateManager.current
+        var request = originalRequest
 
         if (authState.isAuthorized) {
             val latch = CountDownLatch(1)
