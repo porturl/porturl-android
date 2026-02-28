@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/porturl/porturl-android/compare/v0.4.0...v0.5.0) (2026-02-28)
+
+
+### Features
+
+* add build information ([985251d](https://github.com/porturl/porturl-android/commit/985251d12ebc06e336bb101bb857f61d32ed9723))
+* responsive design for user management ([ada2e8a](https://github.com/porturl/porturl-android/commit/ada2e8a4a42969fa483a6fe08de54a443c76d82e))
+
 ## [0.4.0](https://github.com/porturl/porturl-android/compare/v0.3.0...v0.4.0) (2026-02-28)
 
 
