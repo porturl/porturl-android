@@ -472,6 +472,45 @@ paths:
                 type: array
                 items:
                   type: string
+  /api/auth/ticket:
+    post:
+      tags:
+        - User
+      summary: Generate a temporary authentication ticket
+      operationId: createAuthTicket
+      responses:
+        '200':
+          description: Ticket generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    type: string
+                    format: uuid
+  /auth/bridge:
+    get:
+      tags:
+        - User
+      summary: Bridge authentication using a ticket and redirect
+      operationId: bridgeAuth
+      parameters:
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: next
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to the next URL
 
   /api/images:
     post:

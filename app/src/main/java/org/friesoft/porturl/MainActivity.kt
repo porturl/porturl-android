@@ -15,6 +15,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import org.friesoft.porturl.ui.screens.AppNavigation
 import org.friesoft.porturl.ui.theme.PortUrlTheme
 import org.friesoft.porturl.viewmodels.SettingsViewModel
+import org.friesoft.porturl.data.auth.IsolatedAuthManager
+import javax.inject.Inject
 
 import androidx.activity.enableEdgeToEdge
 
@@ -22,6 +24,9 @@ import androidx.activity.enableEdgeToEdge
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: SettingsViewModel by viewModels()
+
+    @Inject
+    lateinit var isolatedAuthManager: IsolatedAuthManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -44,7 +49,7 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         // This is the main entry point for the UI.
-                        AppNavigation()
+                        AppNavigation(isolatedAuthManager)
                     }
                 }
             }

@@ -38,15 +38,34 @@ import retrofit2.Retrofit
 import javax.inject.Named
 import javax.inject.Singleton
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
+import java.util.UUID
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    private object UUIDSerializer : KSerializer<UUID> {
+        override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
+        override fun serialize(encoder: Encoder, value: UUID) = encoder.encodeString(value.toString())
+        override fun deserialize(decoder: Decoder): UUID = UUID.fromString(decoder.decodeString())
+    }
 
     @Provides
     @Singleton
     fun provideJson(): Json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
+        serializersModule = SerializersModule {
+            contextual(UUIDSerializer)
+        }
     }
 
     // --- CLIENT FOR UNAUTHENTICATED CALLS (e.g., fetching config) ---

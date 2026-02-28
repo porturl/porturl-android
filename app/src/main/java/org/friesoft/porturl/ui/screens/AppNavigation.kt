@@ -23,6 +23,7 @@ import org.friesoft.porturl.ui.navigation.rememberNavigationState
 import org.friesoft.porturl.ui.navigation.toEntries
 import org.friesoft.porturl.viewmodels.AppSharedViewModel
 import org.friesoft.porturl.viewmodels.AuthViewModel
+import org.friesoft.porturl.data.auth.IsolatedAuthManager
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -34,7 +35,7 @@ import androidx.compose.ui.unit.IntOffset
  */
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(isolatedAuthManager: IsolatedAuthManager) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
 
@@ -124,6 +125,8 @@ fun AppNavigation() {
                         navigator = navigator,
                         sharedViewModel = sharedViewModel,
                         authViewModel = authViewModel,
+                        settingsViewModel = settingsViewModel,
+                        isolatedAuthManager = isolatedAuthManager,
                         onAppListInteraction = onAppListInteraction
                     )
                 }

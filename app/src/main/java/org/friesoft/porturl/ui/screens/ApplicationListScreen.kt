@@ -7,6 +7,8 @@
 
 package org.friesoft.porturl.ui.screens
 
+import android.view.ViewConfiguration
+import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -85,9 +87,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.friesoft.porturl.R
 import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.Category
+import org.friesoft.porturl.data.auth.IsolatedAuthManager
 import org.friesoft.porturl.ui.navigation.Navigator
 import org.friesoft.porturl.ui.navigation.Routes
 import org.friesoft.porturl.ui.utils.HapticEffect
@@ -145,6 +149,7 @@ fun ApplicationListRoute(
     viewModel: ApplicationListViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
+    isolatedAuthManager: IsolatedAuthManager,
     onAppListInteraction: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -155,6 +160,9 @@ fun ApplicationListRoute(
     val searchQuery by sharedViewModel.searchQuery.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
     LaunchedEffect(searchQuery) {
         viewModel.onSearchQueryChanged(searchQuery)
     }
@@ -192,7 +200,25 @@ fun ApplicationListRoute(
         onDeleteApplication = viewModel::deleteApplication,
         onDeleteCategory = viewModel::deleteCategory,
         translucentBackground = userPreferences?.translucentBackground ?: false,
-        onAppListInteraction = onAppListInteraction
+        onAppListInteraction = onAppListInteraction,
+        onOpenAppUrl = { app ->
+            val url = app.url
+            if (url != null) {
+                if (app.isLinked == true) {
+                    scope.launch {
+                        try {
+                            isolatedAuthManager.openIsolatedLink(url)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "SSO bridge failed, falling back to normal tab", Toast.LENGTH_SHORT).show()
+                            openUrlInCustomTab(url, context = context)
+                        }
+                    }
+                } else {
+                    openUrlInCustomTab(url, context = context)
+                }
+            }
+        },
+        isolatedAuthManager = isolatedAuthManager
     )
 }
 
@@ -213,7 +239,9 @@ fun ApplicationListScreen(
     onDeleteApplication: (id: Long) -> Unit,
     onDeleteCategory: (id: Long) -> Unit,
     translucentBackground: Boolean,
-    onAppListInteraction: () -> Unit = {}
+    onAppListInteraction: () -> Unit = {},
+    onOpenAppUrl: (Application) -> Unit,
+    isolatedAuthManager: IsolatedAuthManager
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var itemToDelete by remember { mutableStateOf<Pair<String, Long?>?>(null) }
@@ -515,6 +543,8 @@ fun ApplicationListScreen(
                                             onDragEnd = onDragEnd,
                                             onAppBoundsChanged = { key, rect -> applicationBounds[key] = rect },
                                             translucentBackground = translucentBackground,
+                                            onOpenAppUrl = onOpenAppUrl,
+                                            isolatedAuthManager = isolatedAuthManager,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .onGloballyPositioned { coords ->
@@ -560,6 +590,8 @@ fun ApplicationListScreen(
                                             onDragEnd = onDragEnd,
                                             onAppBoundsChanged = { key, rect -> applicationBounds[key] = rect },
                                             translucentBackground = translucentBackground,
+                                            onOpenAppUrl = onOpenAppUrl,
+                                            isolatedAuthManager = isolatedAuthManager,
                                             modifier = Modifier
                                                 .onGloballyPositioned { coords ->
                                                     category.id?.let { id -> categoryBounds[id] = coords.boundsInRoot() }
@@ -691,7 +723,9 @@ private fun CategoryColumn(
     onDragEnd: () -> Unit,
     onAppBoundsChanged: (key: String, bounds: Rect) -> Unit,
     modifier: Modifier = Modifier,
-    translucentBackground: Boolean
+    translucentBackground: Boolean,
+    onOpenAppUrl: (Application) -> Unit,
+    isolatedAuthManager: IsolatedAuthManager
 ) {
     val isDropTarget = dropTargetInfo?.categoryId == category.id
     val borderDp by animateDpAsState(if (isDropTarget) 2.dp else 0.dp, label = "DropTargetBorder")
@@ -774,6 +808,9 @@ private fun CategoryColumn(
                                                     itemBounds = it.boundsInRoot().topLeft
                                                     itemSize = it.size
                                                     onAppBoundsChanged(appKey, it.boundsInRoot())
+                                                    if (application.isLinked == true) {
+                                                        application.url?.let { url -> isolatedAuthManager.preWarm(url) }
+                                                    }
                                                 }
                                             }
                                             .pointerInput(appKey) {
@@ -817,7 +854,7 @@ private fun CategoryColumn(
                                     ) {
                                         ApplicationGridItem(
                                             application = application,
-                                            onClick = { application.url?.let { openUrlInCustomTab(it, context) } },
+                                            onClick = { onOpenAppUrl(application) },
                                             onEditClick = { onApplicationClick(application) },
                                             onDeleteClick = { onDeleteApplication(application) },
                                             modifier = Modifier.fillMaxSize(), 
@@ -867,6 +904,9 @@ private fun CategoryColumn(
                                                     itemBounds = it.boundsInRoot().topLeft
                                                     itemSize = it.size
                                                     onAppBoundsChanged(appKey, it.boundsInRoot())
+                                                    if (application.isLinked == true) {
+                                                        application.url?.let { url -> isolatedAuthManager.preWarm(url) }
+                                                    }
                                                 }
                                             }
                                             .pointerInput(appKey) {
@@ -910,7 +950,7 @@ private fun CategoryColumn(
                                     ) {
                                         ApplicationListItem(
                                             application = application,
-                                            onClick = { application.url?.let { openUrlInCustomTab(it, context) } },
+                                            onClick = { onOpenAppUrl(application) },
                                             onEditClick = { onApplicationClick(application) },
                                             onDeleteClick = { onDeleteApplication(application) },
                                             modifier = Modifier.fillMaxWidth(),
