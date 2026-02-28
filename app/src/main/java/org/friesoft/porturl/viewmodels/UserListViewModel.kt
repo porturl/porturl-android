@@ -18,6 +18,7 @@ class UserListViewModel @Inject constructor(
 
     data class UiState(
         val users: List<User> = emptyList(),
+        val selectedUser: User? = null,
         val isLoading: Boolean = false,
         val error: String? = null
     )
@@ -27,6 +28,10 @@ class UserListViewModel @Inject constructor(
 
     init {
         loadUsers()
+    }
+
+    fun selectUser(user: User?) {
+        _uiState.value = _uiState.value.copy(selectedUser = user)
     }
 
     fun loadUsers() {

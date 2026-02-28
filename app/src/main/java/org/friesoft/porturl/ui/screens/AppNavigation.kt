@@ -137,7 +137,7 @@ fun AppNavigation(isolatedAuthManager: IsolatedAuthManager) {
                     CategoryDetailScreen(navigator = navigator, categoryId = key.categoryId, sharedViewModel = sharedViewModel)
                 }
                 entry<Routes.UserList> {
-                    UserListScreen(navigator = navigator)
+                    UserListScreen(navigator = navigator, windowSizeClass = windowSizeClass)
                 }
                 entry<Routes.UserDetail> { key ->
                     UserDetailScreen(navigator = navigator, userId = key.userId)

@@ -22,6 +22,7 @@ class UserDetailViewModel @Inject constructor(
     private var userId: Long = -1
 
     data class UiState(
+        val user: org.friesoft.porturl.client.model.User? = null,
         val userRoles: List<String> = emptyList(),
         val allApplications: List<ApplicationWithRolesDto> = emptyList(),
         val isLoading: Boolean = false,
@@ -46,9 +47,11 @@ class UserDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
+                val user = userRepository.getAllUsers().find { it.id == userId }
                 val roles = userRepository.getUserRoles(userId)
                 val apps = applicationRepository.getAllApplicationsWithRoles()
                 _uiState.value = UiState(
+                    user = user,
                     userRoles = roles,
                     allApplications = apps,
                     isLoading = false

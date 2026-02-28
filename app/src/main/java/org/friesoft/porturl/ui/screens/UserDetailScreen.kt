@@ -22,6 +22,8 @@ import org.friesoft.porturl.R
 import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.ApplicationWithRolesDto
 import org.friesoft.porturl.ui.navigation.Navigator
+import org.friesoft.porturl.ui.components.UserAvatar
+import org.friesoft.porturl.viewmodels.SettingsViewModel
 import org.friesoft.porturl.viewmodels.UserDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -62,27 +64,88 @@ fun UserDetailScreen(
                 )
             }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+            UserDetailContent(
+                modifier = Modifier.padding(padding),
+                uiState = uiState,
+                viewModel = viewModel
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun UserDetailContent(
+    modifier: Modifier = Modifier,
+    uiState: UserDetailViewModel.UiState,
+    viewModel: UserDetailViewModel,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
+) {
+    val backendUrl by settingsViewModel.backendUrl.collectAsStateWithLifecycle(
+        initialValue = org.friesoft.porturl.data.repository.SettingsRepository.DEFAULT_BACKEND_URL
+    )
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        items(uiState.allApplications) { appWithRoles ->
-                            appWithRoles.application?.let { app ->
-                                AppPermissionItem(
-                                    app = app,
-                                    availableRoles = appWithRoles.availableRoles ?: emptyList(),
-                                    hasAccess = viewModel.hasAccess(app),
-                                    onAccessToggle = { isChecked -> viewModel.toggleAccess(app, isChecked) },
-                                    hasRole = { role -> viewModel.hasRole(app, role) },
-                                    onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
-                                )
+                        UserAvatar(
+                            currentUser = uiState.user,
+                            backendUrl = backendUrl,
+                            size = 80.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = uiState.user?.email ?: "",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        if (uiState.userRoles.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                uiState.userRoles.forEach { role ->
+                                    SuggestionChip(
+                                        onClick = { },
+                                        label = { Text(role) },
+                                        modifier = Modifier.padding(horizontal = 2.dp)
+                                    )
+                                }
                             }
                         }
+                    }
+                }
+
+                item {
+                    Text(
+                        text = stringResource(R.string.user_permissions_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                items(uiState.allApplications) { appWithRoles ->
+                    appWithRoles.application?.let { app ->
+                        AppPermissionItem(
+                            app = app,
+                            availableRoles = appWithRoles.availableRoles ?: emptyList(),
+                            hasAccess = viewModel.hasAccess(app),
+                            onAccessToggle = { isChecked -> viewModel.toggleAccess(app, isChecked) },
+                            hasRole = { role -> viewModel.hasRole(app, role) },
+                            onRoleToggle = { role, isChecked -> viewModel.toggleRole(app, role, isChecked) }
+                        )
                     }
                 }
             }
