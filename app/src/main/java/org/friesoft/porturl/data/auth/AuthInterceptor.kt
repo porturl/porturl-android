@@ -53,7 +53,7 @@ class AuthInterceptor @Inject constructor(
                 authState.performActionWithFreshTokens(authService) { accessToken, _, ex ->
                     try {
                         if (ex != null) {
-                            Log.e("AuthInterceptor", "Token refresh failed.", ex)
+                            Log.e("AuthInterceptor", "Token refresh failed. Error: ${ex.error}, Description: ${ex.errorDescription}", ex)
                             runBlocking {
                                 authStateManager.clearAuthState()
                                 sessionNotifier.notifySessionExpired()
