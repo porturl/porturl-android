@@ -54,9 +54,12 @@ class AuthInterceptor @Inject constructor(
                     try {
                         if (ex != null) {
                             Log.e("AuthInterceptor", "Token refresh failed. Error: ${ex.error}, Description: ${ex.errorDescription}", ex)
-                            runBlocking {
-                                authStateManager.clearAuthState()
-                                sessionNotifier.notifySessionExpired()
+                            // Only notify session expired if it's an OIDC error, not a network timeout
+                            if (ex.error != net.openid.appauth.AuthorizationException.GeneralErrors.NETWORK_ERROR.error) {
+                                runBlocking {
+                                    authStateManager.clearAuthState()
+                                    sessionNotifier.notifySessionExpired()
+                                }
                             }
                         } else if (accessToken != null) {
                             Log.d("AuthInterceptor", "Fresh token obtained: ${accessToken.take(10)}...")

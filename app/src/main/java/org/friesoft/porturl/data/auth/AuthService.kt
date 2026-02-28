@@ -147,7 +147,10 @@ class AuthService @Inject constructor(
             android.util.Log.d("AuthService", "Forced token refresh successful")
         } catch (ex: Exception) {
             android.util.Log.e("AuthService", "Forced token refresh failed", ex)
-            sessionExpiredNotifier.notifySessionExpired()
+            // Only notify session expired if it's an OIDC error, not a network timeout
+            if (ex !is java.net.SocketTimeoutException && ex !is java.net.UnknownHostException) {
+                sessionExpiredNotifier.notifySessionExpired()
+            }
         }
     }
 

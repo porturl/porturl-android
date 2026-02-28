@@ -74,7 +74,11 @@ object AppModule {
     @Named("unauthenticated_client")
     fun provideUnauthenticatedOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
         val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-        val builder = OkHttpClient.Builder().addInterceptor(logging)
+        val builder = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         if (BuildConfig.DEBUG) {
             SslUtils.applySelfSignedTrust(context, builder)
         }
@@ -111,6 +115,9 @@ object AppModule {
         val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         if (BuildConfig.DEBUG) {
             SslUtils.applySelfSignedTrust(context, builder)
         }
@@ -128,6 +135,9 @@ object AppModule {
         val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         if (BuildConfig.DEBUG) {
             SslUtils.applySelfSignedTrust(context, builder)
         }
