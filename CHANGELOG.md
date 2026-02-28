@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.4.0](https://github.com/porturl/porturl-android/compare/v0.3.0...v0.4.0) (2026-02-28)
+
+
+### Features
+
+* add ctrl+f for searching ([66a655c](https://github.com/porturl/porturl-android/commit/66a655c2c61ff2145b08c941c50ac25370e313ec))
+* allow listing realms and clients, internal keycloak/porturl clients are filtered out ([1c9c494](https://github.com/porturl/porturl-android/commit/1c9c494cc42f8fb8e5bf80247699b5587ea8f9ff))
+* consistent layout across small, middle and large screen, add searchbar by default, make add app/category modal windows ([f36af74](https://github.com/porturl/porturl-android/commit/f36af7499292adaf153060639c5db079d40b9f04))
+* display category description within the category header, expandable on click ([958627d](https://github.com/porturl/porturl-android/commit/958627daf78334bcaccece3dd7145813155d7d07))
+* don't use isolated chrome session due to missing porturl login session ([a13a517](https://github.com/porturl/porturl-android/commit/a13a517c91ba74f4b71db4a7a2b5885214044fcc))
+* implement haptic feedback on drag start/move and context menu ([725bd6e](https://github.com/porturl/porturl-android/commit/725bd6e439725b83b97111bc42e74c4b03829b58))
+* import/export of apps and categories ([caae4bc](https://github.com/porturl/porturl-android/commit/caae4bcf0c400ceacc087636da95773de4e3341a))
+* improve network problem handling ([75d69bb](https://github.com/porturl/porturl-android/commit/75d69bbc0d1a6e9dab0d08bba7f6eaddddb8f6e9))
+* listview and alphabetical sorting as setting ([59711b8](https://github.com/porturl/porturl-android/commit/59711b812914b6834c3c1d16ab0c83c3401c9d21))
+* manage roles in clients, add cross realm/client management, use dedicated client in master realm for cross realm management, update deps ([4ab643c](https://github.com/porturl/porturl-android/commit/4ab643c69cada7e486d2318885ae52c9f2456a87))
+* redesign settings screen to be responsive ([b2af3d2](https://github.com/porturl/porturl-android/commit/b2af3d2864e04ee7acf7b54d95fcf54b1d54887f))
+* support right mouse button to open context menu in applist ([4e00879](https://github.com/porturl/porturl-android/commit/4e008790bc6424f5bd170e1d0b1744180b45719b))
+* upload changelogs to playstore on new releases ([483c9e3](https://github.com/porturl/porturl-android/commit/483c9e3eed8f039b85ecc74ace006dc1b29e82e2))
+* use isolated chrome session with sso bridge ([882b1f4](https://github.com/porturl/porturl-android/commit/882b1f45f882b2d000d27f93d12ec24c0f16df14))
+
+
+### Bug Fixes
+
+* add more error logging ([0835019](https://github.com/porturl/porturl-android/commit/083501992a9fac4f5299cb96cfd00f48277a4b66))
+* allow longer appnames, show url below title in listview ([6e6be49](https://github.com/porturl/porturl-android/commit/6e6be494952e5e1d7e7ce0ad8f96789479a585a2))
+* bottom bar overlays navigationbar now to save space, updated icons for add category/app ([b0b77ca](https://github.com/porturl/porturl-android/commit/b0b77ca3134d8d8f9fe2be91e5ac19f142a7dae1))
+* broken formatting ([c0647db](https://github.com/porturl/porturl-android/commit/c0647db61c567b12e481de4cde0644abe55b3ad8))
+* broken keycloak linking ([0beceda](https://github.com/porturl/porturl-android/commit/0beceda054a15a3185fa593c17dfe5569f1d4036))
+* close sidebar with back button ([2b4b93e](https://github.com/porturl/porturl-android/commit/2b4b93e9c612759d8891cb52c6d8460e99e40fed))
+* compile using Android API 36 to fix install on older versions ([db97f5a](https://github.com/porturl/porturl-android/commit/db97f5af70379cbe89b63e5ce38936e239e117d7))
+* debug self signed cert configuration ([783d969](https://github.com/porturl/porturl-android/commit/783d969790c144245202b583c96ad7d1483f1cd5))
+* default sortorder alphabetical ([bbff039](https://github.com/porturl/porturl-android/commit/bbff039fa0555319bb4ed549c8b81290c38254dc))
+* don't reuse dialogs making it look strange on opening them if they still have old content ([d7cc498](https://github.com/porturl/porturl-android/commit/d7cc4983cf12917252c4e423f88d91cb4ed9c19a))
+* first login not showing apps/categories due to race condition in user creation logic ([26fc330](https://github.com/porturl/porturl-android/commit/26fc3305f59e46ace22f4274d28083347d7a653b))
+* google play publishing ([878bfee](https://github.com/porturl/porturl-android/commit/878bfee69208d561e178a7234257d37202894f43))
+* google play publishing ([f28948e](https://github.com/porturl/porturl-android/commit/f28948e2cb82299fc3a34a75603489e368f1a7c7))
+* google play publishing ([0f315fa](https://github.com/porturl/porturl-android/commit/0f315fad3bfd3e0d074f2ba993641831937a67c1))
+* google play publishing ([a5598fb](https://github.com/porturl/porturl-android/commit/a5598fb2a1ec9dd44227c21438966c064d9f5ae2))
+* google play publishing ([1635681](https://github.com/porturl/porturl-android/commit/16356818e53dadfa8aafbfdb2f9cc57237815c23))
+* google play publishing ([6de713f](https://github.com/porturl/porturl-android/commit/6de713ff8a4a4209d84cfebbe492b83d5a5b3c18))
+* google play publishing ([fe290c5](https://github.com/porturl/porturl-android/commit/fe290c5da3cbc2dc19cd978e739aff0e21af5c9f))
+* hide categories with no matching search ([4a7a2be](https://github.com/porturl/porturl-android/commit/4a7a2beec2584b49ae08b487dfb1a7de14d31d45))
+* improve drag detection to allow context menu ([c0c9003](https://github.com/porturl/porturl-android/commit/c0c9003afa0e21649402bfef04dc2c2fc6bd3734))
+* improve predictive back gesture animations ([5a6f9ae](https://github.com/porturl/porturl-android/commit/5a6f9aeaad1b7963a847fb7e5ad548c26b5cbd7d))
+* infinite loop on backend down from settings to login screen, added login screen retry button if backend is down ([78839c4](https://github.com/porturl/porturl-android/commit/78839c4b719e5acfbe73e4182fc6d578e19b14fe))
+* lint errors and deprecated ([0aef60f](https://github.com/porturl/porturl-android/commit/0aef60fefdf85f988fd28dd506c62096b5cd6845))
+* longer timeouts, don't handle timeouts/unknownhost as session expired ([c3011a1](https://github.com/porturl/porturl-android/commit/c3011a133e424159f630e164f76a129fb7db4df9))
+* loose focus on searchbar when scrolling in applist ([575f725](https://github.com/porturl/porturl-android/commit/575f72578feedc14d693d14cc1bf1343c9c32be3))
+* make sure startup is smooth by showing the splashscreen until the settings are loaded to prevent theme flickering on startup ([10468bc](https://github.com/porturl/porturl-android/commit/10468bc2ddebe051e9b44b964adfe5a7e057fd35))
+* remove unused category enable/icon fields ([2867215](https://github.com/porturl/porturl-android/commit/28672153acf740dc7ab495b0a233c7451a0fd17f))
+* scrolling up in desktop mode shouldn't trigger pulltorefresh, add dedicated refresh button on wider layouts ([a1d364a](https://github.com/porturl/porturl-android/commit/a1d364a17b477b1cf0a8da23dc109349db59fc2b))
+* search bar not visible on searching, remove useless padding ([6675e0d](https://github.com/porturl/porturl-android/commit/6675e0d1e7a2e519152067a43ed4ed50c43319ba))
+* searching moves the search result out of screen boundaries ([7956deb](https://github.com/porturl/porturl-android/commit/7956deb3da9a61121641cce2969204e85eda84b1))
+* simplify icons (only one size) and fix setting on app creation ([746a250](https://github.com/porturl/porturl-android/commit/746a25091fbbbd2e2c1697688e01d531db00d2cb))
+* styling of context menus ([4e13129](https://github.com/porturl/porturl-android/commit/4e131299f1c9c8b4cf6b109f4aacbac9d5e12a6b))
+* vibration on app context menu ([f9cf86c](https://github.com/porturl/porturl-android/commit/f9cf86c27028973eb6373fd708d628067d17e846))
+
+
+### Documentation
+
+* add privacy statement for google play ([99b97f7](https://github.com/porturl/porturl-android/commit/99b97f727fb725dbbb8fa261f95ca67478599ced))
+
 ## [0.3.0](https://github.com/porturl/porturl-android/compare/v0.2.1...v0.3.0) (2026-02-15)
 
 
