@@ -154,22 +154,24 @@ jobs:
           # 3. Remove "closes #123" or similar
           CLEAN_NOTES=$(echo "$EXISTING_BODY" | sed -E 's/\[([^]]+)\]\([^)]+\)/\1/g' | sed -E 's/ \([0-9a-f]{7,}\)//g' | sed -E 's/,? (closes )?#[0-9]+//g')
           
-          # Truncate to 500 characters for Google Play
-          if [ ${#CLEAN_NOTES} -gt 500 ]; then
-            CLEAN_NOTES="${CLEAN_NOTES:0:497}..."
+          # Truncate to 500 characters for Google Play (use 490 to be safe)
+          if [ ${#CLEAN_NOTES} -gt 490 ]; then
+            CLEAN_NOTES="${CLEAN_NOTES:0:487}..."
           fi
           
           # Create whatsnew directory and locale files
           mkdir -p distribution/whatsnew
-          echo "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-en-US
-          echo "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-de-DE
+          # Use printf %s to avoid trailing newline which adds +1 to length
+          printf "%s" "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-en-US
+          printf "%s" "$CLEAN_NOTES" > distribution/whatsnew/whatsnew-de-DE
 
           # Double check truncation for all generated files
           for f in distribution/whatsnew/whatsnew-*; do
             if [ -f "$f" ]; then
               content=$(cat "$f")
               if [ ${#content} -gt 500 ]; then
-                echo "${content:0:497}..." > "$f"
+                # Use printf here as well
+                printf "%s" "${content:0:497}..." > "$f"
               fi
             fi
           done

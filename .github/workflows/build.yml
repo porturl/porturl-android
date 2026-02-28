@@ -392,8 +392,8 @@ jobs:
           for f in distribution/whatsnew/whatsnew-*; do
             if [ -f "$f" ]; then
               content=$(cat "$f")
-              if [ ${#content} -gt 500 ]; then
-                echo "${content:0:497}..." > "$f"
+              if [ ${#content} -gt 490 ]; then
+                printf "%s" "${content:0:487}..." > "$f"
               fi
             fi
           done
