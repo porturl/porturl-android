@@ -58,11 +58,25 @@ android {
         buildConfigField("String", "OTLP_ENDPOINT", "\"$otlpEndpoint\"")
         buildConfigField("String", "OTLP_AUTH", "\"$otlpAuth\"")
 
-        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        // Parse semantic version for robust versionCode calculation
+        val versionStr = project.version.toString()
+        val versionParts = versionStr.split(".")
+        val major = versionParts.getOrNull(0)?.toIntOrNull() ?: 0
+        val minor = versionParts.getOrNull(1)?.toIntOrNull() ?: 0
+        val patch = versionParts.getOrNull(2)?.split("-")?.get(0)?.toIntOrNull() ?: 0
+        
+        val envVersionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        val isRelease = System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") == true || System.getenv("IS_RELEASE_BUILD") == "true"
+        
+        // Robust Versioning:
+        // Formula: major(7) + minor(5) + patch(3) + build_number(2)
+        // e.g., 0.4.0 with commit count 172 -> 0 * 1000000 + 4 * 10000 + 0 * 100 + (172 % 100) = 40072
+        // We add a 'build track' digit (1 for releases, 0 for snapshots) if we want extra safety.
+        val trackDigit = if (isRelease) 1 else 0
+        versionCode = (major * 1000000) + (minor * 10000) + (patch * 100) + (envVersionCode % 100)
         
         // Dynamic version name logic
-        val isRelease = System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") == true || System.getenv("IS_RELEASE_BUILD") == "true"
-        var version = project.version.toString()
+        var version = versionStr
         
         if (!isRelease) {
              val gitCommit = providers.exec {
