@@ -98,9 +98,13 @@ class IsolatedAuthManager @Inject constructor(
     private fun launchCustomTab(uri: Uri) {
         val builder = CustomTabsIntent.Builder(session)
         
-        if (isEphemeralBrowsingSupported(context)) {
-            builder.setEphemeralBrowsingEnabled(true)
-        }
+        // Ephemeral browsing is disabled to ensure SSO cookies from the system browser 
+        // and AppAuth session are available to the bridge session.
+        // This is necessary for the "Source Realm" SSO session (e.g., 6 months)
+        // to silently authorize target apps.
+        // if (isEphemeralBrowsingSupported(context)) {
+        //     builder.setEphemeralBrowsingEnabled(true)
+        // }
 
         val customTabsIntent = builder.build()
         customTabsIntent.intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
