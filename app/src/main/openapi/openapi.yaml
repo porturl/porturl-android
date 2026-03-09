@@ -89,9 +89,20 @@ paths:
         - Application
       summary: Get visible applications for the current user
       operationId: getVisibleApplications
+      parameters:
+        - name: pageable
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Pageable'
       responses:
         '200':
           description: OK
+          headers:
+            Content-Range:
+              description: Pagination info (e.g. applications 0-9/100)
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -276,9 +287,20 @@ paths:
         - Category
       summary: Find all visible categories
       operationId: findAllCategories
+      parameters:
+        - name: pageable
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Pageable'
       responses:
         '200':
           description: OK
+          headers:
+            Content-Range:
+              description: Pagination info (e.g. categories 0-9/100)
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -441,9 +463,20 @@ paths:
         - User
       summary: Get all users
       operationId: getAllUsers
+      parameters:
+        - name: pageable
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Pageable'
       responses:
         '200':
           description: OK
+          headers:
+            Content-Range:
+              description: Pagination info (e.g. users 0-9/100)
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -558,6 +591,17 @@ paths:
 
 components:
   schemas:
+    Pageable:
+      type: object
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        sort:
+          type: array
+          items:
+            type: string
     KeycloakClientDto:
       type: object
       properties:
