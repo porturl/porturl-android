@@ -124,9 +124,15 @@
 
     <!-- User Management -->
     <string name="manage_users_title">Manage Users</string>
+    <string name="create_user_title">Create User</string>
+    <string name="user_username_label">Username</string>
+    <string name="user_email_label">Email (Optional)</string>
     <string name="user_permissions_title">User Permissions</string>
     <string name="user_permissions_grant_access">Grant Access</string>
     <string name="no_roles_defined">No roles defined for this app.</string>
+    <string name="delete_user_title">Delete User</string>
+    <string name="delete_user_confirmation">Are you sure you want to permanently delete user %s?</string>
+    <string name="delete">Delete</string>
 
     <!-- User Menu -->
     <string name="user_profile">Profile</string>

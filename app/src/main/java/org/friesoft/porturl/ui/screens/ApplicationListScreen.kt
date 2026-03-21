@@ -190,7 +190,6 @@ fun ApplicationListRoute(
         layoutMode = userPreferences?.layoutMode ?: org.friesoft.porturl.data.model.LayoutMode.GRID,
         onCategoryDragEnd = viewModel::moveCategory,
         onMoveApplication = viewModel::moveApplication,
-        onSortApps = viewModel::sortAppsAlphabetically,
         onRefresh = viewModel::refreshData,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onApplicationClick = { app -> app.id?.let { sharedViewModel.openAppDetail(it) } },
@@ -229,7 +228,6 @@ fun ApplicationListScreen(
     layoutMode: org.friesoft.porturl.data.model.LayoutMode,
     onCategoryDragEnd: (fromCatId: Long, targetCategoryIndex: Int) -> Unit,
     onMoveApplication: (appId: Long, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) -> Unit,
-    onSortApps: (categoryId: Long) -> Unit,
     onRefresh: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onApplicationClick: (Application) -> Unit,
@@ -532,7 +530,6 @@ fun ApplicationListScreen(
                                                 menuOpenAppId = key
                                                 menuOpenOffset = offset
                                             },
-                                            onSortApps = onSortApps,
                                             onCategoryClick = onCategoryClick,
                                             onDeleteCategory = { itemToDelete = "Category" to category.id },
                                             onApplicationClick = onApplicationClick,
@@ -579,7 +576,6 @@ fun ApplicationListScreen(
                                                 menuOpenAppId = key
                                                 menuOpenOffset = offset
                                             },
-                                            onSortApps = onSortApps,
                                             onCategoryClick = onCategoryClick,
                                             onDeleteCategory = { itemToDelete = "Category" to category.id },
                                             onApplicationClick = onApplicationClick,
@@ -712,7 +708,6 @@ private fun CategoryColumn(
     menuOpenOffset: Offset,
     onMenuDismiss: () -> Unit,
     onAppMenuOpen: (String, Offset) -> Unit,
-    onSortApps: (categoryId: Long) -> Unit,
     onCategoryClick: (Category) -> Unit,
     onDeleteCategory: () -> Unit,
     onApplicationClick: (Application) -> Unit,
@@ -740,7 +735,6 @@ private fun CategoryColumn(
     ) {
         CategoryHeader(
             category = category,
-            onSortClick = { category.id?.let { onSortApps(it) } },
             onEditClick = { onCategoryClick(category) },
             onDeleteClick = onDeleteCategory,
             onDragStart = onCategoryDragStart,
@@ -1096,7 +1090,6 @@ fun ApplicationListItem(
 @Composable
 fun CategoryHeader(
     category: Category,
-    onSortClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onDragStart: (Category, Offset, Offset, IntSize, @Composable () -> Unit) -> Unit,
@@ -1144,7 +1137,6 @@ fun CategoryHeader(
                         val composable: @Composable () -> Unit = {
                             CategoryHeader(
                                 category = category,
-                                onSortClick = {},
                                 onEditClick = {},
                                 onDeleteClick = {},
                                 onDragStart = { _, _, _, _, _ -> },

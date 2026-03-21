@@ -2,6 +2,7 @@ package org.friesoft.porturl.data.repository
 
 import org.friesoft.porturl.client.api.CategoryApi
 import org.friesoft.porturl.client.model.Category
+import org.friesoft.porturl.client.model.CategoryReorderRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,9 +33,17 @@ class CategoryRepository @Inject constructor(private val categoryApi: CategoryAp
     /**
      * Sends a list of updated categories to the backend's batch-update endpoint.
      */
-    suspend fun reorderCategories(categories: List<Category>) {
-        if (categories.isNotEmpty()) {
-            categoryApi.reorderCategories(categories)
+    suspend fun reorderCategories(requests: List<CategoryReorderRequest>) {
+        if (requests.isNotEmpty()) {
+            categoryApi.reorderCategories(requests)
         }
+    }
+
+    suspend fun getApplicationsByCategory(id: Long): List<org.friesoft.porturl.client.model.Application> {
+        return categoryApi.findApplicationsByCategory(id).body() ?: emptyList()
+    }
+
+    suspend fun reorderApplicationsInCategory(categoryId: Long, applicationIds: List<Long>) {
+        categoryApi.reorderApplicationsInCategory(categoryId, applicationIds)
     }
 }
