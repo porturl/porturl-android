@@ -41,7 +41,7 @@ openapi-generator = "7.20.0"
 security-crypto = "1.1.0"
 tink-android = "1.20.0"
 jackson-yaml = "2.21.1"
-animationCore = "1.10.4"
+animationCore = "1.10.5"
 
 [libraries]
 tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink-android" }
