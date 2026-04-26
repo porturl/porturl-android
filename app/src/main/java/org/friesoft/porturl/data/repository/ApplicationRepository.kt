@@ -3,6 +3,7 @@ package org.friesoft.porturl.data.repository
 import org.friesoft.porturl.client.api.ApplicationApi
 import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.ApplicationUpdateRequest
+import org.friesoft.porturl.client.model.MoveApplicationRequest
 import kotlin.collections.mapNotNull
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,13 +32,10 @@ class ApplicationRepository @Inject constructor(
         applicationApi.deleteApplication(id)
     }
 
-    suspend fun reorderApplications(categories: List<org.friesoft.porturl.client.model.Category>) {
-        if (categories.isNotEmpty()) {
-            applicationApi.reorderApplications(categories)
-        }
-    }
-
     suspend fun getApplicationRoles(appId: Long): List<String> = 
         applicationApi.getApplicationRoles(appId).body() ?: emptyList()
-}
 
+    suspend fun moveApplication(id: Long, request: MoveApplicationRequest) {
+        applicationApi.moveApplication(id, request)
+    }
+}

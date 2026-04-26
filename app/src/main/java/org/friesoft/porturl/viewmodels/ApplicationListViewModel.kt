@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.friesoft.porturl.client.model.Application
 import org.friesoft.porturl.client.model.Category
+import org.friesoft.porturl.client.model.CategoryReorderRequest
+import org.friesoft.porturl.client.model.MoveApplicationRequest
 import org.friesoft.porturl.data.auth.AuthService
 import org.friesoft.porturl.data.repository.ApplicationRepository
 import org.friesoft.porturl.data.repository.CategoryRepository
@@ -96,6 +98,9 @@ class ApplicationListViewModel @Inject constructor(
     private var persistenceJob: Job? = null
     private val debounceTime = 1000L
 
+    private val categoryAppsMap = mutableMapOf<Long, List<Application>>()
+    private var currentCategories = listOf<Category>()
+
     init {
         loadData()
     }
@@ -106,21 +111,19 @@ class ApplicationListViewModel @Inject constructor(
 
     fun clearData() {
         Log.d("AppListViewModel", "Clearing data")
+        categoryAppsMap.clear()
+        currentCategories = emptyList()
         _uiState.update { it.copy(allItems = emptyList(), error = null) }
     }
 
     fun refreshData() {
         if (_uiState.value.isRefreshing) return
         viewModelScope.launch {
-            Log.d("AppListViewModel", "refreshData() called")
             _uiState.update { it.copy(isRefreshing = true) }
             try {
-                Log.d("AppListViewModel", "Attempting forceTokenRefresh()")
                 authService.forceTokenRefresh()
-                Log.d("AppListViewModel", "forceTokenRefresh() successful, loading items")
                 persistenceJob?.join()
                 loadAllItemsFromRepositories()
-                Log.d("AppListViewModel", "Data refreshed successfully")
             } catch (e: Exception) {
                 Log.e("AppListViewModel", "Failed to refresh data", e)
                 _uiState.update { it.copy(error = "Failed to refresh data: ${e.localizedMessage}") }
@@ -132,11 +135,9 @@ class ApplicationListViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            Log.d("AppListViewModel", "loadData() called")
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 loadAllItemsFromRepositories()
-                Log.d("AppListViewModel", "Data loaded successfully")
             } catch (e: Exception) {
                 Log.e("AppListViewModel", "Failed to load data", e)
                 _uiState.update { it.copy(error = "Failed to load data: ${e.localizedMessage}") }
@@ -148,21 +149,42 @@ class ApplicationListViewModel @Inject constructor(
 
     private suspend fun loadAllItemsFromRepositories() {
         val categories = categoryRepository.getAllCategories()
-        categories.forEach { cat ->
-            cat.applications?.forEach { app ->
-                Log.d("AppListViewModel", "App: $app")
-            }
-        }
+        currentCategories = categories
+        
         _uiState.update {
-            it.copy(allItems = buildDashboardItems(categories))
+            it.copy(allItems = buildDashboardItems(categories, emptyMap()))
+        }
+
+        categories.forEach { category ->
+            category.id?.let { id ->
+                viewModelScope.launch {
+                    try {
+                        val apps = categoryRepository.getApplicationsByCategory(id)
+                        categoryAppsMap[id] = apps
+                        updateUiItems()
+                    } catch (e: Exception) {
+                        Log.e("AppListViewModel", "Failed to load apps for category $id", e)
+                    }
+                }
+            }
         }
     }
 
-    private fun buildDashboardItems(categories: List<Category>): List<DashboardItem> {
+    private fun updateUiItems() {
+        _uiState.update {
+            it.copy(allItems = buildDashboardItems(currentCategories, categoryAppsMap))
+        }
+    }
+
+    private fun buildDashboardItems(
+        categories: List<Category>, 
+        appsMap: Map<Long, List<Application>>
+    ): List<DashboardItem> {
         val dashboardItems = mutableListOf<DashboardItem>()
         categories.sortedBy { it.sortOrder }.forEach { category ->
             dashboardItems.add(DashboardItem.CategoryItem(category))
-            category.applications?.forEach { app ->
+            val apps = appsMap[category.id ?: -1L]
+            apps?.forEach { app ->
                 dashboardItems.add(DashboardItem.ApplicationItem(app, category.id ?: -1L))
             }
         }
@@ -171,8 +193,8 @@ class ApplicationListViewModel @Inject constructor(
 
     fun moveApplication(appId: Long?, fromCatId: Long, toCatId: Long, targetIndexInCat: Int) {
         if (appId == null || appId == -1L) return
+        
         val currentItems = _uiState.value.allItems.toMutableList()
-
         val itemToMoveIndex = currentItems.indexOfFirst {
             it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == fromCatId
         }
@@ -188,29 +210,31 @@ class ApplicationListViewModel @Inject constructor(
         val newItem = itemToMove.copy(parentCategoryId = toCatId)
         currentItems.add(insertionIndex, newItem)
 
-        // If target category was alphabetical, switch it to custom because we just performed a manual move
-        val targetCatIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == toCatId }
-        if (targetCatIndex != -1) {
-            val catItem = currentItems[targetCatIndex] as DashboardItem.CategoryItem
-            if (catItem.category.applicationSortMode == Category.ApplicationSortMode.ALPHABETICAL) {
-                currentItems[targetCatIndex] = DashboardItem.CategoryItem(
-                    catItem.category.copy(applicationSortMode = Category.ApplicationSortMode.CUSTOM)
-                )
-            }
-        }
-
-        if (fromCatId != toCatId) {
-            val duplicateIndex = currentItems.indexOfFirst {
-                it is DashboardItem.ApplicationItem && it.application.id == appId && it.parentCategoryId == toCatId && it !== newItem
-            }
-            if (duplicateIndex != -1) currentItems.removeAt(duplicateIndex)
-        }
-
+        // UI Update
         _uiState.update { it.copy(allItems = currentItems) }
-        debouncedPersist(currentItems)
+        
+        // Remote Update
+        viewModelScope.launch {
+            try {
+                if (fromCatId == toCatId) {
+                    // Reorder within category
+                    val activeCatItems = currentItems.filter { it is DashboardItem.ApplicationItem && it.parentCategoryId == toCatId }
+                        .map { (it as DashboardItem.ApplicationItem).application.id ?: -1L }
+                    categoryRepository.reorderApplicationsInCategory(toCatId, activeCatItems)
+                } else {
+                    // Move between categories
+                    applicationRepository.moveApplication(appId, MoveApplicationRequest(
+                        fromCategoryId = fromCatId,
+                        toCategoryId = toCatId,
+                        targetIndex = targetIndexInCat
+                    ))
+                }
+            } catch (e: Exception) {
+                Log.e("AppListViewModel", "Failed to move/reorder application", e)
+                refreshData() // Rollback on error
+            }
+        }
     }
-
-    enum class MoveDirection { UP, DOWN, LEFT, RIGHT }
 
     fun moveCategoryByDirection(categoryId: Long, direction: MoveDirection) {
         val currentItems = _uiState.value.allItems.toMutableList()
@@ -249,8 +273,10 @@ class ApplicationListViewModel @Inject constructor(
             }
         }
         _uiState.update { it.copy(allItems = currentItems) }
-        debouncedPersist(currentItems)
+        persistCategoryOrder(currentItems)
     }
+
+    enum class MoveDirection { UP, DOWN, LEFT, RIGHT }
 
     fun moveCategory(fromCatId: Long, targetCategoryIndex: Int) {
         val currentItems = _uiState.value.allItems.toMutableList()
@@ -277,65 +303,28 @@ class ApplicationListViewModel @Inject constructor(
         if (insertAtIndex >= 0 && insertAtIndex <= currentItems.size) {
             currentItems.addAll(insertAtIndex, blockToMove)
             _uiState.update { it.copy(allItems = currentItems) }
-            debouncedPersist(currentItems)
+            persistCategoryOrder(currentItems)
         }
     }
 
-    private fun debouncedPersist(items: List<DashboardItem>) {
-        persistenceJob?.cancel()
-        persistenceJob = viewModelScope.launch {
-            delay(debounceTime)
-            persistDashboardOrder(items)
-        }
-    }
-
-    private suspend fun persistDashboardOrder(items: List<DashboardItem>) {
-        val categoriesToUpdate = mutableListOf<Category>()
-        val categoryAppMap = mutableMapOf<Long, MutableList<Application>>()
-        var currentCategory: Category? = null
-        var categoryOrder = 0
-
+    private fun persistCategoryOrder(items: List<DashboardItem>) {
+        val requests = mutableListOf<CategoryReorderRequest>()
+        var order = 0
         items.forEach { item ->
-            when (item) {
-                is DashboardItem.CategoryItem -> {
-                    currentCategory = item.category
-                    categoryAppMap[currentCategory.id ?: -1L] = mutableListOf()
-                    categoriesToUpdate.add(item.category.copy(sortOrder = categoryOrder))
-                    categoryOrder++
+            if (item is DashboardItem.CategoryItem) {
+                item.category.id?.let { id ->
+                    requests.add(CategoryReorderRequest(id, order))
                 }
-                is DashboardItem.ApplicationItem -> {
-                    currentCategory?.let { cat ->
-                        categoryAppMap[cat.id ?: -1L]?.add(item.application)
-                    }
-                }
+                order++
             }
         }
-
-        val categoriesWithApps = categoriesToUpdate.map { cat ->
-            cat.copy(applications = categoryAppMap[cat.id ?: -1L])
+        viewModelScope.launch {
+            try {
+                categoryRepository.reorderCategories(requests)
+            } catch (e: Exception) {
+                Log.e("AppListViewModel", "Failed to persist category order", e)
+            }
         }
-
-        try {
-            categoryRepository.reorderCategories(categoriesWithApps)
-            applicationRepository.reorderApplications(categoriesWithApps)
-        } catch (e: Exception) {
-            Log.e("AppListViewModel", "Failed to persist order", e)
-            _uiState.update { it.copy(error = "Failed to save new order.") }
-        }
-    }
-
-    fun sortAppsAlphabetically(categoryId: Long) {
-        val currentItems = _uiState.value.allItems.toMutableList()
-        val categoryIndex = currentItems.indexOfFirst { it is DashboardItem.CategoryItem && it.category.id == categoryId }
-        if (categoryIndex == -1) return
-
-        val categoryItem = currentItems[categoryIndex] as DashboardItem.CategoryItem
-        val updatedCategory = categoryItem.category.copy(applicationSortMode = Category.ApplicationSortMode.ALPHABETICAL)
-        currentItems[categoryIndex] = DashboardItem.CategoryItem(updatedCategory)
-
-        // Only update the mode and persist, let backend do the sorting on next load
-        _uiState.update { it.copy(allItems = currentItems) }
-        debouncedPersist(currentItems)
     }
 
     fun deleteApplication(id: Long) {

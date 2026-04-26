@@ -36,12 +36,40 @@ class UserListViewModel @Inject constructor(
 
     fun loadUsers() {
         viewModelScope.launch {
-            _uiState.value = UiState(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val users = userRepository.getAllUsers()
-                _uiState.value = UiState(users = users, isLoading = false)
+                _uiState.value = _uiState.value.copy(users = users, isLoading = false)
             } catch (e: Exception) {
-                _uiState.value = UiState(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun deleteUser(user: User) {
+        viewModelScope.launch {
+            try {
+                user.id?.let {
+                    userRepository.deleteUser(it)
+                    loadUsers()
+                    if (_uiState.value.selectedUser?.id == it) {
+                        selectUser(null)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun createUser(username: String, email: String?) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            try {
+                userRepository.createUser(User(username = username, email = email))
+                loadUsers()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }
         }
     }

@@ -24,12 +24,20 @@ class UserRepository @Inject constructor(
         return userApi.getAllUsers().body() ?: emptyList()
     }
 
+    suspend fun createUser(user: User): User {
+        return userApi.createUser(user).body() ?: throw Exception("Failed to create user")
+    }
+
     suspend fun getCurrentUserRoles(): List<String> {
         return userApi.getCurrentUserRoles().body() ?: emptyList()
     }
 
     suspend fun getUserRoles(userId: Long): List<String> {
         return userApi.getUserRoles(userId).body() ?: emptyList()
+    }
+
+    suspend fun deleteUser(userId: Long) {
+        userApi.deleteUser(userId)
     }
 
     suspend fun assignRole(appId: Long, userId: Long, role: String) {

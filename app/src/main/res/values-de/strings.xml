@@ -124,9 +124,15 @@
 
     <!-- User Management -->
     <string name="manage_users_title">Benutzer verwalten</string>
+    <string name="create_user_title">Benutzer erstellen</string>
+    <string name="user_username_label">Benutzername</string>
+    <string name="user_email_label">E-Mail (Optional)</string>
     <string name="user_permissions_title">Benutzerberechtigungen</string>
     <string name="user_permissions_grant_access">Zugriff gewähren</string>
     <string name="no_roles_defined">Keine Rollen für diese App definiert.</string>
+    <string name="delete_user_title">Benutzer löschen</string>
+    <string name="delete_user_confirmation">Sind Sie sicher, dass Sie den Benutzer %s dauerhaft löschen möchten?</string>
+    <string name="delete">Löschen</string>
 
     <!-- User Menu -->
     <string name="user_profile">Profil</string>

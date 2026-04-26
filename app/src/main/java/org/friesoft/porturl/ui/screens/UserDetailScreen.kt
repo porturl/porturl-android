@@ -106,9 +106,16 @@ fun UserDetailContent(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = uiState.user?.email ?: "",
+                            text = uiState.user?.username ?: "",
                             style = MaterialTheme.typography.headlineSmall
                         )
+                        uiState.user?.email?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         if (uiState.userRoles.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             FlowRow(
