@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.0](https://github.com/porturl/porturl-android/compare/v0.4.0...v0.5.0) (2026-04-30)
+
+
+### Features
+
+* add build information ([985251d](https://github.com/porturl/porturl-android/commit/985251d12ebc06e336bb101bb857f61d32ed9723))
+* responsive design for user management ([ada2e8a](https://github.com/porturl/porturl-android/commit/ada2e8a4a42969fa483a6fe08de54a443c76d82e))
+* update openapi.yaml to support paging (unused by android app) ([66478a7](https://github.com/porturl/porturl-android/commit/66478a7e67bd5ec56cde7a9bc8a7e3d8a1621286))
+
 ## [0.4.0](https://github.com/porturl/porturl-android/compare/v0.3.0...v0.4.0) (2026-02-28)
 
 
