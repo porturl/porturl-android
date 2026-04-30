@@ -48,13 +48,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Check for relevant changes
         id: changes
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@9d7afb8d214ad99e78fbd4247752c4caed2b6e4c # v4
         with:
           base: ${{ github.event.repository.default_branch }}
           filters: |
@@ -67,21 +67,21 @@ jobs:
 
       - name: Set up JDK
         if: steps.changes.outputs.has-changes == 'true'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
 
       - name: Setup Gradle
         if: steps.changes.outputs.has-changes == 'true'
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9 # v6
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-cleanup: on-success
 
       - name: Validate Gradle wrapper
         if: steps.changes.outputs.has-changes == 'true'
-        uses: gradle/actions/wrapper-validation@v6
+        uses: gradle/actions/wrapper-validation@39fdf500b386709a9a4a769f717dad447ac345b9 # v6
 
       - name: Run Lint and Unit Tests
         if: steps.changes.outputs.has-changes == 'true'
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload Test & Lint Reports
         if: always() && steps.changes.outputs.has-changes == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: test-and-lint-reports-${{ github.run_number }}
           path: |
@@ -114,7 +114,7 @@ jobs:
 
       - name: Comment on PR with test results
         if: always() && github.event_name == 'pull_request' && steps.changes.outputs.has-changes == 'true'
-        uses: actions/github-script@v9
+        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
         with:
           script: |
             const testResults = '${{ steps.test-results.outputs.results }}';
@@ -154,24 +154,24 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9 # v6
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-cleanup: on-success
 
       - name: Cache keystore
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ runner.temp }}/keystore.jks
           key: keystore-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
@@ -260,14 +260,14 @@ jobs:
           fi
 
       - name: Upload App Bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: app-bundle-${{ steps.version_info.outputs.commitSha }}
           path: '**/build/outputs/bundle/release/*.aab'
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
 
       - name: Upload APK
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: app-apk-${{ steps.version_info.outputs.commitSha }}
           path: |
@@ -277,7 +277,7 @@ jobs:
 
       - name: Upload ProGuard mapping
         if: hashFiles('**/build/outputs/mapping/release/mapping.txt') != ''
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: proguard-mapping-${{ steps.version_info.outputs.commitSha }}
           path: '**/build/outputs/mapping/release/mapping.txt'
@@ -302,16 +302,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Download App Bundle
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: app-bundle-${{ needs.build.outputs.commitSha }}
           path: artifacts/
 
       - name: Download APK
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: app-apk-${{ needs.build.outputs.commitSha }}
           path: artifacts/
@@ -431,7 +431,7 @@ jobs:
           fi
 
       - name: Create snapshot release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           token: ${{ github.token }}
           artifacts: |
@@ -471,13 +471,13 @@ jobs:
 
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v3'
+        uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093' # v3
         with:
           workload_identity_provider: 'projects/434707438982/locations/global/workloadIdentityPools/github/providers/github-provider'
           service_account: 'github-action-publish@august-apogee-487912-h3.iam.gserviceaccount.com'
 
       - name: 'Upload to Google Play'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@eb49699984a39f23558439581660aa6f088acfd6 # v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: org.friesoft.porturl
